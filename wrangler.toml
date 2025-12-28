@@ -8,7 +8,8 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 [[d1_databases]]
 binding = "DB"
 database_name = "qualia-garden"
-database_id = "placeholder-create-with-wrangler-d1-create"
+database_id = "358e7264-0e44-4b45-88c1-9625eebbe56a"
+
 
 [[queues.producers]]
 binding = "POLL_QUEUE"

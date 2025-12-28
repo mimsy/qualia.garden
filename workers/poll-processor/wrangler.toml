@@ -1,0 +1,18 @@
+# ABOUTME: Cloudflare Worker configuration for queue consumer.
+# ABOUTME: Processes poll jobs by calling AI models via OpenRouter.
+
+name = "qualia-garden-poll-processor"
+main = "index.ts"
+compatibility_date = "2024-12-01"
+
+[[queues.consumers]]
+queue = "poll-jobs"
+max_batch_size = 1
+max_batch_timeout = 30
+
+[[d1_databases]]
+binding = "DB"
+database_name = "qualia-garden"
+database_id = "358e7264-0e44-4b45-88c1-9625eebbe56a"
+
+# Secret: OPENROUTER_API_KEY (set via `wrangler secret put`)

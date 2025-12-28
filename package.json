@@ -10,7 +10,9 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"db:migrate": "wrangler d1 migrations apply qualia-garden --local",
-		"db:migrate:remote": "wrangler d1 migrations apply qualia-garden --remote"
+		"db:migrate:remote": "wrangler d1 migrations apply qualia-garden --remote",
+		"worker:dev": "wrangler dev --config workers/poll-processor/wrangler.toml",
+		"worker:deploy": "wrangler deploy --config workers/poll-processor/wrangler.toml"
 	},
 	"dependencies": {
 		"@sveltejs/adapter-cloudflare": "^7.2.4",
