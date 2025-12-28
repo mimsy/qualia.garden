@@ -1,12 +1,13 @@
 // ABOUTME: Server-side auth check for admin routes.
 // ABOUTME: Verifies Cloudflare Access authentication header.
 
+import { dev } from '$app/environment';
 import { error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ request, platform }) => {
+export const load: LayoutServerLoad = async ({ request }) => {
 	// In development, skip auth check
-	if (!platform?.env) {
+	if (dev) {
 		return { user: 'dev@localhost' };
 	}
 
