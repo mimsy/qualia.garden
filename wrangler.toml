@@ -1,0 +1,18 @@
+# ABOUTME: Cloudflare Workers/Pages configuration.
+# ABOUTME: Defines D1 database, Queue, and secret bindings.
+
+name = "qualia-garden"
+compatibility_date = "2024-12-01"
+pages_build_output_dir = ".svelte-kit/cloudflare"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "qualia-garden"
+database_id = "placeholder-create-with-wrangler-d1-create"
+
+[[queues.producers]]
+binding = "POLL_QUEUE"
+queue = "poll-jobs"
+
+# Secrets (set via `wrangler secret put`):
+# - OPENROUTER_API_KEY
