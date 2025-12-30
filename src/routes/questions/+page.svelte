@@ -51,6 +51,7 @@
 				</a>
 				<nav class="flex items-center gap-4">
 					<a href="/questions" class="text-gray-900 font-medium">Browse Questions</a>
+					<a href="/map" class="text-gray-600 hover:text-gray-900">Model Map</a>
 					{#if data.isAdmin}
 						<a
 							href="/questions/new"
