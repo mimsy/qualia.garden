@@ -24,21 +24,21 @@
 	let isComputing = $state(true);
 	let error = $state<string | null>(null);
 
-	// Color palette for families
+	// Color palette for families (lowercase keys for case-insensitive lookup)
 	const familyColors: Record<string, string> = {
-		'Anthropic': '#D97706', // amber
-		'OpenAI': '#059669', // emerald
-		'Google': '#2563EB', // blue
-		'Meta': '#7C3AED', // violet
-		'Mistral': '#DC2626', // red
-		'Cohere': '#0891B2', // cyan
-		'DeepSeek': '#4F46E5', // indigo
-		'Qwen': '#DB2777', // pink
-		'Human': '#374151', // gray
+		'anthropic': '#D97706', // amber
+		'openai': '#059669', // emerald
+		'google': '#2563EB', // blue
+		'meta': '#7C3AED', // violet
+		'mistral': '#DC2626', // red
+		'cohere': '#0891B2', // cyan
+		'deepseek': '#4F46E5', // indigo
+		'qwen': '#DB2777', // pink
+		'human': '#374151', // gray
 	};
 
 	function getColor(family: string): string {
-		return familyColors[family] || '#6B7280';
+		return familyColors[family.toLowerCase()] || '#6B7280';
 	}
 
 	// SVG dimensions
@@ -167,36 +167,34 @@
 					<svg {width} {height} class="border border-gray-200 rounded">
 						<!-- Points -->
 						{#each points as point}
+							{@const isHovered = hoveredPoint?.id === point.id}
 							<g
 								onmouseenter={() => handleMouseEnter(point)}
 								onmouseleave={handleMouseLeave}
 								class="cursor-pointer"
 							>
-								{#if point.type === 'human'}
-									<!-- Square for humans -->
-									<rect
-										x={point.x - 8}
-										y={point.y - 8}
-										width="16"
-										height="16"
-										fill={getColor(point.family)}
-										stroke="white"
-										stroke-width="2"
-										class="transition-transform hover:scale-125"
-										style="transform-origin: {point.x}px {point.y}px"
-									/>
-								{:else}
-									<!-- Circle for models -->
-									<circle
-										cx={point.x}
-										cy={point.y}
-										r="8"
-										fill={getColor(point.family)}
-										stroke="white"
-										stroke-width="2"
-										class="transition-transform hover:scale-125"
-									/>
-								{/if}
+							{#if point.type === 'human'}
+								<!-- Square for humans -->
+								<rect
+									x={point.x - (isHovered ? 10 : 8)}
+									y={point.y - (isHovered ? 10 : 8)}
+									width={isHovered ? 20 : 16}
+									height={isHovered ? 20 : 16}
+									fill={getColor(point.family)}
+									stroke="white"
+									stroke-width="2"
+								/>
+							{:else}
+								<!-- Circle for models -->
+								<circle
+									cx={point.x}
+									cy={point.y}
+									r={isHovered ? 10 : 8}
+									fill={getColor(point.family)}
+									stroke="white"
+									stroke-width="2"
+								/>
+							{/if}
 							</g>
 						{/each}
 
