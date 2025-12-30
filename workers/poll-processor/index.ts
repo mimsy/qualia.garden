@@ -218,7 +218,15 @@ async function callAI(
 	}
 
 	// Fallback: call without structured output
-	return await callAIText(apiKey, modelId, question, supportsReasoning, tag);
+	const textResult = await callAIText(apiKey, modelId, question, supportsReasoning, tag);
+
+	// If text fallback failed but we got a response, try a follow-up to encourage answering
+	if (!textResult.success && textResult.rawResponse) {
+		console.log(`${tag} Text parsing failed, trying follow-up to encourage answer...`);
+		return await callAIFollowUp(apiKey, modelId, question, textResult, tag);
+	}
+
+	return textResult;
 }
 
 function getSchema(question: Question) {
@@ -334,6 +342,92 @@ async function callAIText(
 			responseTimeMs,
 			error: errorMsg
 		};
+	}
+}
+
+async function callAIFollowUp(
+	apiKey: string,
+	modelId: string,
+	question: Question,
+	previousResult: AIResult,
+	tag: string
+): Promise<AIResult> {
+	const startTime = Date.now();
+	const openrouter = createOpenRouter({ apiKey });
+
+	// Build the follow-up prompt
+	const userPrompt = formatPromptWithJsonRequest(question);
+	const followUpPrompt = formatFollowUpPrompt(question);
+
+	try {
+		console.log(`${tag} Sending follow-up to ${modelId}`);
+
+		const { text } = await generateText({
+			model: openrouter(modelId),
+			messages: [
+				{ role: 'system', content: SYSTEM_PROMPT },
+				{ role: 'user', content: userPrompt },
+				{ role: 'assistant', content: previousResult.rawResponse || '' },
+				{ role: 'user', content: followUpPrompt }
+			]
+		});
+
+		const responseTimeMs = (previousResult.responseTimeMs || 0) + (Date.now() - startTime);
+
+		console.log(`${tag} Follow-up response: "${text?.substring(0, 200)}..."`);
+
+		const parsed = parseTextResponse(text, question);
+		if (parsed) {
+			return {
+				success: true,
+				rawResponse: `${previousResult.rawResponse}\n\n[Follow-up]\n${text}`,
+				parsedAnswer: parsed.answer,
+				justification: parsed.justification || previousResult.rawResponse,
+				reasoning: previousResult.reasoning,
+				responseTimeMs,
+				error: null
+			};
+		}
+
+		// Still couldn't parse - give up
+		return {
+			success: false,
+			rawResponse: `${previousResult.rawResponse}\n\n[Follow-up]\n${text}`,
+			parsedAnswer: null,
+			justification: null,
+			reasoning: previousResult.reasoning,
+			responseTimeMs,
+			error: 'Could not parse response after follow-up'
+		};
+	} catch (err) {
+		const responseTimeMs = (previousResult.responseTimeMs || 0) + (Date.now() - startTime);
+		const errorMsg = err instanceof Error ? err.message : String(err);
+		console.error(`${tag} Follow-up failed: ${errorMsg}`);
+
+		return {
+			...previousResult,
+			responseTimeMs,
+			error: `Follow-up failed: ${errorMsg}`
+		};
+	}
+}
+
+function formatFollowUpPrompt(question: Question): string {
+	switch (question.response_type) {
+		case 'yes_no':
+			return `I understand your perspective. However, for this survey, please select the response that best approximates your answer, even if imperfect. Just reply with "yes" or "no".`;
+
+		case 'scale':
+			return `I understand your perspective. However, for this survey, please select the number that best approximates your response, even if imperfect. Just reply with a number from 1 to 10.`;
+
+		case 'multiple_choice': {
+			const opts = question.options ? (JSON.parse(question.options) as string[]) : [];
+			const letters = opts.map((_, i) => String.fromCharCode(65 + i)).join(', ');
+			return `I understand your perspective. However, for this survey, please select the option that best approximates your response, even if imperfect. Just reply with the letter of your choice (${letters}).`;
+		}
+
+		default:
+			return `I understand your perspective. However, for this survey, please provide your best approximation of an answer.`;
 	}
 }
 
