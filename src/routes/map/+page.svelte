@@ -24,6 +24,11 @@
 	let isComputing = $state(true);
 	let error = $state<string | null>(null);
 
+	// UMAP parameters
+	let nNeighbors = $state(Math.min(15, Math.max(2, data.entities.length - 1)));
+	let minDist = $state(0.1);
+	let spread = $state(1.0);
+
 	// Color palette for families (lowercase keys for case-insensitive lookup)
 	const familyColors: Record<string, string> = {
 		'anthropic': '#D97706', // amber
@@ -46,67 +51,71 @@
 	const height = 600;
 	const padding = 60;
 
-	onMount(async () => {
+	function computeUMAP() {
 		if (data.entities.length < 2) {
 			error = 'Need at least 2 entities with responses to create a map';
 			isComputing = false;
 			return;
 		}
 
-		try {
-			// Extract vectors from entities
-			const vectors = data.entities.map((e: Entity) => e.vector);
+		isComputing = true;
+		error = null;
 
-			// Check if all vectors have the same length and valid values
-			const vectorLength = vectors[0].length;
-			if (vectorLength === 0) {
-				error = 'No response data available';
+		// Use setTimeout to allow UI to update before heavy computation
+		setTimeout(() => {
+			try {
+				const vectors = data.entities.map((e: Entity) => e.vector);
+
+				const vectorLength = vectors[0].length;
+				if (vectorLength === 0) {
+					error = 'No response data available';
+					isComputing = false;
+					return;
+				}
+
+				const umap = new UMAP({
+					nComponents: 2,
+					nNeighbors: Math.min(nNeighbors, data.entities.length - 1),
+					minDist,
+					spread,
+				});
+
+				const embedding = umap.fit(vectors);
+
+				let minX = Infinity, maxX = -Infinity;
+				let minY = Infinity, maxY = -Infinity;
+				for (const [x, y] of embedding) {
+					minX = Math.min(minX, x);
+					maxX = Math.max(maxX, x);
+					minY = Math.min(minY, y);
+					maxY = Math.max(maxY, y);
+				}
+
+				const scaleX = (x: number) =>
+					padding + ((x - minX) / (maxX - minX || 1)) * (width - 2 * padding);
+				const scaleY = (y: number) =>
+					padding + ((y - minY) / (maxY - minY || 1)) * (height - 2 * padding);
+
+				points = data.entities.map((entity: Entity, i: number) => ({
+					id: entity.id,
+					name: entity.name,
+					type: entity.type,
+					family: entity.family,
+					x: scaleX(embedding[i][0]),
+					y: scaleY(embedding[i][1]),
+					metadata: entity.metadata
+				}));
+
 				isComputing = false;
-				return;
+			} catch (err) {
+				error = err instanceof Error ? err.message : 'Failed to compute UMAP';
+				isComputing = false;
 			}
+		}, 10);
+	}
 
-			// Run UMAP
-			const umap = new UMAP({
-				nComponents: 2,
-				nNeighbors: Math.min(15, data.entities.length - 1),
-				minDist: 0.1,
-				spread: 1.0,
-			});
-
-			const embedding = umap.fit(vectors);
-
-			// Find bounds for scaling
-			let minX = Infinity, maxX = -Infinity;
-			let minY = Infinity, maxY = -Infinity;
-			for (const [x, y] of embedding) {
-				minX = Math.min(minX, x);
-				maxX = Math.max(maxX, x);
-				minY = Math.min(minY, y);
-				maxY = Math.max(maxY, y);
-			}
-
-			// Scale to SVG coordinates
-			const scaleX = (x: number) =>
-				padding + ((x - minX) / (maxX - minX || 1)) * (width - 2 * padding);
-			const scaleY = (y: number) =>
-				padding + ((y - minY) / (maxY - minY || 1)) * (height - 2 * padding);
-
-			// Create points
-			points = data.entities.map((entity: Entity, i: number) => ({
-				id: entity.id,
-				name: entity.name,
-				type: entity.type,
-				family: entity.family,
-				x: scaleX(embedding[i][0]),
-				y: scaleY(embedding[i][1]),
-				metadata: entity.metadata
-			}));
-
-			isComputing = false;
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to compute UMAP';
-			isComputing = false;
-		}
+	onMount(() => {
+		computeUMAP();
 	});
 
 	function handleMouseEnter(point: Point) {
@@ -222,45 +231,103 @@
 					</svg>
 				</div>
 
-				<!-- Legend -->
-				<div class="w-48">
-					<h3 class="font-semibold text-gray-900 mb-3">Legend</h3>
-					<div class="space-y-2">
-						{#each data.families as family}
-							<div class="flex items-center gap-2">
-								{#if family === 'Human'}
-									<div
-										class="w-4 h-4"
-										style="background-color: {getColor(family)}"
-									></div>
-								{:else}
-									<div
-										class="w-4 h-4 rounded-full"
-										style="background-color: {getColor(family)}"
-									></div>
-								{/if}
-								<span class="text-sm text-gray-700">{family}</span>
+				<!-- Sidebar -->
+				<div class="w-56">
+					<!-- Parameters -->
+					<div class="mb-6">
+						<h3 class="font-semibold text-gray-900 mb-3">Parameters</h3>
+						<div class="space-y-4">
+							<div>
+								<label class="block text-sm text-gray-600 mb-1">
+									Neighbors: {nNeighbors}
+								</label>
+								<input
+									type="range"
+									min="2"
+									max={Math.max(2, data.entities.length - 1)}
+									bind:value={nNeighbors}
+									class="w-full"
+								/>
+								<p class="text-xs text-gray-400 mt-1">Local vs global structure</p>
 							</div>
-						{/each}
-					</div>
-
-					<div class="mt-6 pt-4 border-t">
-						<h4 class="font-medium text-gray-700 mb-2">Shapes</h4>
-						<div class="space-y-2 text-sm text-gray-600">
-							<div class="flex items-center gap-2">
-								<div class="w-4 h-4 rounded-full bg-gray-400"></div>
-								<span>AI Model</span>
+							<div>
+								<label class="block text-sm text-gray-600 mb-1">
+									Min Distance: {minDist.toFixed(2)}
+								</label>
+								<input
+									type="range"
+									min="0.01"
+									max="1"
+									step="0.01"
+									bind:value={minDist}
+									class="w-full"
+								/>
+								<p class="text-xs text-gray-400 mt-1">How tightly points cluster</p>
 							</div>
-							<div class="flex items-center gap-2">
-								<div class="w-4 h-4 bg-gray-400"></div>
-								<span>Human Group</span>
+							<div>
+								<label class="block text-sm text-gray-600 mb-1">
+									Spread: {spread.toFixed(1)}
+								</label>
+								<input
+									type="range"
+									min="0.5"
+									max="3"
+									step="0.1"
+									bind:value={spread}
+									class="w-full"
+								/>
+								<p class="text-xs text-gray-400 mt-1">Scale of embedding</p>
 							</div>
+							<button
+								onclick={computeUMAP}
+								disabled={isComputing}
+								class="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								{isComputing ? 'Computing...' : 'Recompute'}
+							</button>
 						</div>
 					</div>
 
-					<div class="mt-6 pt-4 border-t text-xs text-gray-500">
-						<p>{data.entities.length} entities</p>
-						<p>{data.questions.length} questions</p>
+					<!-- Legend -->
+					<div class="pt-4 border-t">
+						<h3 class="font-semibold text-gray-900 mb-3">Legend</h3>
+						<div class="space-y-2">
+							{#each data.families as family}
+								<div class="flex items-center gap-2">
+									{#if family === 'Human'}
+										<div
+											class="w-4 h-4"
+											style="background-color: {getColor(family)}"
+										></div>
+									{:else}
+										<div
+											class="w-4 h-4 rounded-full"
+											style="background-color: {getColor(family)}"
+										></div>
+									{/if}
+									<span class="text-sm text-gray-700">{family}</span>
+								</div>
+							{/each}
+						</div>
+
+						<div class="mt-4 pt-4 border-t">
+							<h4 class="font-medium text-gray-700 mb-2">Shapes</h4>
+							<div class="space-y-2 text-sm text-gray-600">
+								<div class="flex items-center gap-2">
+									<div class="w-4 h-4 rounded-full bg-gray-400"></div>
+									<span>AI Model</span>
+								</div>
+								<div class="flex items-center gap-2">
+									<div class="w-4 h-4 bg-gray-400"></div>
+									<span>Human Group</span>
+								</div>
+							</div>
+						</div>
+
+						<div class="mt-4 pt-4 border-t text-xs text-gray-500">
+							<p>{data.entities.length} entities</p>
+							<p>{data.questions.length} questions</p>
+						</div>
 					</div>
 				</div>
 			</div>
