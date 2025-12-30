@@ -211,29 +211,54 @@ async function main() {
 
 		const questionId = generateId();
 
-		// Determine response type
-		let responseType = 'scale';
-		const min = meta.answer_scale_min;
-		const max = meta.answer_scale_max;
-		if (min === 1 && max === 2) {
-			responseType = 'yes_no';
-		} else if (typeof max === 'number' && max <= 4) {
-			responseType = 'multiple_choice';
+		// Clean question text - remove "On a scale of X to Y, X meaning 'A' and Y meaning 'B'" prefix
+		let questionText = meta.question;
+		const scalePattern = /^On a scale of \d+ to \d+,\s*\d+ meaning '[^']+' and \d+ meaning '[^']+',\s*/i;
+		if (scalePattern.test(questionText)) {
+			questionText = questionText.replace(scalePattern, '');
+			questionText = questionText.charAt(0).toUpperCase() + questionText.slice(1);
 		}
 
-		// Build options array for scale questions
+		// Determine if all options have meaningful labels (not just the number repeated)
+		const min = meta.answer_scale_min;
+		const max = meta.answer_scale_max;
+		const hasFullLabels = typeof min === 'number' && typeof max === 'number' &&
+			Object.keys(answerLabels).length === (max - min + 1) &&
+			Object.entries(answerLabels).every(([k, v]) => v !== k);
+
+		// Determine response type and build options
+		let responseType = 'scale';
 		let options: string[] | null = null;
+
 		if (typeof min === 'number' && typeof max === 'number') {
-			options = [];
-			for (let i = min; i <= max; i++) {
-				options.push(String(i));
+			if (hasFullLabels) {
+				// All options have labels - use multiple_choice with label options
+				responseType = 'multiple_choice';
+				options = [];
+				for (let i = min; i <= max; i++) {
+					options.push(answerLabels[String(i)] || String(i));
+				}
+			} else if (max <= 5) {
+				// Small scale without full labels - still use multiple_choice with numbers
+				responseType = 'multiple_choice';
+				options = [];
+				for (let i = min; i <= max; i++) {
+					options.push(String(i));
+				}
+			} else {
+				// Larger scale (1-10) - keep as scale with numeric options
+				responseType = 'scale';
+				options = [];
+				for (let i = min; i <= max; i++) {
+					options.push(String(i));
+				}
 			}
 		}
 
-		sql.push(`-- ${qId}: ${escapeSQL(meta.question.substring(0, 60))}...`);
+		sql.push(`-- ${qId}: ${escapeSQL(questionText.substring(0, 60))}...`);
 		sql.push(`INSERT INTO questions (id, text, category, response_type, options, active, benchmark_source_id, benchmark_question_id, answer_labels) VALUES (
   '${questionId}',
-  '${escapeSQL(meta.question)}',
+  '${escapeSQL(questionText)}',
   '${escapeSQL(meta.category)}',
   '${responseType}',
   ${options ? `'${JSON.stringify(options)}'` : 'NULL'},

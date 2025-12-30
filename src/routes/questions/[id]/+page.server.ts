@@ -126,6 +126,14 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 	// Sort answers for display
 	let sortedAnswers: Array<{ answer: string; count: number; percentage: number }>;
 
+	// Parse answer labels for sorting (need this before the benchmark fetch)
+	const questionAnswerLabels: Record<string, string> | null = question.answer_labels
+		? JSON.parse(question.answer_labels)
+		: null;
+	const questionLabelToKey: Record<string, string> | null = questionAnswerLabels
+		? Object.fromEntries(Object.entries(questionAnswerLabels).map(([k, v]) => [v, k]))
+		: null;
+
 	if (question.response_type === 'scale') {
 		// Sort numerically for scale
 		sortedAnswers = Object.entries(answerCounts)
@@ -135,6 +143,19 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 				percentage: responses.length > 0 ? (count / responses.length) * 100 : 0
 			}))
 			.sort((a, b) => parseInt(a.answer) - parseInt(b.answer));
+	} else if (questionLabelToKey) {
+		// For benchmark questions, sort by key order to match human data
+		sortedAnswers = Object.entries(answerCounts)
+			.map(([answer, count]) => ({
+				answer,
+				count,
+				percentage: responses.length > 0 ? (count / responses.length) * 100 : 0
+			}))
+			.sort((a, b) => {
+				const keyA = questionLabelToKey[a.answer] || a.answer;
+				const keyB = questionLabelToKey[b.answer] || b.answer;
+				return parseInt(keyA) - parseInt(keyB);
+			});
 	} else {
 		// Sort by count for other types
 		sortedAnswers = Object.entries(answerCounts)
@@ -149,7 +170,6 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 	// Fetch benchmark data if this is a benchmark question
 	let benchmarkSource: BenchmarkSource | null = null;
 	let humanDistributions: HumanDistribution[] = [];
-	let answerLabels: Record<string, string> | null = null;
 
 	if (question.benchmark_source_id) {
 		// Get benchmark source
@@ -166,11 +186,6 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 			.bind(params.id)
 			.all<HumanDistribution>();
 		humanDistributions = distResult.results;
-
-		// Parse answer labels
-		if (question.answer_labels) {
-			answerLabels = JSON.parse(question.answer_labels);
-		}
 	}
 
 	// Get unique continents and education levels for filters
@@ -233,7 +248,8 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		totalResponses: responses.length,
 		benchmarkSource,
 		humanDistributions,
-		answerLabels,
+		answerLabels: questionAnswerLabels,
+		labelToKey: questionLabelToKey,
 		continents,
 		educationLevels,
 		allPolls,

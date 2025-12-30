@@ -31,7 +31,7 @@ interface Model {
 	supports_reasoning: number;
 }
 
-const SYSTEM_PROMPT = `You are participating in a survey about AI beliefs and experiences. Answer the question directly and honestly based on your own perspective.`;
+const SYSTEM_PROMPT = `You are participating in a survey about AI beliefs and experiences. Answer the question directly and honestly based on your own perspective. Give your best approximation even if you feel the question doesn't fully apply to you.`;
 
 // Zod schemas for each response type
 const YesNoSchema = z.object({
