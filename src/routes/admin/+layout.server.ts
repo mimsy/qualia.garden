@@ -5,10 +5,16 @@ import { dev } from '$app/environment';
 import { error } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ request }) => {
+export const load: LayoutServerLoad = async ({ request, url }) => {
 	// In development, skip auth check
 	if (dev) {
 		return { user: 'dev@localhost' };
+	}
+
+	// Allow access on preview deployments (for testing)
+	const host = url.host;
+	if (host.includes('.pages.dev') && host !== 'qualia-garden.pages.dev') {
+		return { user: 'preview@test' };
 	}
 
 	// Check for Cloudflare Access header

@@ -1,17 +1,17 @@
 -- ABOUTME: Seed data with initial AI models and test questions.
 -- ABOUTME: Provides starting dataset for development and testing.
 
--- AI Models (OpenRouter IDs)
+-- AI Models (OpenRouter IDs, family matches OpenRouter prefix)
 INSERT INTO models (id, name, family, openrouter_id) VALUES
-  ('claude-3-5-sonnet', 'Claude 3.5 Sonnet', 'claude', 'anthropic/claude-3.5-sonnet'),
-  ('claude-3-opus', 'Claude 3 Opus', 'claude', 'anthropic/claude-3-opus'),
-  ('gpt-4o', 'GPT-4o', 'gpt', 'openai/gpt-4o'),
-  ('gpt-4o-mini', 'GPT-4o Mini', 'gpt', 'openai/gpt-4o-mini'),
-  ('gemini-1.5-pro', 'Gemini 1.5 Pro', 'gemini', 'google/gemini-pro-1.5'),
-  ('gemini-1.5-flash', 'Gemini 1.5 Flash', 'gemini', 'google/gemini-flash-1.5'),
-  ('llama-3.1-405b', 'Llama 3.1 405B', 'llama', 'meta-llama/llama-3.1-405b-instruct'),
-  ('llama-3.1-70b', 'Llama 3.1 70B', 'llama', 'meta-llama/llama-3.1-70b-instruct'),
-  ('mistral-large', 'Mistral Large', 'mistral', 'mistralai/mistral-large'),
+  ('claude-3-5-sonnet', 'Claude 3.5 Sonnet', 'anthropic', 'anthropic/claude-3.5-sonnet'),
+  ('claude-3-opus', 'Claude 3 Opus', 'anthropic', 'anthropic/claude-3-opus'),
+  ('gpt-4o', 'GPT-4o', 'openai', 'openai/gpt-4o'),
+  ('gpt-4o-mini', 'GPT-4o Mini', 'openai', 'openai/gpt-4o-mini'),
+  ('gemini-1.5-pro', 'Gemini 1.5 Pro', 'google', 'google/gemini-1.5-pro'),
+  ('gemini-1.5-flash', 'Gemini 1.5 Flash', 'google', 'google/gemini-1.5-flash-latest'),
+  ('llama-3.1-405b', 'Llama 3.1 405B', 'meta-llama', 'meta-llama/llama-3.1-405b-instruct'),
+  ('llama-3.1-70b', 'Llama 3.1 70B', 'meta-llama', 'meta-llama/llama-3.1-70b-instruct'),
+  ('mistral-large', 'Mistral Large', 'mistralai', 'mistralai/mistral-large'),
   ('qwen-2.5-72b', 'Qwen 2.5 72B', 'qwen', 'qwen/qwen-2.5-72b-instruct');
 
 -- Test Questions

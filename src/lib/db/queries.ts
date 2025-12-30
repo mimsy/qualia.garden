@@ -24,8 +24,8 @@ export async function createModel(
 ): Promise<Model> {
 	const id = nanoid(12);
 	await db
-		.prepare('INSERT INTO models (id, name, family, openrouter_id) VALUES (?, ?, ?, ?)')
-		.bind(id, data.name, data.family, data.openrouter_id)
+		.prepare('INSERT INTO models (id, name, family, openrouter_id, supports_reasoning) VALUES (?, ?, ?, ?, ?)')
+		.bind(id, data.name, data.family, data.openrouter_id, data.supports_reasoning ? 1 : 0)
 		.run();
 	return (await getModel(db, id))!;
 }
@@ -33,7 +33,7 @@ export async function createModel(
 export async function updateModel(
 	db: D1Database,
 	id: string,
-	data: Partial<Pick<Model, 'name' | 'family' | 'openrouter_id' | 'active'>>
+	data: Partial<Pick<Model, 'name' | 'family' | 'openrouter_id' | 'active' | 'supports_reasoning'>>
 ): Promise<Model | null> {
 	const sets: string[] = [];
 	const values: unknown[] = [];
@@ -54,6 +54,10 @@ export async function updateModel(
 		sets.push('active = ?');
 		values.push(data.active ? 1 : 0);
 	}
+	if (data.supports_reasoning !== undefined) {
+		sets.push('supports_reasoning = ?');
+		values.push(data.supports_reasoning ? 1 : 0);
+	}
 
 	if (sets.length === 0) return getModel(db, id);
 
@@ -63,6 +67,18 @@ export async function updateModel(
 		.bind(...values)
 		.run();
 	return getModel(db, id);
+}
+
+export async function deleteModel(db: D1Database, id: string): Promise<boolean> {
+	const result = await db.prepare('DELETE FROM models WHERE id = ?').bind(id).run();
+	return result.meta.changes > 0;
+}
+
+export async function getFamilies(db: D1Database): Promise<string[]> {
+	const result = await db
+		.prepare('SELECT DISTINCT family FROM models ORDER BY family')
+		.all<{ family: string }>();
+	return result.results.map((r) => r.family);
 }
 
 // Questions
@@ -209,13 +225,15 @@ export async function createResponse(
 	const id = nanoid(12);
 	await db
 		.prepare(
-			'INSERT INTO responses (id, poll_id, raw_response, parsed_answer, response_time_ms, error) VALUES (?, ?, ?, ?, ?, ?)'
+			'INSERT INTO responses (id, poll_id, raw_response, parsed_answer, justification, reasoning, response_time_ms, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
 		)
 		.bind(
 			id,
 			data.poll_id,
 			data.raw_response,
 			data.parsed_answer,
+			data.justification,
+			data.reasoning,
 			data.response_time_ms,
 			data.error
 		)

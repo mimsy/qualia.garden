@@ -10,6 +10,7 @@ interface ResponseWithModel {
 	model_family: string;
 	raw_response: string | null;
 	parsed_answer: string | null;
+	justification: string | null;
 	response_time_ms: number | null;
 	status: string;
 }
@@ -39,7 +40,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		throw error(404, 'Question not found');
 	}
 
-	// Get all responses for this question
+	// Get latest response per model for this question (deduplicated)
 	const responsesResult = await db
 		.prepare(
 			`
@@ -49,12 +50,20 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			m.family as model_family,
 			r.raw_response,
 			r.parsed_answer,
+			r.justification,
 			r.response_time_ms,
 			p.status
 		FROM polls p
 		JOIN models m ON p.model_id = m.id
 		LEFT JOIN responses r ON p.id = r.poll_id
 		WHERE p.question_id = ?
+			AND p.id = (
+				SELECT p2.id FROM polls p2
+				WHERE p2.question_id = p.question_id
+					AND p2.model_id = p.model_id
+				ORDER BY p2.created_at DESC
+				LIMIT 1
+			)
 		ORDER BY m.family, m.name
 	`
 		)

@@ -10,6 +10,7 @@ export interface Model {
 	family: string;
 	openrouter_id: string;
 	active: boolean;
+	supports_reasoning: boolean;
 	created_at: string;
 }
 
@@ -37,6 +38,8 @@ export interface Response {
 	poll_id: string;
 	raw_response: string | null;
 	parsed_answer: string | null;
+	justification: string | null;
+	reasoning: string | null;
 	response_time_ms: number | null;
 	error: string | null;
 	created_at: string;

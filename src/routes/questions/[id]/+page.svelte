@@ -32,6 +32,19 @@
 	function toggleExpanded(modelId: string) {
 		expandedModel = expandedModel === modelId ? null : modelId;
 	}
+
+	// Get justification from response, parsing legacy raw_response JSON if needed
+	function getJustification(response: ResponseType): string | null {
+		if (response.justification) return response.justification;
+		if (!response.raw_response) return null;
+		try {
+			const parsed = JSON.parse(response.raw_response);
+			return parsed.justification || null;
+		} catch {
+			// Not JSON, return raw_response as-is
+			return response.raw_response;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -185,17 +198,20 @@
 									</svg>
 								</div>
 							</button>
-							{#if expandedModel === response.model_id && response.raw_response}
-								<div class="px-4 py-3 bg-gray-50 border-t">
-									<p class="text-sm text-gray-600 whitespace-pre-wrap">
-										{response.raw_response}
-									</p>
-									{#if response.response_time_ms}
-										<p class="text-xs text-gray-400 mt-2">
-											Response time: {response.response_time_ms}ms
+							{#if expandedModel === response.model_id}
+								{@const justification = getJustification(response)}
+								{#if justification}
+									<div class="px-4 py-3 bg-gray-50 border-t">
+										<p class="text-sm text-gray-600 whitespace-pre-wrap">
+											{justification}
 										</p>
-									{/if}
-								</div>
+										{#if response.response_time_ms}
+											<p class="text-xs text-gray-400 mt-2">
+												Response time: {response.response_time_ms}ms
+											</p>
+										{/if}
+									</div>
+								{/if}
 							{/if}
 						</div>
 					{:else}
