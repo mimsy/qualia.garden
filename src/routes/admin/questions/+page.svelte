@@ -44,13 +44,21 @@
 						{question.response_type.replace('_', ' ')}
 					</td>
 					<td class="px-6 py-4">
-						{#if question.active}
-							<span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
-								Active
-							</span>
-						{:else}
-							<span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
-								Inactive
+						<form method="POST" action="?/toggle" class="inline">
+							<input type="hidden" name="question_id" value={question.id} />
+							<input type="hidden" name="current_active" value={question.active} />
+							<button
+								type="submit"
+								class="px-2 py-1 text-xs font-medium rounded transition-colors {question.active
+									? 'bg-green-100 text-green-800 hover:bg-green-200'
+									: 'bg-gray-100 text-gray-800 hover:bg-gray-200'}"
+							>
+								{question.active ? 'Active' : 'Inactive'}
+							</button>
+						</form>
+						{#if question.benchmark_source_id}
+							<span class="ml-2 px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded">
+								WVS
 							</span>
 						{/if}
 					</td>

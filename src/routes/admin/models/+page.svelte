@@ -18,7 +18,7 @@
 
 	const modelsByFamily = $derived(groupByFamily(data.models));
 	const familyCount = $derived(Object.keys(modelsByFamily).length);
-	const activeCount = $derived(data.models.filter((m) => m.active).length);
+	const activeCount = $derived(data.models.filter((m: Model) => m.active).length);
 </script>
 
 <svelte:head>

@@ -1,5 +1,5 @@
 // ABOUTME: Question results page data loader.
-// ABOUTME: Fetches question details and all model responses.
+// ABOUTME: Fetches question details, model responses, and human benchmark data.
 
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
@@ -21,6 +21,26 @@ interface Question {
 	category: string | null;
 	response_type: string;
 	options: string | null;
+	benchmark_source_id: string | null;
+	answer_labels: string | null;
+}
+
+interface BenchmarkSource {
+	id: string;
+	name: string;
+	short_name: string;
+	url: string | null;
+	sample_size: number | null;
+	year_range: string | null;
+}
+
+interface HumanDistribution {
+	id: string;
+	continent: string | null;
+	education_level: string | null;
+	settlement_type: string | null;
+	distribution: string;
+	sample_size: number;
 }
 
 export const load: PageServerLoad = async ({ params, platform }) => {
@@ -106,11 +126,53 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			.sort((a, b) => b.count - a.count);
 	}
 
+	// Fetch benchmark data if this is a benchmark question
+	let benchmarkSource: BenchmarkSource | null = null;
+	let humanDistributions: HumanDistribution[] = [];
+	let answerLabels: Record<string, string> | null = null;
+
+	if (question.benchmark_source_id) {
+		// Get benchmark source
+		benchmarkSource = await db
+			.prepare('SELECT * FROM benchmark_sources WHERE id = ?')
+			.bind(question.benchmark_source_id)
+			.first<BenchmarkSource>();
+
+		// Get all human distributions for this question
+		const distResult = await db
+			.prepare(
+				'SELECT * FROM human_response_distributions WHERE question_id = ? ORDER BY continent, education_level'
+			)
+			.bind(params.id)
+			.all<HumanDistribution>();
+		humanDistributions = distResult.results;
+
+		// Parse answer labels
+		if (question.answer_labels) {
+			answerLabels = JSON.parse(question.answer_labels);
+		}
+	}
+
+	// Get unique continents and education levels for filters
+	const continents = [
+		...new Set(humanDistributions.filter((d) => d.continent).map((d) => d.continent as string))
+	].sort();
+	const educationLevels = [
+		...new Set(
+			humanDistributions.filter((d) => d.education_level).map((d) => d.education_level as string)
+		)
+	].sort();
+
 	return {
 		question,
 		options,
 		responses: responsesResult.results,
 		aggregateResults: sortedAnswers,
-		totalResponses: responses.length
+		totalResponses: responses.length,
+		benchmarkSource,
+		humanDistributions,
+		answerLabels,
+		continents,
+		educationLevels
 	};
 };

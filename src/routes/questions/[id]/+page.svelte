@@ -1,15 +1,18 @@
 <script lang="ts">
 	// ABOUTME: Question results page.
-	// ABOUTME: Shows aggregate results and per-model responses.
+	// ABOUTME: Shows aggregate results, human comparison, and per-model responses.
 
 	import type { PageData } from './$types';
 
 	let { data } = $props<{ data: PageData }>();
 
 	type ResponseType = (typeof data.responses)[number];
+	type HumanDistribution = (typeof data.humanDistributions)[number];
 
 	let selectedFamily = $state<string | null>(null);
 	let expandedModel = $state<string | null>(null);
+	let selectedContinent = $state<string | null>(null);
+	let selectedEducation = $state<string | null>(null);
 
 	function getUniqueFamilies(responses: ResponseType[]): string[] {
 		const familySet = new Set<string>();
@@ -29,6 +32,36 @@
 			: data.responses
 	);
 
+	// Get selected human distribution based on filters
+	const selectedHumanDist = $derived(() => {
+		if (!data.humanDistributions.length) return null;
+		// Find matching distribution
+		return data.humanDistributions.find(
+			(d: HumanDistribution) =>
+				d.continent === selectedContinent &&
+				d.education_level === selectedEducation &&
+				d.settlement_type === null
+		);
+	});
+
+	// Parse human distribution to aggregated format
+	const humanAggregateResults = $derived(() => {
+		const dist = selectedHumanDist();
+		if (!dist) return [];
+
+		const parsed = JSON.parse(dist.distribution) as Record<string, number>;
+		const total = Object.values(parsed).reduce((a, b) => a + b, 0);
+
+		return Object.entries(parsed)
+			.map(([answer, count]) => ({
+				answer,
+				label: data.answerLabels?.[answer] || answer,
+				count,
+				percentage: total > 0 ? (count / total) * 100 : 0
+			}))
+			.sort((a, b) => parseInt(a.answer) - parseInt(b.answer));
+	});
+
 	function toggleExpanded(modelId: string) {
 		expandedModel = expandedModel === modelId ? null : modelId;
 	}
@@ -44,6 +77,11 @@
 			// Not JSON, return raw_response as-is
 			return response.raw_response;
 		}
+	}
+
+	// Get display label for an answer
+	function getAnswerLabel(answer: string): string {
+		return data.answerLabels?.[answer] || answer;
 	}
 </script>
 
@@ -91,7 +129,119 @@
 			</div>
 		</div>
 
-		{#if data.totalResponses > 0}
+		{#if data.benchmarkSource}
+			<!-- Comparison View: AI vs Human -->
+			<div class="bg-white rounded-lg shadow p-6 mb-8">
+				<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+					<h3 class="font-bold text-gray-900">AI vs Human Comparison</h3>
+					<div class="flex flex-wrap gap-2 items-center text-sm">
+						<span class="text-gray-500">Filter humans by:</span>
+						<select
+							bind:value={selectedContinent}
+							class="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+						>
+							<option value={null}>All Regions</option>
+							{#each data.continents as continent}
+								<option value={continent}>{continent}</option>
+							{/each}
+						</select>
+						<select
+							bind:value={selectedEducation}
+							class="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+						>
+							<option value={null}>All Education</option>
+							{#each data.educationLevels as level}
+								<option value={level}>{level}</option>
+							{/each}
+						</select>
+					</div>
+				</div>
+
+				{#if humanAggregateResults().length > 0 || data.totalResponses > 0}
+				{@const humanResults = humanAggregateResults()}
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+						<!-- AI Results -->
+						<div>
+							<div class="flex items-center gap-2 mb-4">
+								<div class="w-3 h-3 rounded-full bg-blue-500"></div>
+								<span class="font-medium text-gray-700">AI Models</span>
+								<span class="text-xs text-gray-500">({data.totalResponses} models)</span>
+							</div>
+							<div class="space-y-3">
+								{#each data.aggregateResults as result}
+									<div>
+										<div class="flex justify-between text-sm mb-1">
+											<span class="text-gray-700 truncate pr-2">
+												{getAnswerLabel(result.answer)}
+											</span>
+											<span class="text-gray-500 flex-shrink-0">
+												{result.percentage.toFixed(0)}%
+											</span>
+										</div>
+										<div class="h-5 bg-gray-100 rounded overflow-hidden">
+											<div
+												class="h-full bg-blue-500 rounded transition-all"
+												style="width: {result.percentage}%"
+											></div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						</div>
+
+						<!-- Human Results -->
+						<div>
+							<div class="flex items-center gap-2 mb-4">
+								<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+								<span class="font-medium text-gray-700">Humans</span>
+								{#if selectedHumanDist()}
+									<span class="text-xs text-gray-500">({selectedHumanDist()?.sample_size.toLocaleString()} respondents)</span>
+								{/if}
+							</div>
+							{#if humanResults.length > 0}
+								<div class="space-y-3">
+									{#each humanResults as result}
+										<div>
+											<div class="flex justify-between text-sm mb-1">
+												<span class="text-gray-700 truncate pr-2">{result.label}</span>
+												<span class="text-gray-500 flex-shrink-0">
+													{result.percentage.toFixed(0)}%
+												</span>
+											</div>
+											<div class="h-5 bg-gray-100 rounded overflow-hidden">
+												<div
+													class="h-full bg-emerald-500 rounded transition-all"
+													style="width: {result.percentage}%"
+												></div>
+											</div>
+										</div>
+									{/each}
+								</div>
+							{:else}
+								<div class="text-center py-8 text-gray-400 text-sm">
+									No human data for this filter combination
+								</div>
+							{/if}
+						</div>
+					</div>
+				{:else}
+					<div class="text-center py-8 text-gray-500">
+						No response data available yet.
+					</div>
+				{/if}
+
+				<div class="mt-6 pt-4 border-t text-xs text-gray-400">
+					Human data from {data.benchmarkSource.name}
+					{#if data.benchmarkSource.year_range}
+						({data.benchmarkSource.year_range})
+					{/if}
+					{#if data.benchmarkSource.url}
+						· <a href={data.benchmarkSource.url} target="_blank" rel="noopener" class="text-blue-500 hover:underline">Source</a>
+					{/if}
+				</div>
+			</div>
+		{:else if data.totalResponses > 0}
+			<!-- Standard View: No human comparison -->
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
 				<div class="bg-white rounded-lg shadow p-6">
 					<h3 class="font-bold text-gray-900 mb-6">Aggregate Results</h3>
@@ -129,6 +279,9 @@
 					</div>
 				{/if}
 			</div>
+		{/if}
+
+		{#if data.totalResponses > 0}
 
 			<div class="bg-white rounded-lg shadow p-6">
 				<div class="flex items-center justify-between mb-6">
