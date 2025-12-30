@@ -1,5 +1,5 @@
-// ABOUTME: Data loader for model similarity map visualization.
-// ABOUTME: Fetches response data and compiles into vectors for UMAP projection.
+// ABOUTME: Data loader for model exploration interface.
+// ABOUTME: Computes response vectors, agreement matrices, and human alignment scores.
 
 import type { PageServerLoad } from './$types';
 
@@ -35,15 +35,28 @@ export interface Entity {
 	metadata: Record<string, unknown>;
 }
 
+export interface QuestionInfo {
+	id: string;
+	text: string;
+	options: string[];
+	optionCount: number;
+}
+
 export interface MapData {
 	entities: Entity[];
-	questions: Array<{ id: string; text: string; optionCount: number }>;
+	questions: QuestionInfo[];
 	families: string[];
+	// Raw responses: entityId → questionId → answer
+	responses: Record<string, Record<string, string | null>>;
+	// Pairwise agreement: entityId → entityId → percentage (0-100)
+	agreements: Record<string, Record<string, number>>;
+	// Human alignment scores (sorted by score descending)
+	humanAlignment: Array<{ id: string; name: string; score: number; type: 'model' | 'human' }>;
 }
 
 export const load: PageServerLoad = async ({ platform }) => {
 	if (!platform?.env?.DB) {
-		return { entities: [], questions: [], families: [] } as MapData;
+		return { entities: [], questions: [], families: [], responses: {}, agreements: {}, humanAlignment: [] } as MapData;
 	}
 
 	const db = platform.env.DB;
@@ -60,7 +73,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 	const questions = questionsResult.results;
 
 	if (questions.length === 0) {
-		return { entities: [], questions: [], families: [] } as MapData;
+		return { entities: [], questions: [], families: [], responses: {}, agreements: {}, humanAlignment: [] } as MapData;
 	}
 
 	// Build question metadata and option mappings
@@ -215,10 +228,75 @@ export const load: PageServerLoad = async ({ platform }) => {
 		}
 	}
 
+	// Build responses map for all entities
+	const responses: Record<string, Record<string, string | null>> = {};
+
+	// Add model responses
+	for (const [modelId, data] of modelResponses) {
+		responses[modelId] = {};
+		for (const q of questionMeta) {
+			responses[modelId][q.id] = data.responses.get(q.id) || null;
+		}
+	}
+
+	// Add human responses (plurality answer from distribution)
+	const humanOverallResponses = new Map<string, Record<string, number>>();
+	for (const d of humanResult.results) {
+		humanOverallResponses.set(d.question_id, JSON.parse(d.distribution));
+	}
+
+	responses['human-overall'] = {};
+	for (const q of questionMeta) {
+		responses['human-overall'][q.id] = getPluralityAnswer(q, humanOverallResponses.get(q.id));
+	}
+
+	// Add continent human responses
+	for (const [continent, distMap] of continentData) {
+		const entityId = `human-${continent.toLowerCase()}`;
+		responses[entityId] = {};
+		for (const q of questionMeta) {
+			responses[entityId][q.id] = getPluralityAnswer(q, distMap.get(q.id));
+		}
+	}
+
+	// Compute pairwise agreement matrix
+	const agreements: Record<string, Record<string, number>> = {};
+	for (const e1 of entities) {
+		agreements[e1.id] = {};
+		for (const e2 of entities) {
+			agreements[e1.id][e2.id] = computeAgreement(
+				responses[e1.id],
+				responses[e2.id],
+				questionMeta
+			);
+		}
+	}
+
+	// Compute human alignment scores (agreement with human-overall)
+	const humanAlignment: Array<{ id: string; name: string; score: number; type: 'model' | 'human' }> = [];
+	const humanOverallId = 'human-overall';
+
+	for (const entity of entities) {
+		if (entity.id === humanOverallId) continue; // Skip comparing human-overall to itself
+		const score = agreements[entity.id]?.[humanOverallId] ?? 0;
+		humanAlignment.push({
+			id: entity.id,
+			name: entity.name,
+			score,
+			type: entity.type
+		});
+	}
+
+	// Sort by score descending (most human-aligned first)
+	humanAlignment.sort((a, b) => b.score - a.score);
+
 	return {
 		entities,
-		questions: questionMeta.map(q => ({ id: q.id, text: q.text, optionCount: q.optionCount })),
-		families: Array.from(families).sort()
+		questions: questionMeta.map(q => ({ id: q.id, text: q.text, options: q.options, optionCount: q.optionCount })),
+		families: Array.from(families).sort(),
+		responses,
+		agreements,
+		humanAlignment
 	} as MapData;
 };
 
@@ -268,4 +346,49 @@ function buildVectorFromDistributions(
 	}
 
 	return vector;
+}
+
+function getPluralityAnswer(
+	question: { id: string; options: string[] },
+	distribution: Record<string, number> | undefined
+): string | null {
+	if (!distribution) return null;
+
+	let maxCount = 0;
+	let maxOption: string | null = null;
+
+	for (let i = 0; i < question.options.length; i++) {
+		const key = String(i + 1);
+		const count = distribution[key] || distribution[question.options[i]] || 0;
+		if (count > maxCount) {
+			maxCount = count;
+			maxOption = question.options[i];
+		}
+	}
+
+	return maxOption;
+}
+
+function computeAgreement(
+	responses1: Record<string, string | null>,
+	responses2: Record<string, string | null>,
+	questions: Array<{ id: string }>
+): number {
+	let agreements = 0;
+	let comparisons = 0;
+
+	for (const q of questions) {
+		const r1 = responses1?.[q.id];
+		const r2 = responses2?.[q.id];
+
+		// Only count if both have a response
+		if (r1 !== null && r1 !== undefined && r2 !== null && r2 !== undefined) {
+			comparisons++;
+			if (r1 === r2) {
+				agreements++;
+			}
+		}
+	}
+
+	return comparisons > 0 ? Math.round((agreements / comparisons) * 100) : 0;
 }
