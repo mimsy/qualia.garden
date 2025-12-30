@@ -13,7 +13,7 @@
 			<div class="flex items-center gap-6">
 				<a href="/admin" class="font-bold text-lg">Qualia Garden Admin</a>
 				<div class="flex gap-4 text-sm">
-					<a href="/admin/questions" class="hover:text-gray-300">Questions</a>
+					<a href="/questions" class="hover:text-gray-300">Questions</a>
 					<a href="/admin/models" class="hover:text-gray-300">Models</a>
 					<a href="/admin/polls" class="hover:text-gray-300">Polls</a>
 				</div>

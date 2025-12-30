@@ -1,8 +1,10 @@
-// ABOUTME: Question results page data loader.
-// ABOUTME: Fetches question details, model responses, and human benchmark data.
+// ABOUTME: Question results page data loader and actions.
+// ABOUTME: Fetches question details, model responses, human benchmark data, and handles admin actions.
 
-import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { error, fail } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
+import { getModels, updateQuestion, createPoll } from '$lib/db/queries';
+import type { QuestionStatus, Model } from '$lib/db/types';
 
 interface ResponseWithModel {
 	model_id: string;
@@ -15,12 +17,28 @@ interface ResponseWithModel {
 	status: string;
 }
 
+interface PollWithDetails {
+	poll_id: string;
+	model_id: string;
+	model_name: string;
+	model_family: string;
+	poll_status: string;
+	poll_created_at: string;
+	poll_completed_at: string | null;
+	parsed_answer: string | null;
+	justification: string | null;
+	reasoning: string | null;
+	response_time_ms: number | null;
+	error: string | null;
+}
+
 interface Question {
 	id: string;
 	text: string;
 	category: string | null;
 	response_type: string;
 	options: string | null;
+	status: QuestionStatus;
 	benchmark_source_id: string | null;
 	answer_labels: string | null;
 }
@@ -43,7 +61,9 @@ interface HumanDistribution {
 	sample_size: number;
 }
 
-export const load: PageServerLoad = async ({ params, platform }) => {
+export const load: PageServerLoad = async ({ params, platform, parent }) => {
+	const { isAdmin } = await parent();
+
 	if (!platform?.env?.DB) {
 		throw error(500, 'Database not available');
 	}
@@ -163,6 +183,48 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		)
 	].sort();
 
+	// For admins: load all polls (for history) and active models (for poll trigger)
+	let allPolls: PollWithDetails[] = [];
+	let availableModels: Model[] = [];
+	let categories: string[] = [];
+
+	if (isAdmin) {
+		const allPollsResult = await db
+			.prepare(
+				`
+			SELECT
+				p.id as poll_id,
+				p.status as poll_status,
+				p.created_at as poll_created_at,
+				p.completed_at as poll_completed_at,
+				m.id as model_id,
+				m.name as model_name,
+				m.family as model_family,
+				r.parsed_answer,
+				r.justification,
+				r.reasoning,
+				r.response_time_ms,
+				r.error
+			FROM polls p
+			JOIN models m ON p.model_id = m.id
+			LEFT JOIN responses r ON p.id = r.poll_id
+			WHERE p.question_id = ?
+			ORDER BY m.family, m.name, p.created_at DESC
+		`
+			)
+			.bind(params.id)
+			.all<PollWithDetails>();
+		allPolls = allPollsResult.results;
+
+		availableModels = await getModels(db, true);
+
+		// Get categories for edit form
+		const categoriesResult = await db
+			.prepare('SELECT DISTINCT category FROM questions WHERE category IS NOT NULL ORDER BY category')
+			.all<{ category: string }>();
+		categories = categoriesResult.results.map((r) => r.category);
+	}
+
 	return {
 		question,
 		options,
@@ -173,6 +235,114 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		humanDistributions,
 		answerLabels,
 		continents,
-		educationLevels
+		educationLevels,
+		allPolls,
+		availableModels,
+		categories
 	};
+};
+
+export const actions: Actions = {
+	update: async ({ params, request, platform, locals }) => {
+		if (!platform?.env?.DB) {
+			return fail(500, { error: 'Database not available' });
+		}
+
+		const formData = await request.formData();
+		const text = formData.get('text') as string;
+		const category = formData.get('category') as string;
+		const responseType = formData.get('response_type') as string;
+		const optionsRaw = formData.get('options') as string;
+
+		if (!text?.trim()) {
+			return fail(400, { error: 'Question text is required' });
+		}
+
+		// Parse options for multiple choice
+		let options: string | null = null;
+		if (responseType === 'multiple_choice') {
+			const optionsList = optionsRaw
+				.split('\n')
+				.map((o) => o.trim())
+				.filter(Boolean);
+			if (optionsList.length < 2) {
+				return fail(400, { error: 'Multiple choice requires at least 2 options' });
+			}
+			options = JSON.stringify(optionsList);
+		}
+
+		await updateQuestion(platform.env.DB, params.id, {
+			text: text.trim(),
+			category: category?.trim() || null,
+			response_type: responseType as 'multiple_choice' | 'scale' | 'yes_no',
+			options
+		});
+
+		return { success: true };
+	},
+
+	publish: async ({ params, platform }) => {
+		if (!platform?.env?.DB) {
+			return fail(500, { error: 'Database not available' });
+		}
+
+		// Check if question has at least one complete response
+		const countResult = await platform.env.DB.prepare(
+			"SELECT COUNT(*) as cnt FROM polls WHERE question_id = ? AND status = 'complete'"
+		)
+			.bind(params.id)
+			.first<{ cnt: number }>();
+
+		if (!countResult || countResult.cnt === 0) {
+			return fail(400, { error: 'Cannot publish: question needs at least one AI response' });
+		}
+
+		await updateQuestion(platform.env.DB, params.id, { status: 'published' });
+		return { success: true };
+	},
+
+	archive: async ({ params, platform }) => {
+		if (!platform?.env?.DB) {
+			return fail(500, { error: 'Database not available' });
+		}
+		await updateQuestion(platform.env.DB, params.id, { status: 'archived' });
+		return { success: true };
+	},
+
+	unarchive: async ({ params, platform }) => {
+		if (!platform?.env?.DB) {
+			return fail(500, { error: 'Database not available' });
+		}
+		await updateQuestion(platform.env.DB, params.id, { status: 'published' });
+		return { success: true };
+	},
+
+	poll: async ({ params, request, platform }) => {
+		if (!platform?.env?.DB || !platform?.env?.POLL_QUEUE) {
+			return fail(500, { error: 'Platform not available' });
+		}
+
+		const formData = await request.formData();
+		const modelIds = formData.getAll('model_ids') as string[];
+
+		if (modelIds.length === 0) {
+			return fail(400, { error: 'Select at least one model to poll' });
+		}
+
+		// Create polls and queue them
+		for (const modelId of modelIds) {
+			const poll = await createPoll(platform.env.DB, {
+				question_id: params.id,
+				model_id: modelId
+			});
+
+			await platform.env.POLL_QUEUE.send({
+				poll_id: poll.id,
+				question_id: params.id,
+				model_id: modelId
+			});
+		}
+
+		return { success: true, polled: modelIds.length };
+	}
 };

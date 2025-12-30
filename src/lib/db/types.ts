@@ -3,6 +3,7 @@
 
 export type ResponseType = 'multiple_choice' | 'scale' | 'yes_no';
 export type PollStatus = 'pending' | 'complete' | 'failed';
+export type QuestionStatus = 'draft' | 'published' | 'archived';
 
 export interface Model {
 	id: string;
@@ -21,6 +22,7 @@ export interface Question {
 	response_type: ResponseType;
 	options: string | null; // JSON array for multiple choice
 	active: boolean;
+	status: QuestionStatus;
 	created_at: string;
 	// Benchmark fields (for questions imported from external surveys)
 	benchmark_source_id: string | null;

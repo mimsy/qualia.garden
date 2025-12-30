@@ -17,7 +17,7 @@
 	<div class="bg-white rounded-lg shadow p-6">
 		<h2 class="text-gray-500 text-sm font-medium">Questions</h2>
 		<p class="text-3xl font-bold mt-2">{data.stats.questions}</p>
-		<a href="/admin/questions" class="text-blue-600 text-sm mt-2 inline-block hover:underline">
+		<a href="/questions" class="text-blue-600 text-sm mt-2 inline-block hover:underline">
 			Manage questions →
 		</a>
 	</div>
@@ -43,7 +43,7 @@
 	<h2 class="font-bold mb-4">Quick Actions</h2>
 	<div class="flex gap-4">
 		<a
-			href="/admin/questions/new"
+			href="/questions/new"
 			class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
 		>
 			Create Question

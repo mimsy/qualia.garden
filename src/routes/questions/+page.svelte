@@ -1,10 +1,37 @@
 <script lang="ts">
 	// ABOUTME: Questions browse page.
-	// ABOUTME: Lists all questions with category filtering.
+	// ABOUTME: Lists all questions with category and status filtering.
 
 	import type { PageData } from './$types';
 
 	let { data } = $props<{ data: PageData }>();
+
+	function buildUrl(params: { category?: string | null; status?: string }) {
+		const url = new URL('/questions', 'http://localhost');
+		if (params.category) url.searchParams.set('category', params.category);
+		if (params.status && params.status !== 'published') url.searchParams.set('status', params.status);
+		return url.pathname + url.search;
+	}
+
+	const statusOptions = [
+		{ value: 'published', label: 'Published' },
+		{ value: 'draft', label: 'Drafts' },
+		{ value: 'archived', label: 'Archived' },
+		{ value: 'all', label: 'All' }
+	];
+
+	function getStatusBadgeClass(status: string) {
+		switch (status) {
+			case 'draft':
+				return 'bg-yellow-100 text-yellow-800';
+			case 'published':
+				return 'bg-green-100 text-green-800';
+			case 'archived':
+				return 'bg-gray-100 text-gray-600';
+			default:
+				return 'bg-gray-100 text-gray-600';
+		}
+	}
 </script>
 
 <svelte:head>
@@ -22,8 +49,16 @@
 						<p class="text-sm text-gray-500">Exploring AI beliefs through systematic polling</p>
 					</div>
 				</a>
-				<nav class="flex gap-4">
+				<nav class="flex items-center gap-4">
 					<a href="/questions" class="text-gray-900 font-medium">Browse Questions</a>
+					{#if data.isAdmin}
+						<a
+							href="/questions/new"
+							class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+						>
+							New Question
+						</a>
+					{/if}
 				</nav>
 			</div>
 		</div>
@@ -32,10 +67,26 @@
 	<main class="max-w-6xl mx-auto px-4 py-12">
 		<div class="flex flex-col md:flex-row gap-8">
 			<aside class="md:w-48 flex-shrink-0">
+				{#if data.isAdmin}
+					<h2 class="font-medium text-gray-900 mb-4">Status</h2>
+					<nav class="space-y-2 mb-8">
+						{#each statusOptions as option}
+							<a
+								href={buildUrl({ category: data.selectedCategory, status: option.value })}
+								class="block px-3 py-2 rounded {data.selectedStatus === option.value
+									? 'bg-blue-100 text-blue-700'
+									: 'text-gray-600 hover:bg-gray-100'}"
+							>
+								{option.label}
+							</a>
+						{/each}
+					</nav>
+				{/if}
+
 				<h2 class="font-medium text-gray-900 mb-4">Categories</h2>
 				<nav class="space-y-2">
 					<a
-						href="/questions"
+						href={buildUrl({ status: data.selectedStatus })}
 						class="block px-3 py-2 rounded {data.selectedCategory === null
 							? 'bg-blue-100 text-blue-700'
 							: 'text-gray-600 hover:bg-gray-100'}"
@@ -44,7 +95,7 @@
 					</a>
 					{#each data.categories as category}
 						<a
-							href="/questions?category={encodeURIComponent(category)}"
+							href={buildUrl({ category, status: data.selectedStatus })}
 							class="block px-3 py-2 rounded {data.selectedCategory === category
 								? 'bg-blue-100 text-blue-700'
 								: 'text-gray-600 hover:bg-gray-100'}"
@@ -87,6 +138,11 @@
 										<span>
 											{question.response_type.replace('_', ' ')}
 										</span>
+										{#if data.isAdmin}
+											<span class="px-2 py-1 rounded text-xs {getStatusBadgeClass(question.status)}">
+												{question.status}
+											</span>
+										{/if}
 									</div>
 								</div>
 								<div class="text-right text-sm">
@@ -101,7 +157,11 @@
 						</a>
 					{:else}
 						<div class="text-center py-12 text-gray-500">
-							No questions in this category.
+							{#if data.isAdmin && data.selectedStatus === 'draft'}
+								No draft questions. <a href="/questions/new" class="text-blue-600 hover:underline">Create one</a>
+							{:else}
+								No questions in this category.
+							{/if}
 						</div>
 					{/each}
 				</div>

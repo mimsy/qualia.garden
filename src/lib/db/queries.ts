@@ -2,7 +2,7 @@
 // ABOUTME: Provides CRUD operations for models, questions, polls, and responses.
 
 import { nanoid } from 'nanoid';
-import type { Model, Question, Poll, Response, PollStatus } from './types';
+import type { Model, Question, Poll, Response, PollStatus, QuestionStatus } from './types';
 
 // Models
 export async function getModels(db: D1Database, activeOnly = true): Promise<Model[]> {
@@ -82,10 +82,29 @@ export async function getFamilies(db: D1Database): Promise<string[]> {
 }
 
 // Questions
-export async function getQuestions(db: D1Database, activeOnly = true): Promise<Question[]> {
-	const query = activeOnly
-		? 'SELECT * FROM questions WHERE active = 1 ORDER BY category, created_at'
-		: 'SELECT * FROM questions ORDER BY category, created_at';
+export interface GetQuestionsOptions {
+	status?: QuestionStatus | 'all';
+	activeOnly?: boolean; // Deprecated: use status instead
+}
+
+export async function getQuestions(
+	db: D1Database,
+	options: GetQuestionsOptions | boolean = { status: 'published' }
+): Promise<Question[]> {
+	// Handle legacy boolean parameter
+	if (typeof options === 'boolean') {
+		options = { activeOnly: options };
+	}
+
+	let whereClause = '';
+	if (options.status && options.status !== 'all') {
+		whereClause = `WHERE status = '${options.status}'`;
+	} else if (options.activeOnly !== undefined) {
+		// Legacy support
+		whereClause = options.activeOnly ? 'WHERE active = 1' : '';
+	}
+
+	const query = `SELECT * FROM questions ${whereClause} ORDER BY category, created_at DESC`;
 	const result = await db.prepare(query).all<Question>();
 	return result.results;
 }
@@ -112,12 +131,12 @@ export async function getQuestionsByCategory(
 export async function createQuestion(
 	db: D1Database,
 	data: Pick<Question, 'text' | 'category' | 'response_type' | 'options'> &
-		Partial<Pick<Question, 'benchmark_source_id' | 'benchmark_question_id' | 'answer_labels'>>
+		Partial<Pick<Question, 'benchmark_source_id' | 'benchmark_question_id' | 'answer_labels' | 'status'>>
 ): Promise<Question> {
 	const id = nanoid(12);
 	await db
 		.prepare(
-			'INSERT INTO questions (id, text, category, response_type, options, benchmark_source_id, benchmark_question_id, answer_labels) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+			'INSERT INTO questions (id, text, category, response_type, options, status, benchmark_source_id, benchmark_question_id, answer_labels) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
 		)
 		.bind(
 			id,
@@ -125,6 +144,7 @@ export async function createQuestion(
 			data.category,
 			data.response_type,
 			data.options,
+			data.status ?? 'draft',
 			data.benchmark_source_id ?? null,
 			data.benchmark_question_id ?? null,
 			data.answer_labels ?? null
@@ -136,7 +156,7 @@ export async function createQuestion(
 export async function updateQuestion(
 	db: D1Database,
 	id: string,
-	data: Partial<Pick<Question, 'text' | 'category' | 'response_type' | 'options' | 'active'>>
+	data: Partial<Pick<Question, 'text' | 'category' | 'response_type' | 'options' | 'active' | 'status'>>
 ): Promise<Question | null> {
 	const sets: string[] = [];
 	const values: unknown[] = [];
@@ -160,6 +180,10 @@ export async function updateQuestion(
 	if (data.active !== undefined) {
 		sets.push('active = ?');
 		values.push(data.active ? 1 : 0);
+	}
+	if (data.status !== undefined) {
+		sets.push('status = ?');
+		values.push(data.status);
 	}
 
 	if (sets.length === 0) return getQuestion(db, id);

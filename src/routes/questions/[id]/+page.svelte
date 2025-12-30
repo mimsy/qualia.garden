@@ -1,18 +1,29 @@
 <script lang="ts">
-	// ABOUTME: Question results page.
-	// ABOUTME: Shows aggregate results, human comparison, and per-model responses.
+	// ABOUTME: Question results page with admin capabilities.
+	// ABOUTME: Shows aggregate results, human comparison, per-model responses, and admin tools.
 
-	import type { PageData } from './$types';
+	import type { PageData, ActionData } from './$types';
+	import { enhance } from '$app/forms';
 
-	let { data } = $props<{ data: PageData }>();
+	let { data, form } = $props<{ data: PageData; form: ActionData }>();
 
 	type ResponseType = (typeof data.responses)[number];
 	type HumanDistribution = (typeof data.humanDistributions)[number];
+	type PollType = (typeof data.allPolls)[number];
 
 	let selectedFamily = $state<string | null>(null);
 	let expandedModel = $state<string | null>(null);
 	let selectedContinent = $state<string | null>(null);
 	let selectedEducation = $state<string | null>(null);
+	let showPollHistory = $state(false);
+	let showPollTrigger = $state(false);
+	let selectedModels = $state<Set<string>>(new Set());
+
+	// Edit form state
+	let editText = $state(data.question.text);
+	let editCategory = $state(data.question.category || '');
+	let editResponseType = $state(data.question.response_type);
+	let editOptions = $state(data.options?.join('\n') || '');
 
 	function getUniqueFamilies(responses: ResponseType[]): string[] {
 		const familySet = new Set<string>();
@@ -35,7 +46,6 @@
 	// Get selected human distribution based on filters
 	const selectedHumanDist = $derived(() => {
 		if (!data.humanDistributions.length) return null;
-		// Find matching distribution
 		return data.humanDistributions.find(
 			(d: HumanDistribution) =>
 				d.continent === selectedContinent &&
@@ -66,7 +76,6 @@
 		expandedModel = expandedModel === modelId ? null : modelId;
 	}
 
-	// Get justification from response, parsing legacy raw_response JSON if needed
 	function getJustification(response: ResponseType): string | null {
 		if (response.justification) return response.justification;
 		if (!response.raw_response) return null;
@@ -74,15 +83,59 @@
 			const parsed = JSON.parse(response.raw_response);
 			return parsed.justification || null;
 		} catch {
-			// Not JSON, return raw_response as-is
 			return response.raw_response;
 		}
 	}
 
-	// Get display label for an answer
 	function getAnswerLabel(answer: string): string {
 		return data.answerLabels?.[answer] || answer;
 	}
+
+	// Group polls by model for history view
+	const pollsByModel = $derived(() => {
+		const grouped: Record<string, PollType[]> = {};
+		for (const poll of data.allPolls) {
+			if (!grouped[poll.model_id]) grouped[poll.model_id] = [];
+			grouped[poll.model_id].push(poll);
+		}
+		return grouped;
+	});
+
+	// Models that have already been polled
+	const polledModelIds = $derived(new Set(data.allPolls.map((p: PollType) => p.model_id)));
+
+	function toggleModelSelection(modelId: string) {
+		const newSet = new Set(selectedModels);
+		if (newSet.has(modelId)) {
+			newSet.delete(modelId);
+		} else {
+			newSet.add(modelId);
+		}
+		selectedModels = newSet;
+	}
+
+	type ModelType = (typeof data.availableModels)[number];
+
+	function selectAllUnpolled() {
+		selectedModels = new Set(
+			data.availableModels.filter((m: ModelType) => !polledModelIds.has(m.id)).map((m: ModelType) => m.id)
+		);
+	}
+
+	function getStatusBadgeClass(status: string) {
+		switch (status) {
+			case 'draft':
+				return 'bg-yellow-100 text-yellow-800';
+			case 'published':
+				return 'bg-green-100 text-green-800';
+			case 'archived':
+				return 'bg-gray-100 text-gray-600';
+			default:
+				return 'bg-gray-100 text-gray-600';
+		}
+	}
+
+	const canPublish = $derived(data.totalResponses > 0);
 </script>
 
 <svelte:head>
@@ -112,22 +165,156 @@
 			<a href="/questions" class="text-blue-600 hover:underline text-sm">← Back to questions</a>
 		</div>
 
-		<div class="bg-white rounded-lg shadow p-8 mb-8">
-			<div class="mb-4">
-				{#if data.question.category}
-					<span class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
-						{data.question.category}
-					</span>
-				{/if}
+		{#if form?.error}
+			<div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+				{form.error}
 			</div>
-			<h2 class="text-2xl font-bold text-gray-900 mb-4">
-				{data.question.text}
-			</h2>
-			<div class="text-sm text-gray-500">
-				{data.question.response_type.replace('_', ' ')} •
-				{data.totalResponses} response{data.totalResponses === 1 ? '' : 's'}
+		{/if}
+
+		{#if data.isAdmin && data.question.status !== 'published'}
+			<div class="mb-4 p-4 rounded-lg {data.question.status === 'draft' ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50 border border-gray-200'}">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-2">
+						<span class="px-2 py-1 rounded text-xs font-medium {getStatusBadgeClass(data.question.status)}">
+							{data.question.status}
+						</span>
+						<span class="text-sm text-gray-600">
+							{#if data.question.status === 'draft'}
+								This question is not yet published and won't appear publicly.
+							{:else}
+								This question is archived and hidden from the main list.
+							{/if}
+						</span>
+					</div>
+					<div class="flex gap-2">
+						{#if data.question.status === 'draft'}
+							<form method="POST" action="?/publish" use:enhance>
+								<button
+									type="submit"
+									disabled={!canPublish}
+									class="px-3 py-1 text-sm rounded {canPublish
+										? 'bg-green-600 text-white hover:bg-green-700'
+										: 'bg-gray-200 text-gray-500 cursor-not-allowed'}"
+									title={canPublish ? 'Publish question' : 'Need at least one AI response to publish'}
+								>
+									Publish
+								</button>
+							</form>
+						{:else if data.question.status === 'archived'}
+							<form method="POST" action="?/unarchive" use:enhance>
+								<button type="submit" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+									Republish
+								</button>
+							</form>
+						{/if}
+					</div>
+				</div>
 			</div>
-		</div>
+		{/if}
+
+		{#if data.isAdmin && data.question.status === 'draft'}
+			<!-- Editable draft view -->
+			<form method="POST" action="?/update" use:enhance class="bg-white rounded-lg shadow p-8 mb-8">
+				<div class="space-y-4">
+					<div>
+						<label for="text" class="block text-sm font-medium text-gray-700 mb-1">Question Text</label>
+						<textarea
+							id="text"
+							name="text"
+							bind:value={editText}
+							rows="3"
+							class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+						></textarea>
+					</div>
+
+					<div class="grid grid-cols-2 gap-4">
+						<div>
+							<label for="category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+							<input
+								type="text"
+								id="category"
+								name="category"
+								bind:value={editCategory}
+								list="categories"
+								class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+							/>
+							<datalist id="categories">
+								{#each data.categories as cat}
+									<option value={cat}></option>
+								{/each}
+							</datalist>
+						</div>
+
+						<div>
+							<label for="response_type" class="block text-sm font-medium text-gray-700 mb-1">Response Type</label>
+							<select
+								id="response_type"
+								name="response_type"
+								bind:value={editResponseType}
+								class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+							>
+								<option value="multiple_choice">Multiple Choice</option>
+								<option value="yes_no">Yes / No</option>
+								<option value="scale">Scale (1-10)</option>
+							</select>
+						</div>
+					</div>
+
+					{#if editResponseType === 'multiple_choice'}
+						<div>
+							<label for="options" class="block text-sm font-medium text-gray-700 mb-1">Options (one per line)</label>
+							<textarea
+								id="options"
+								name="options"
+								bind:value={editOptions}
+								rows="4"
+								class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+							></textarea>
+						</div>
+					{/if}
+
+					<div class="flex justify-end">
+						<button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+							Save Draft
+						</button>
+					</div>
+				</div>
+			</form>
+		{:else}
+			<!-- Read-only view -->
+			<div class="bg-white rounded-lg shadow p-8 mb-8">
+				<div class="flex items-start justify-between">
+					<div class="flex-1">
+						<div class="mb-4 flex items-center gap-2">
+							{#if data.question.category}
+								<span class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
+									{data.question.category}
+								</span>
+							{/if}
+							{#if data.isAdmin}
+								<span class="px-2 py-1 rounded text-xs {getStatusBadgeClass(data.question.status)}">
+									{data.question.status}
+								</span>
+							{/if}
+						</div>
+						<h2 class="text-2xl font-bold text-gray-900 mb-4">
+							{data.question.text}
+						</h2>
+						<div class="text-sm text-gray-500">
+							{data.question.response_type.replace('_', ' ')} •
+							{data.totalResponses} response{data.totalResponses === 1 ? '' : 's'}
+						</div>
+					</div>
+					{#if data.isAdmin && data.question.status === 'published'}
+						<form method="POST" action="?/archive" use:enhance>
+							<button type="submit" class="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded">
+								Archive
+							</button>
+						</form>
+					{/if}
+				</div>
+			</div>
+		{/if}
 
 		{#if data.benchmarkSource}
 			<!-- Comparison View: AI vs Human -->
@@ -377,10 +564,152 @@
 		{:else}
 			<div class="bg-white rounded-lg shadow p-12 text-center">
 				<p class="text-gray-500 mb-4">No responses yet for this question.</p>
-				<p class="text-sm text-gray-400">
-					Check back later or trigger a poll from the admin interface.
-				</p>
+				{#if data.isAdmin}
+					<p class="text-sm text-gray-400 mb-4">
+						Use the poll trigger below to get AI responses.
+					</p>
+				{:else}
+					<p class="text-sm text-gray-400">
+						Check back later for results.
+					</p>
+				{/if}
 			</div>
+		{/if}
+
+		{#if data.isAdmin}
+			<!-- Poll Trigger Section -->
+			<div class="bg-white rounded-lg shadow p-6 mb-8">
+				<button
+					onclick={() => (showPollTrigger = !showPollTrigger)}
+					class="w-full flex items-center justify-between text-left"
+				>
+					<h3 class="font-bold text-gray-900">Poll Models</h3>
+					<svg
+						class="w-5 h-5 text-gray-400 transition-transform {showPollTrigger ? 'rotate-180' : ''}"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+					</svg>
+				</button>
+
+				{#if showPollTrigger}
+					<form method="POST" action="?/poll" use:enhance class="mt-4">
+						<div class="flex items-center justify-between mb-4">
+							<span class="text-sm text-gray-500">
+								Select models to poll ({selectedModels.size} selected)
+							</span>
+							<button
+								type="button"
+								onclick={selectAllUnpolled}
+								class="text-sm text-blue-600 hover:underline"
+							>
+								Select all unpolled
+							</button>
+						</div>
+
+						<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-4 max-h-64 overflow-y-auto">
+							{#each data.availableModels as model}
+								{@const hasPolled = polledModelIds.has(model.id)}
+								<label
+									class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer {hasPolled ? 'opacity-60' : ''}"
+								>
+									<input
+										type="checkbox"
+										name="model_ids"
+										value={model.id}
+										checked={selectedModels.has(model.id)}
+										onchange={() => toggleModelSelection(model.id)}
+										class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+									/>
+									<span class="text-sm text-gray-700">{model.name}</span>
+									{#if hasPolled}
+										<span class="text-xs text-gray-400">(polled)</span>
+									{/if}
+								</label>
+							{/each}
+						</div>
+
+						<button
+							type="submit"
+							disabled={selectedModels.size === 0}
+							class="px-4 py-2 rounded {selectedModels.size > 0
+								? 'bg-blue-600 text-white hover:bg-blue-700'
+								: 'bg-gray-200 text-gray-500 cursor-not-allowed'}"
+						>
+							Poll {selectedModels.size} Model{selectedModels.size === 1 ? '' : 's'}
+						</button>
+					</form>
+				{/if}
+			</div>
+
+			<!-- Poll History Section -->
+			{#if data.allPolls.length > 0}
+				<div class="bg-white rounded-lg shadow p-6">
+					<button
+						onclick={() => (showPollHistory = !showPollHistory)}
+						class="w-full flex items-center justify-between text-left"
+					>
+						<h3 class="font-bold text-gray-900">Poll History ({data.allPolls.length} polls)</h3>
+						<svg
+							class="w-5 h-5 text-gray-400 transition-transform {showPollHistory ? 'rotate-180' : ''}"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						</svg>
+					</button>
+
+					{#if showPollHistory}
+						<div class="mt-4 space-y-4">
+							{#each Object.entries(pollsByModel()) as [modelId, polls]}
+								{@const model = polls[0]}
+								<div class="border rounded-lg overflow-hidden">
+									<div class="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
+										<span class="font-medium text-gray-900">{model.model_name}</span>
+										<span class="px-2 py-0.5 bg-gray-200 rounded text-xs text-gray-600">{model.model_family}</span>
+										<span class="text-xs text-gray-500">({polls.length} poll{polls.length === 1 ? '' : 's'})</span>
+									</div>
+									<div class="divide-y">
+										{#each polls as poll}
+											<div class="px-4 py-3">
+												<div class="flex items-center justify-between mb-1">
+													<span class="text-sm text-gray-500">
+														{new Date(poll.poll_created_at).toLocaleString()}
+													</span>
+													<span class="text-xs px-2 py-0.5 rounded {poll.poll_status === 'complete'
+														? 'bg-green-100 text-green-700'
+														: poll.poll_status === 'pending'
+															? 'bg-yellow-100 text-yellow-700'
+															: 'bg-red-100 text-red-700'}">
+														{poll.poll_status}
+													</span>
+												</div>
+												{#if poll.parsed_answer}
+													<div class="text-sm font-medium text-gray-700 mb-1">
+														Answer: {poll.parsed_answer}
+													</div>
+												{/if}
+												{#if poll.justification}
+													<p class="text-sm text-gray-600 whitespace-pre-wrap">{poll.justification}</p>
+												{/if}
+												{#if poll.error}
+													<p class="text-sm text-red-600">{poll.error}</p>
+												{/if}
+												{#if poll.response_time_ms}
+													<p class="text-xs text-gray-400 mt-1">Response time: {poll.response_time_ms}ms</p>
+												{/if}
+											</div>
+										{/each}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
 		{/if}
 	</main>
 </div>
