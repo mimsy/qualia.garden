@@ -5,6 +5,7 @@
 	import type { PageData } from './$types';
 	import ScoreDisplay from '$lib/components/ScoreDisplay.svelte';
 	import { getScoreLevel, getScoreLabel } from '$lib/alignment';
+	import { marked } from 'marked';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -84,6 +85,16 @@
 	</header>
 
 	<main class="max-w-6xl mx-auto px-4 py-8">
+		<!-- About This Survey -->
+		{#if data.source.description}
+			<div class="bg-white rounded-lg shadow p-6 mb-8">
+				<h2 class="text-lg font-semibold text-gray-900 mb-4">About This Survey</h2>
+				<div class="prose prose-sm max-w-none text-gray-700">
+					{@html marked(data.source.description)}
+				</div>
+			</div>
+		{/if}
+
 		<!-- Controls -->
 		<div class="flex flex-wrap gap-4 items-center mb-6">
 			<div class="flex items-center gap-2">

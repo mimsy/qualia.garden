@@ -21,6 +21,7 @@ interface BenchmarkSource {
 	url: string | null;
 	sample_size: number | null;
 	year_range: string | null;
+	description: string | null;
 }
 
 interface Question {
