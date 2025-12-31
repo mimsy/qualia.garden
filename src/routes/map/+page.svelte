@@ -196,8 +196,9 @@
 					</div>
 				</a>
 				<nav class="flex items-center gap-4">
-					<a href="/questions" class="text-gray-600 hover:text-gray-900">Browse Questions</a>
-					<a href="/map" class="text-gray-900 font-medium">Model Explorer</a>
+					<a href="/questions" class="text-gray-600 hover:text-gray-900">All Questions</a>
+					<a href="/models" class="text-gray-600 hover:text-gray-900">Models</a>
+					<a href="/map" class="text-gray-900 font-medium">Model Map</a>
 				</nav>
 			</div>
 		</div>
