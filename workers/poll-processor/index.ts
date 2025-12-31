@@ -8,6 +8,7 @@ import { LangfuseClient, generateUUID } from './langfuse';
 
 interface Env {
 	DB: D1Database;
+	ALIGNMENT_CACHE: KVNamespace;
 	OPENROUTER_API_KEY: string;
 	LANGFUSE_PUBLIC_KEY: string;
 	LANGFUSE_SECRET_KEY: string;
@@ -25,6 +26,7 @@ interface Question {
 	category: string | null;
 	response_type: 'ordinal' | 'nominal';
 	options: string | null;
+	benchmark_source_id: string | null;
 }
 
 interface Model {
@@ -143,6 +145,11 @@ async function processJob(job: PollJob, env: Env, langfuse: LangfuseClient, tag:
 	await env.DB.prepare("UPDATE polls SET status = ?, completed_at = datetime('now') WHERE id = ?")
 		.bind(status, poll_id)
 		.run();
+
+	// Invalidate alignment cache if poll completed for a benchmarked question
+	if (result.success && question.benchmark_source_id) {
+		await invalidateAlignmentCache(env.ALIGNMENT_CACHE, question.benchmark_source_id, tag);
+	}
 
 	console.log(`${tag} Poll ${status} - response stored`);
 }
@@ -735,4 +742,23 @@ function generateId(): string {
 		result += chars.charAt(Math.floor(Math.random() * chars.length));
 	}
 	return result;
+}
+
+async function invalidateAlignmentCache(
+	kv: KVNamespace,
+	sourceId: string,
+	tag: string
+): Promise<void> {
+	try {
+		const prefix = `alignment:source:${sourceId}:`;
+		const list = await kv.list({ prefix });
+		if (list.keys.length > 0) {
+			console.log(`${tag} Invalidating ${list.keys.length} cache entries for source ${sourceId}`);
+			for (const key of list.keys) {
+				await kv.delete(key.name);
+			}
+		}
+	} catch (err) {
+		console.error(`${tag} Failed to invalidate cache: ${err}`);
+	}
 }

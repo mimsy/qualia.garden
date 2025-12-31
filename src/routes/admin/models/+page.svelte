@@ -67,6 +67,11 @@
 							<div class="flex-1 min-w-0">
 								<div class="flex items-center gap-2">
 									<span class="font-medium text-gray-900 truncate">{model.name}</span>
+									{#if model.supports_reasoning}
+										<span class="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded" title="Extended thinking enabled">
+											thinking
+										</span>
+									{/if}
 									{#if !model.active}
 										<span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
 											inactive
