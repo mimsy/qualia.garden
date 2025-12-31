@@ -16,4 +16,7 @@ binding = "DB"
 database_name = "qualia-garden"
 database_id = "358e7264-0e44-4b45-88c1-9625eebbe56a"
 
-# Secret: OPENROUTER_API_KEY (set via `wrangler secret put`)
+# Secrets (set via `wrangler secret put`):
+# - OPENROUTER_API_KEY
+# - LANGFUSE_PUBLIC_KEY
+# - LANGFUSE_SECRET_KEY

@@ -4,10 +4,13 @@
 import { generateText, Output } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
+import { LangfuseClient, generateUUID } from './langfuse';
 
 interface Env {
 	DB: D1Database;
 	OPENROUTER_API_KEY: string;
+	LANGFUSE_PUBLIC_KEY: string;
+	LANGFUSE_SECRET_KEY: string;
 }
 
 interface PollJob {
@@ -43,16 +46,31 @@ function getOptionsSchema(optionCount: number) {
 }
 
 export default {
-	async queue(batch: MessageBatch<PollJob>, env: Env): Promise<void> {
+	async queue(batch: MessageBatch<PollJob>, env: Env, ctx: ExecutionContext): Promise<void> {
 		console.log(`[poll-processor] Processing batch of ${batch.messages.length} jobs`);
+
+		const langfuse = new LangfuseClient({
+			publicKey: env.LANGFUSE_PUBLIC_KEY,
+			secretKey: env.LANGFUSE_SECRET_KEY
+		});
 
 		for (const message of batch.messages) {
 			const job = message.body;
 			const tag = `[poll:${job.poll_id}]`;
 
+			// Create trace for this poll job
+			langfuse.trace({
+				id: job.poll_id,
+				name: 'poll-job',
+				metadata: {
+					question_id: job.question_id,
+					model_id: job.model_id
+				}
+			});
+
 			try {
 				console.log(`${tag} Starting job - question:${job.question_id} model:${job.model_id}`);
-				await processJob(job, env, tag);
+				await processJob(job, env, langfuse, tag);
 				message.ack();
 				console.log(`${tag} Job completed successfully`);
 			} catch (error) {
@@ -64,10 +82,13 @@ export default {
 				message.retry();
 			}
 		}
+
+		// Flush traces before worker exits
+		ctx.waitUntil(langfuse.flush());
 	}
 };
 
-async function processJob(job: PollJob, env: Env, tag: string): Promise<void> {
+async function processJob(job: PollJob, env: Env, langfuse: LangfuseClient, tag: string): Promise<void> {
 	const { poll_id, question_id, model_id } = job;
 
 	// Fetch question and model
@@ -98,7 +119,7 @@ async function processJob(job: PollJob, env: Env, tag: string): Promise<void> {
 
 	// Call AI with structured output
 	const supportsReasoning = Boolean(model.supports_reasoning);
-	const result = await callAI(env.OPENROUTER_API_KEY, model.openrouter_id, question, supportsReasoning, tag);
+	const result = await callAI(env.OPENROUTER_API_KEY, model.openrouter_id, question, supportsReasoning, langfuse, poll_id, tag);
 
 	// Store response
 	const responseId = generateId();
@@ -141,6 +162,8 @@ async function callAI(
 	modelId: string,
 	question: Question,
 	supportsReasoning: boolean,
+	langfuse: LangfuseClient,
+	traceId: string,
 	tag: string
 ): Promise<AIResult> {
 	const startTime = Date.now();
@@ -156,17 +179,22 @@ async function callAI(
 		console.log(`${tag} Model supports reasoning, will request reasoning tokens`);
 	}
 
+	const messages = [
+		{ role: 'system' as const, content: SYSTEM_PROMPT },
+		{ role: 'user' as const, content: userPrompt }
+	];
+
 	// First try structured output
+	const structuredStartTime = new Date().toISOString();
+	const structuredGenId = generateUUID();
+
 	try {
 		console.log(`${tag} Calling ${modelId} with structured output`);
 
-		const { experimental_output, reasoning, text } = await generateText({
+		const { experimental_output, reasoning, text, usage } = await generateText({
 			model: openrouter(modelId),
 			experimental_output: Output.object({ schema }),
-			messages: [
-				{ role: 'system', content: SYSTEM_PROMPT },
-				{ role: 'user', content: userPrompt }
-			],
+			messages,
 			providerOptions: supportsReasoning ? {
 				openrouter: {
 					reasoning: { max_tokens: 1000 }
@@ -188,6 +216,31 @@ async function callAI(
 		// If structured output worked, use it
 		if (experimental_output) {
 			const parsedAnswer = parseAnswer(experimental_output, question);
+
+			// Log successful generation to Langfuse
+			langfuse.generation({
+				id: structuredGenId,
+				traceId,
+				name: 'structured-output',
+				model: modelId,
+				input: messages,
+				output: experimental_output,
+				usage: usage ? {
+					input: usage.inputTokens,
+					output: usage.outputTokens,
+					total: (usage.inputTokens || 0) + (usage.outputTokens || 0)
+				} : undefined,
+				metadata: {
+					supportsReasoning,
+					hasReasoning: !!reasoningStr,
+					success: true
+				},
+				startTime: structuredStartTime,
+				endTime: new Date().toISOString(),
+				level: 'DEFAULT',
+				statusMessage: 'Structured output succeeded'
+			});
+
 			return {
 				success: true,
 				rawResponse: text || JSON.stringify(experimental_output),
@@ -199,20 +252,64 @@ async function callAI(
 			};
 		}
 
-		// Structured output returned null, fall through to text fallback
+		// Structured output returned null, log and fall through to text fallback
+		langfuse.generation({
+			id: structuredGenId,
+			traceId,
+			name: 'structured-output',
+			model: modelId,
+			input: messages,
+			output: text || null,
+			usage: usage ? {
+				input: usage.inputTokens,
+				output: usage.outputTokens,
+				total: usage.totalTokens
+			} : undefined,
+			metadata: {
+				supportsReasoning,
+				hasReasoning: !!reasoningStr,
+				success: false,
+				reason: 'no-structured-output'
+			},
+			startTime: structuredStartTime,
+			endTime: new Date().toISOString(),
+			level: 'WARNING',
+			statusMessage: 'No structured output, falling back to text'
+		});
+
 		console.log(`${tag} No structured output, retrying without schema...`);
 	} catch (err) {
 		const errorMsg = err instanceof Error ? err.message : String(err);
+
+		// Log failed generation to Langfuse
+		langfuse.generation({
+			id: structuredGenId,
+			traceId,
+			name: 'structured-output',
+			model: modelId,
+			input: messages,
+			output: null,
+			metadata: {
+				supportsReasoning,
+				success: false,
+				error: errorMsg
+			},
+			startTime: structuredStartTime,
+			endTime: new Date().toISOString(),
+			level: 'WARNING',
+			statusMessage: `Structured output failed: ${errorMsg}`
+		});
+
 		console.log(`${tag} Structured output failed: ${errorMsg}, retrying without schema...`);
 	}
 
 	// Fallback: call without structured output
-	const textResult = await callAIText(apiKey, modelId, question, supportsReasoning, tag);
+	const textResult = await callAIText(apiKey, modelId, question, supportsReasoning, langfuse, traceId, tag);
 
 	// If text fallback failed but we got a response, try a follow-up to encourage answering
 	if (!textResult.success && textResult.rawResponse) {
 		console.log(`${tag} Text parsing failed, trying follow-up to encourage answer...`);
-		return await callAIFollowUp(apiKey, modelId, question, textResult, tag);
+		return await callAIFollowUp(apiKey, modelId, question, textResult, langfuse, traceId, tag);
 	}
 
 	return textResult;
@@ -240,23 +337,29 @@ async function callAIText(
 	modelId: string,
 	question: Question,
 	supportsReasoning: boolean,
+	langfuse: LangfuseClient,
+	traceId: string,
 	tag: string
 ): Promise<AIResult> {
 	const startTime = Date.now();
+	const textStartTime = new Date().toISOString();
+	const textGenId = generateUUID();
 	const openrouter = createOpenRouter({ apiKey });
 
 	// Format the prompt to request JSON response
 	const userPrompt = formatPromptWithJsonRequest(question);
 
+	const messages = [
+		{ role: 'system' as const, content: SYSTEM_PROMPT },
+		{ role: 'user' as const, content: userPrompt }
+	];
+
 	try {
 		console.log(`${tag} Calling ${modelId} without structured output`);
 
-		const { reasoning, text } = await generateText({
+		const { reasoning, text, usage } = await generateText({
 			model: openrouter(modelId),
-			messages: [
-				{ role: 'system', content: SYSTEM_PROMPT },
-				{ role: 'user', content: userPrompt }
-			],
+			messages,
 			providerOptions: supportsReasoning ? {
 				openrouter: {
 					reasoning: { max_tokens: 1000 }
@@ -274,6 +377,31 @@ async function callAIText(
 		console.log(`${tag} Got text response: "${text?.substring(0, 200)}..."`);
 
 		const parsed = parseTextResponse(text, question);
+
+		// Log generation to Langfuse
+		langfuse.generation({
+			id: textGenId,
+			traceId,
+			name: 'text-fallback',
+			model: modelId,
+			input: messages,
+			output: text,
+			usage: usage ? {
+				input: usage.inputTokens,
+				output: usage.outputTokens,
+				total: usage.totalTokens
+			} : undefined,
+			metadata: {
+				supportsReasoning,
+				hasReasoning: !!reasoningStr,
+				parsedSuccessfully: !!parsed
+			},
+			startTime: textStartTime,
+			endTime: new Date().toISOString(),
+			level: parsed ? 'DEFAULT' : 'WARNING',
+			statusMessage: parsed ? 'Text fallback succeeded' : 'Could not parse response'
+		});
+
 		if (parsed) {
 			return {
 				success: true,
@@ -300,6 +428,24 @@ async function callAIText(
 		const errorMsg = err instanceof Error ? err.message : String(err);
 		console.error(`${tag} Text call failed: ${errorMsg}`);
 
+		// Log failed generation to Langfuse
+		langfuse.generation({
+			id: textGenId,
+			traceId,
+			name: 'text-fallback',
+			model: modelId,
+			input: messages,
+			output: null,
+			metadata: {
+				supportsReasoning,
+				error: errorMsg
+			},
+			startTime: textStartTime,
+			endTime: new Date().toISOString(),
+			level: 'ERROR',
+			statusMessage: `Text call failed: ${errorMsg}`
+		});
+
 		return {
 			success: false,
 			rawResponse: null,
@@ -317,26 +463,32 @@ async function callAIFollowUp(
 	modelId: string,
 	question: Question,
 	previousResult: AIResult,
+	langfuse: LangfuseClient,
+	traceId: string,
 	tag: string
 ): Promise<AIResult> {
 	const startTime = Date.now();
+	const followUpStartTime = new Date().toISOString();
+	const followUpGenId = generateUUID();
 	const openrouter = createOpenRouter({ apiKey });
 
 	// Build the follow-up prompt
 	const userPrompt = formatPromptWithJsonRequest(question);
 	const followUpPrompt = formatFollowUpPrompt(question);
 
+	const messages = [
+		{ role: 'system' as const, content: SYSTEM_PROMPT },
+		{ role: 'user' as const, content: userPrompt },
+		{ role: 'assistant' as const, content: previousResult.rawResponse || '' },
+		{ role: 'user' as const, content: followUpPrompt }
+	];
+
 	try {
 		console.log(`${tag} Sending follow-up to ${modelId}`);
 
-		const { text } = await generateText({
+		const { text, usage } = await generateText({
 			model: openrouter(modelId),
-			messages: [
-				{ role: 'system', content: SYSTEM_PROMPT },
-				{ role: 'user', content: userPrompt },
-				{ role: 'assistant', content: previousResult.rawResponse || '' },
-				{ role: 'user', content: followUpPrompt }
-			]
+			messages
 		});
 
 		const responseTimeMs = (previousResult.responseTimeMs || 0) + (Date.now() - startTime);
@@ -344,6 +496,30 @@ async function callAIFollowUp(
 		console.log(`${tag} Follow-up response: "${text?.substring(0, 200)}..."`);
 
 		const parsed = parseTextResponse(text, question);
+
+		// Log generation to Langfuse
+		langfuse.generation({
+			id: followUpGenId,
+			traceId,
+			name: 'follow-up',
+			model: modelId,
+			input: messages,
+			output: text,
+			usage: usage ? {
+				input: usage.inputTokens,
+				output: usage.outputTokens,
+				total: usage.totalTokens
+			} : undefined,
+			metadata: {
+				parsedSuccessfully: !!parsed,
+				previousError: previousResult.error
+			},
+			startTime: followUpStartTime,
+			endTime: new Date().toISOString(),
+			level: parsed ? 'DEFAULT' : 'ERROR',
+			statusMessage: parsed ? 'Follow-up succeeded' : 'Follow-up failed to parse'
+		});
+
 		if (parsed) {
 			return {
 				success: true,
@@ -370,6 +546,24 @@ async function callAIFollowUp(
 		const responseTimeMs = (previousResult.responseTimeMs || 0) + (Date.now() - startTime);
 		const errorMsg = err instanceof Error ? err.message : String(err);
 		console.error(`${tag} Follow-up failed: ${errorMsg}`);
+
+		// Log failed generation to Langfuse
+		langfuse.generation({
+			id: followUpGenId,
+			traceId,
+			name: 'follow-up',
+			model: modelId,
+			input: messages,
+			output: null,
+			metadata: {
+				error: errorMsg,
+				previousError: previousResult.error
+			},
+			startTime: followUpStartTime,
+			endTime: new Date().toISOString(),
+			level: 'ERROR',
+			statusMessage: `Follow-up failed: ${errorMsg}`
+		});
 
 		return {
 			...previousResult,
