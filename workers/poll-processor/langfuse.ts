@@ -49,7 +49,7 @@ export class LangfuseClient {
 	constructor(config: LangfuseConfig) {
 		this.config = {
 			...config,
-			baseUrl: config.baseUrl || 'https://cloud.langfuse.com'
+			baseUrl: config.baseUrl || 'https://us.cloud.langfuse.com'
 		};
 	}
 
@@ -65,6 +65,7 @@ export class LangfuseClient {
 		if (this.events.length === 0) return;
 
 		const batch = this.events.map((event) => ({
+			id: crypto.randomUUID(),
 			...event,
 			timestamp: new Date().toISOString()
 		}));
