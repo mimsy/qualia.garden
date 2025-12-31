@@ -80,16 +80,8 @@
 		expandedModel = expandedModel === modelId ? null : modelId;
 	}
 
-	function getJustification(response: ResponseType): string | null {
-		if (response.justification) return response.justification;
-		if (!response.raw_response) return null;
-		try {
-			const parsed = JSON.parse(response.raw_response);
-			return parsed.justification || null;
-		} catch {
-			return response.raw_response;
-		}
-	}
+	// Sample count for polling (default 5, max 10)
+	let sampleCount = $state(5);
 
 	// Convert 1-based key to display label using options array
 	function getAnswerLabel(answer: string): string {
@@ -541,16 +533,24 @@
 									<span class="px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-500 capitalize">
 										{response.model_family}
 									</span>
+									{#if response.sample_count > 1}
+										<span class="px-2 py-0.5 bg-blue-50 rounded text-xs text-blue-600">
+											{response.complete_count}/{response.sample_count} samples
+										</span>
+									{/if}
 								</div>
 								<div class="flex items-center gap-4">
-									{#if response.status === 'complete' && response.parsed_answer}
+									{#if response.complete_count > 0 && response.aggregated_answer}
 										<span class="text-sm font-medium text-gray-700">
-											{response.parsed_answer}
+											{getAnswerLabel(response.aggregated_answer)}
 										</span>
-									{:else if response.status === 'pending'}
-										<span class="text-sm text-yellow-600">Pending...</span>
-									{:else if response.status === 'failed'}
-										<span class="text-sm text-red-600">Failed</span>
+									{:else if response.complete_count === 0 && response.sample_count > 0}
+										{@const pendingCount = response.samples.filter((s: typeof response.samples[number]) => s.status === 'pending').length}
+										{#if pendingCount > 0}
+											<span class="text-sm text-yellow-600">Pending ({pendingCount})...</span>
+										{:else}
+											<span class="text-sm text-red-600">Failed</span>
+										{/if}
 									{:else}
 										<span class="text-sm text-gray-400">No answer</span>
 									{/if}
@@ -573,19 +573,30 @@
 								</div>
 							</button>
 							{#if expandedModel === response.model_id}
-								{@const justification = getJustification(response)}
-								{#if justification}
-									<div class="px-4 py-3 bg-gray-50 border-t">
-										<p class="text-sm text-gray-600 whitespace-pre-wrap">
-											{justification}
-										</p>
-										{#if response.response_time_ms}
-											<p class="text-xs text-gray-400 mt-2">
-												Response time: {response.response_time_ms}ms
-											</p>
-										{/if}
-									</div>
-								{/if}
+								<div class="px-4 py-3 bg-gray-50 border-t space-y-3">
+									{#each response.samples as sample, i}
+										<div class="border-l-2 pl-3 {sample.status === 'complete' ? 'border-green-300' : sample.status === 'pending' ? 'border-yellow-300' : 'border-red-300'}">
+											<div class="flex items-center gap-2 mb-1">
+												<span class="text-xs text-gray-500">Sample {i + 1}</span>
+												{#if sample.parsed_answer}
+													<span class="text-sm font-medium text-gray-700">
+														{getAnswerLabel(sample.parsed_answer)}
+													</span>
+												{:else if sample.status === 'pending'}
+													<span class="text-xs text-yellow-600">Pending...</span>
+												{:else}
+													<span class="text-xs text-red-600">Failed</span>
+												{/if}
+												{#if sample.response_time_ms}
+													<span class="text-xs text-gray-400 ml-auto">{sample.response_time_ms}ms</span>
+												{/if}
+											</div>
+											{#if sample.justification}
+												<p class="text-sm text-gray-600 whitespace-pre-wrap">{sample.justification}</p>
+											{/if}
+										</div>
+									{/each}
+								</div>
 							{/if}
 						</div>
 					{:else}
@@ -665,15 +676,29 @@
 							{/each}
 						</div>
 
-						<button
-							type="submit"
-							disabled={selectedModels.size === 0}
-							class="px-4 py-2 rounded {selectedModels.size > 0
-								? 'bg-blue-600 text-white hover:bg-blue-700'
-								: 'bg-gray-200 text-gray-500 cursor-not-allowed'}"
-						>
-							Poll {selectedModels.size} Model{selectedModels.size === 1 ? '' : 's'}
-						</button>
+						<div class="flex items-center gap-4">
+							<div class="flex items-center gap-2">
+								<label for="sample_count" class="text-sm text-gray-600">Samples per model:</label>
+								<input
+									type="number"
+									id="sample_count"
+									name="sample_count"
+									bind:value={sampleCount}
+									min="1"
+									max="10"
+									class="w-16 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+								/>
+							</div>
+							<button
+								type="submit"
+								disabled={selectedModels.size === 0}
+								class="px-4 py-2 rounded {selectedModels.size > 0
+									? 'bg-blue-600 text-white hover:bg-blue-700'
+									: 'bg-gray-200 text-gray-500 cursor-not-allowed'}"
+							>
+								Poll {selectedModels.size} Model{selectedModels.size === 1 ? '' : 's'} × {sampleCount} samples
+							</button>
+						</div>
 					</form>
 				{/if}
 			</div>

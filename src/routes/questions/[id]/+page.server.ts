@@ -3,18 +3,21 @@
 
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
-import { getModels, updateQuestion, createPoll } from '$lib/db/queries';
-import type { QuestionStatus, Model } from '$lib/db/types';
+import { getModels, updateQuestion, createPollBatch } from '$lib/db/queries';
+import type { QuestionStatus, Model, AggregatedResponse } from '$lib/db/types';
+import { computeMedian, computeMode } from '$lib/db/types';
 
-interface ResponseWithModel {
+interface PollResponseRow {
 	model_id: string;
 	model_name: string;
 	model_family: string;
-	raw_response: string | null;
+	poll_id: string;
+	batch_id: string | null;
+	poll_status: string;
+	poll_created_at: string;
 	parsed_answer: string | null;
 	justification: string | null;
 	response_time_ms: number | null;
-	status: string;
 }
 
 interface PollWithDetails {
@@ -81,69 +84,135 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		throw error(404, 'Question not found');
 	}
 
-	// Get latest response per model for this question (deduplicated)
-	const responsesResult = await db
+	// Get all polls from the latest batch per model for this question
+	// This query handles both batched (batch_id NOT NULL) and legacy (batch_id NULL) polls
+	const pollsResult = await db
 		.prepare(
 			`
 		SELECT
 			m.id as model_id,
 			m.name as model_name,
 			m.family as model_family,
-			r.raw_response,
+			p.id as poll_id,
+			p.batch_id,
+			p.status as poll_status,
+			p.created_at as poll_created_at,
 			r.parsed_answer,
 			r.justification,
-			r.response_time_ms,
-			p.status
+			r.response_time_ms
 		FROM polls p
 		JOIN models m ON p.model_id = m.id
 		LEFT JOIN responses r ON p.id = r.poll_id
 		WHERE p.question_id = ?
-			AND p.id = (
-				SELECT p2.id FROM polls p2
-				WHERE p2.question_id = p.question_id
-					AND p2.model_id = p.model_id
-				ORDER BY p2.created_at DESC
-				LIMIT 1
+			AND (
+				-- For batched polls: get all polls from the latest batch per model
+				(p.batch_id IS NOT NULL AND p.batch_id = (
+					SELECT p2.batch_id FROM polls p2
+					WHERE p2.question_id = p.question_id
+						AND p2.model_id = p.model_id
+						AND p2.batch_id IS NOT NULL
+					ORDER BY p2.created_at DESC
+					LIMIT 1
+				))
+				OR
+				-- For legacy single polls: get the latest poll where batch_id is NULL
+				(p.batch_id IS NULL AND p.id = (
+					SELECT p3.id FROM polls p3
+					WHERE p3.question_id = p.question_id
+						AND p3.model_id = p.model_id
+						AND p3.batch_id IS NULL
+					ORDER BY p3.created_at DESC
+					LIMIT 1
+				))
 			)
-		ORDER BY m.family, m.name
+		ORDER BY m.family, m.name, p.created_at
 	`
 		)
 		.bind(params.id)
-		.all<ResponseWithModel>();
+		.all<PollResponseRow>();
 
-	// Parse options if multiple choice
+	// Parse options
 	const options = question.options ? (JSON.parse(question.options) as string[]) : null;
 
-	// Calculate aggregate results
-	const responses = responsesResult.results.filter((r) => r.parsed_answer !== null);
-	const answerCounts: Record<string, number> = {};
+	// Group polls by model and build aggregated responses
+	const modelMap = new Map<string, AggregatedResponse>();
 
-	for (const response of responses) {
-		if (response.parsed_answer) {
-			answerCounts[response.parsed_answer] = (answerCounts[response.parsed_answer] || 0) + 1;
+	for (const row of pollsResult.results) {
+		if (!modelMap.has(row.model_id)) {
+			modelMap.set(row.model_id, {
+				model_id: row.model_id,
+				model_name: row.model_name,
+				model_family: row.model_family,
+				aggregated_answer: null,
+				sample_count: 0,
+				complete_count: 0,
+				samples: []
+			});
+		}
+
+		const agg = modelMap.get(row.model_id)!;
+		agg.sample_count++;
+		if (row.poll_status === 'complete') {
+			agg.complete_count++;
+		}
+		agg.samples.push({
+			poll_id: row.poll_id,
+			parsed_answer: row.parsed_answer,
+			justification: row.justification,
+			response_time_ms: row.response_time_ms,
+			status: row.poll_status,
+			created_at: row.poll_created_at
+		});
+	}
+
+	// Compute aggregated answer for each model
+	const aggregatedResponses: AggregatedResponse[] = [];
+	for (const agg of modelMap.values()) {
+		const answers = agg.samples
+			.filter((s) => s.parsed_answer !== null)
+			.map((s) => s.parsed_answer!);
+
+		if (answers.length > 0) {
+			agg.aggregated_answer =
+				question.response_type === 'ordinal' ? computeMedian(answers) : computeMode(answers);
+		}
+		aggregatedResponses.push(agg);
+	}
+
+	// Sort by family then name
+	aggregatedResponses.sort((a, b) => {
+		const familyCompare = a.model_family.localeCompare(b.model_family);
+		return familyCompare !== 0 ? familyCompare : a.model_name.localeCompare(b.model_name);
+	});
+
+	// Calculate aggregate results across all models (using aggregated answers)
+	const answerCounts: Record<string, number> = {};
+	const respondedModels = aggregatedResponses.filter((r) => r.aggregated_answer !== null);
+
+	for (const response of respondedModels) {
+		if (response.aggregated_answer) {
+			answerCounts[response.aggregated_answer] =
+				(answerCounts[response.aggregated_answer] || 0) + 1;
 		}
 	}
 
 	// Sort answers for display
-	// With 1-based keys, ordinal questions sort numerically, nominal by count
 	let sortedAnswers: Array<{ answer: string; count: number; percentage: number }>;
 
 	if (question.response_type === 'ordinal') {
-		// Sort numerically for ordinal scales
 		sortedAnswers = Object.entries(answerCounts)
 			.map(([answer, count]) => ({
 				answer,
 				count,
-				percentage: responses.length > 0 ? (count / responses.length) * 100 : 0
+				percentage: respondedModels.length > 0 ? (count / respondedModels.length) * 100 : 0
 			}))
 			.sort((a, b) => parseInt(a.answer) - parseInt(b.answer));
 	} else {
-		// Sort by count for nominal choices
 		sortedAnswers = Object.entries(answerCounts)
 			.map(([answer, count]) => ({
 				answer,
 				count,
-				percentage: responses.length > 0 ? (count / responses.length) * 100 : 0
+				percentage: respondedModels.length > 0 ? (count / respondedModels.length) * 100 : 0
 			}))
 			.sort((a, b) => b.count - a.count);
 	}
@@ -230,9 +299,9 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 	return {
 		question,
 		options,
-		responses: responsesResult.results,
+		responses: aggregatedResponses,
 		aggregateResults: sortedAnswers,
-		totalResponses: responses.length,
+		totalResponses: respondedModels.length,
 		benchmarkSource,
 		humanDistributions,
 		continents,
@@ -324,25 +393,33 @@ export const actions: Actions = {
 
 		const formData = await request.formData();
 		const modelIds = formData.getAll('model_ids') as string[];
+		const sampleCountRaw = formData.get('sample_count') as string;
+		const sampleCount = Math.max(1, Math.min(parseInt(sampleCountRaw || '5', 10) || 5, 10));
 
 		if (modelIds.length === 0) {
 			return fail(400, { error: 'Select at least one model to poll' });
 		}
 
-		// Create polls and queue them
+		// Create poll batches and queue them
+		let totalPolls = 0;
 		for (const modelId of modelIds) {
-			const poll = await createPoll(platform.env.DB, {
+			const polls = await createPollBatch(platform.env.DB, {
 				question_id: params.id,
-				model_id: modelId
+				model_id: modelId,
+				sample_count: sampleCount
 			});
 
-			await platform.env.POLL_QUEUE.send({
-				poll_id: poll.id,
-				question_id: params.id,
-				model_id: modelId
-			});
+			// Queue each poll in the batch
+			for (const poll of polls) {
+				await platform.env.POLL_QUEUE.send({
+					poll_id: poll.id,
+					question_id: params.id,
+					model_id: modelId
+				});
+			}
+			totalPolls += polls.length;
 		}
 
-		return { success: true, polled: modelIds.length };
+		return { success: true, polled: modelIds.length, samples: sampleCount, totalPolls };
 	}
 };

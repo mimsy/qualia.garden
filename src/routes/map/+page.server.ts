@@ -2,18 +2,22 @@
 // ABOUTME: Computes response vectors, agreement matrices, and human alignment scores.
 
 import type { PageServerLoad } from './$types';
+import { computeMedian, computeMode } from '$lib/db/types';
 
 interface Question {
 	id: string;
 	text: string;
 	options: string | null;
+	response_type: string;
 }
 
-interface ModelResponse {
+interface ModelResponseRow {
 	model_id: string;
 	model_name: string;
 	model_family: string;
 	question_id: string;
+	response_type: string;
+	batch_id: string | null;
 	parsed_answer: string;
 }
 
@@ -63,7 +67,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 	// Get all published questions with their options
 	const questionsResult = await db
 		.prepare(`
-			SELECT id, text, options
+			SELECT id, text, options, response_type
 			FROM questions
 			WHERE status = 'published'
 			ORDER BY id
@@ -76,18 +80,20 @@ export const load: PageServerLoad = async ({ platform }) => {
 	}
 
 	// Build question metadata and option mappings
-	const questionMeta: Array<{ id: string; text: string; options: string[]; optionCount: number }> = [];
+	const questionMeta: Array<{ id: string; text: string; options: string[]; optionCount: number; responseType: string }> = [];
 	for (const q of questions) {
 		const options = q.options ? JSON.parse(q.options) as string[] : [];
 		questionMeta.push({
 			id: q.id,
 			text: q.text,
 			options,
-			optionCount: options.length
+			optionCount: options.length,
+			responseType: q.response_type
 		});
 	}
 
-	// Get all model responses (latest per model per question)
+	// Get all model responses from the latest batch per model per question
+	// This handles both batched (batch_id NOT NULL) and legacy (batch_id NULL) polls
 	const responsesResult = await db
 		.prepare(`
 			SELECT
@@ -95,22 +101,39 @@ export const load: PageServerLoad = async ({ platform }) => {
 				m.name as model_name,
 				m.family as model_family,
 				p.question_id,
+				q.response_type,
+				p.batch_id,
 				r.parsed_answer
 			FROM polls p
 			JOIN models m ON p.model_id = m.id
 			JOIN responses r ON p.id = r.poll_id
+			JOIN questions q ON p.question_id = q.id
 			WHERE p.status = 'complete'
 				AND r.parsed_answer IS NOT NULL
-				AND p.question_id IN (SELECT id FROM questions WHERE status = 'published')
-				AND p.id = (
-					SELECT p2.id FROM polls p2
-					WHERE p2.question_id = p.question_id
-						AND p2.model_id = p.model_id
-					ORDER BY p2.created_at DESC
-					LIMIT 1
+				AND q.status = 'published'
+				AND (
+					-- For batched polls: get all polls from the latest batch per model per question
+					(p.batch_id IS NOT NULL AND p.batch_id = (
+						SELECT p2.batch_id FROM polls p2
+						WHERE p2.question_id = p.question_id
+							AND p2.model_id = p.model_id
+							AND p2.batch_id IS NOT NULL
+						ORDER BY p2.created_at DESC
+						LIMIT 1
+					))
+					OR
+					-- For legacy single polls: get the latest poll where batch_id is NULL
+					(p.batch_id IS NULL AND p.id = (
+						SELECT p3.id FROM polls p3
+						WHERE p3.question_id = p.question_id
+							AND p3.model_id = p.model_id
+							AND p3.batch_id IS NULL
+						ORDER BY p3.created_at DESC
+						LIMIT 1
+					))
 				)
 		`)
-		.all<ModelResponse>();
+		.all<ModelResponseRow>();
 
 	// Get human distributions (overall only for now)
 	const humanResult = await db
@@ -123,17 +146,46 @@ export const load: PageServerLoad = async ({ platform }) => {
 		`)
 		.all<HumanDistribution>();
 
-	// Group model responses by model
-	const modelResponses = new Map<string, { name: string; family: string; responses: Map<string, string> }>();
+	// Group model responses by model and question, then aggregate
+	// First, collect all answers for each model+question combination
+	const rawResponses = new Map<string, {
+		name: string;
+		family: string;
+		byQuestion: Map<string, { answers: string[]; responseType: string }>
+	}>();
+
 	for (const r of responsesResult.results) {
-		if (!modelResponses.has(r.model_id)) {
-			modelResponses.set(r.model_id, {
+		if (!rawResponses.has(r.model_id)) {
+			rawResponses.set(r.model_id, {
 				name: r.model_name,
 				family: r.model_family,
-				responses: new Map()
+				byQuestion: new Map()
 			});
 		}
-		modelResponses.get(r.model_id)!.responses.set(r.question_id, r.parsed_answer);
+		const model = rawResponses.get(r.model_id)!;
+		if (!model.byQuestion.has(r.question_id)) {
+			model.byQuestion.set(r.question_id, { answers: [], responseType: r.response_type });
+		}
+		model.byQuestion.get(r.question_id)!.answers.push(r.parsed_answer);
+	}
+
+	// Now compute aggregated answer for each model+question
+	const modelResponses = new Map<string, { name: string; family: string; responses: Map<string, string> }>();
+	for (const [modelId, data] of rawResponses) {
+		const aggregatedResponses = new Map<string, string>();
+		for (const [questionId, { answers, responseType }] of data.byQuestion) {
+			const aggregated = responseType === 'ordinal'
+				? computeMedian(answers)
+				: computeMode(answers);
+			if (aggregated) {
+				aggregatedResponses.set(questionId, aggregated);
+			}
+		}
+		modelResponses.set(modelId, {
+			name: data.name,
+			family: data.family,
+			responses: aggregatedResponses
+		});
 	}
 
 	// Build response vectors for models

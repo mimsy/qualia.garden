@@ -58,8 +58,27 @@ export interface Poll {
 	question_id: string;
 	model_id: string;
 	status: PollStatus;
+	batch_id: string | null;
 	created_at: string;
 	completed_at: string | null;
+}
+
+// Aggregated response across multiple samples for a model
+export interface AggregatedResponse {
+	model_id: string;
+	model_name: string;
+	model_family: string;
+	aggregated_answer: string | null;
+	sample_count: number;
+	complete_count: number;
+	samples: Array<{
+		poll_id: string;
+		parsed_answer: string | null;
+		justification: string | null;
+		response_time_ms: number | null;
+		status: string;
+		created_at: string;
+	}>;
 }
 
 export interface Response {
@@ -103,4 +122,28 @@ export type Distribution = Record<string, number>;
 // Helper to parse human response distribution
 export function parseDistribution(distribution: string): Distribution {
 	return JSON.parse(distribution) as Distribution;
+}
+
+// Compute median for ordinal responses (1-based string keys)
+export function computeMedian(answers: string[]): string | null {
+	if (answers.length === 0) return null;
+	const nums = answers.map((a) => parseInt(a, 10)).sort((a, b) => a - b);
+	const mid = Math.floor(nums.length / 2);
+	const median = nums.length % 2 === 1 ? nums[mid] : Math.round((nums[mid - 1] + nums[mid]) / 2);
+	return String(median);
+}
+
+// Compute mode for nominal responses (most frequent answer)
+export function computeMode(answers: string[]): string | null {
+	if (answers.length === 0) return null;
+	const counts = new Map<string, number>();
+	for (const a of answers) {
+		counts.set(a, (counts.get(a) || 0) + 1);
+	}
+	// Sort by count descending, then by answer ascending for tie-breaking
+	const sorted = [...counts.entries()].sort((a, b) => {
+		if (b[1] !== a[1]) return b[1] - a[1];
+		return a[0].localeCompare(b[0]);
+	});
+	return sorted[0]?.[0] ?? null;
 }

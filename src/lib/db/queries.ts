@@ -211,14 +211,34 @@ export async function getPollsForQuestion(db: D1Database, questionId: string): P
 
 export async function createPoll(
 	db: D1Database,
-	data: { question_id: string; model_id: string }
+	data: { question_id: string; model_id: string; batch_id?: string }
 ): Promise<Poll> {
 	const id = nanoid(12);
 	await db
-		.prepare('INSERT INTO polls (id, question_id, model_id) VALUES (?, ?, ?)')
-		.bind(id, data.question_id, data.model_id)
+		.prepare('INSERT INTO polls (id, question_id, model_id, batch_id) VALUES (?, ?, ?, ?)')
+		.bind(id, data.question_id, data.model_id, data.batch_id ?? null)
 		.run();
 	return (await getPoll(db, id))!;
+}
+
+// Create a batch of N polls for multi-sample polling
+export async function createPollBatch(
+	db: D1Database,
+	data: { question_id: string; model_id: string; sample_count: number }
+): Promise<Poll[]> {
+	const batch_id = nanoid(12);
+	const polls: Poll[] = [];
+
+	for (let i = 0; i < data.sample_count; i++) {
+		const poll = await createPoll(db, {
+			question_id: data.question_id,
+			model_id: data.model_id,
+			batch_id
+		});
+		polls.push(poll);
+	}
+
+	return polls;
 }
 
 export async function updatePollStatus(
