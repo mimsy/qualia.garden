@@ -3,6 +3,10 @@
 
 import type { PageServerLoad } from './$types';
 import { computeMedian, computeMode } from '$lib/db/types';
+import {
+	computeAgreement as computeAgreementBase,
+	getPluralityAnswer as getPluralityAnswerBase
+} from '$lib/alignment';
 
 interface Question {
 	id: string;
@@ -401,48 +405,19 @@ function buildVectorFromDistributions(
 	return vector;
 }
 
-// Returns the 1-based key of the most popular answer
+// Wrapper for getPluralityAnswer that matches local call signature
 function getPluralityAnswer(
 	question: { id: string; options: string[] },
 	distribution: Record<string, number> | undefined
 ): string | null {
-	if (!distribution) return null;
-
-	let maxCount = 0;
-	let maxKey: string | null = null;
-
-	for (let i = 0; i < question.options.length; i++) {
-		const key = String(i + 1);
-		const count = distribution[key] || 0;
-		if (count > maxCount) {
-			maxCount = count;
-			maxKey = key;
-		}
-	}
-
-	return maxKey;
+	return getPluralityAnswerBase(question.options.length, distribution);
 }
 
+// Wrapper for computeAgreement that matches local call signature
 function computeAgreement(
 	responses1: Record<string, string | null>,
 	responses2: Record<string, string | null>,
 	questions: Array<{ id: string }>
 ): number {
-	let agreements = 0;
-	let comparisons = 0;
-
-	for (const q of questions) {
-		const r1 = responses1?.[q.id];
-		const r2 = responses2?.[q.id];
-
-		// Only count if both have a response
-		if (r1 !== null && r1 !== undefined && r2 !== null && r2 !== undefined) {
-			comparisons++;
-			if (r1 === r2) {
-				agreements++;
-			}
-		}
-	}
-
-	return comparisons > 0 ? Math.round((agreements / comparisons) * 100) : 0;
+	return computeAgreementBase(responses1, responses2, questions.map(q => q.id));
 }

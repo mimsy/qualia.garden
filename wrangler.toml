@@ -15,5 +15,9 @@ database_id = "358e7264-0e44-4b45-88c1-9625eebbe56a"
 binding = "POLL_QUEUE"
 queue = "poll-jobs"
 
+[[kv_namespaces]]
+binding = "ALIGNMENT_CACHE"
+id = "6f56ab195a3a480b8d5b26b71c5b4db4"
+
 # Secrets (set via `wrangler secret put`):
 # - OPENROUTER_API_KEY

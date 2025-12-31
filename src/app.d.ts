@@ -7,6 +7,7 @@ declare global {
 			env: {
 				DB: D1Database;
 				POLL_QUEUE: Queue;
+				ALIGNMENT_CACHE: KVNamespace;
 				OPENROUTER_API_KEY: string;
 			};
 			context: {
