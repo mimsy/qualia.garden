@@ -25,7 +25,12 @@
 	// Form field values (initialized from existing model)
 	let selectedOpenRouterId = $state(data.model.openrouter_id);
 	let displayName = $state(data.model.name);
-	let supportsReasoning = $state(data.model.supports_reasoning);
+	let reasoningEnabled = $state(data.model.supports_reasoning);
+
+	// Track whether the currently selected OpenRouter model supports reasoning
+	const modelSupportsReasoning = $derived(
+		availableModels.find((m) => m.id === selectedOpenRouterId)?.supports_reasoning ?? false
+	);
 
 	const filteredModels = $derived(
 		searchQuery.length >= 2
@@ -58,7 +63,8 @@
 	function selectModel(model: OpenRouterModel) {
 		selectedOpenRouterId = model.id;
 		displayName = model.name;
-		supportsReasoning = model.supports_reasoning;
+		// Default to enabled if the model supports reasoning
+		reasoningEnabled = model.supports_reasoning;
 		searchQuery = '';
 		showDropdown = false;
 		changingModel = false;
@@ -180,20 +186,39 @@
 
 		<input type="hidden" name="openrouter_id" value={selectedOpenRouterId} />
 		<input type="hidden" name="family" value={selectedOpenRouterId.split('/')[0]} />
-		<input type="hidden" name="supports_reasoning" value={supportsReasoning} />
+		<input type="hidden" name="supports_reasoning" value={reasoningEnabled} />
 
-		<div class="p-6">
-			<label for="name" class="block text-sm font-medium text-gray-700 mb-2">
-				Display Name
-			</label>
-			<input
-				id="name"
-				name="name"
-				type="text"
-				bind:value={displayName}
-				required
-				class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-			/>
+		<div class="p-6 space-y-6">
+			<div>
+				<label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+					Display Name
+				</label>
+				<input
+					id="name"
+					name="name"
+					type="text"
+					bind:value={displayName}
+					required
+					class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+				/>
+			</div>
+
+			{#if modelSupportsReasoning}
+				<div class="flex items-center gap-3">
+					<input
+						id="reasoning"
+						type="checkbox"
+						bind:checked={reasoningEnabled}
+						class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+					/>
+					<label for="reasoning" class="text-sm text-gray-700">
+						Enable extended thinking/reasoning
+					</label>
+				</div>
+				<p class="text-xs text-gray-500 -mt-4 ml-7">
+					When enabled, the model will show its reasoning process in responses.
+				</p>
+			{/if}
 		</div>
 
 		<div class="px-6 pb-6 flex gap-3">

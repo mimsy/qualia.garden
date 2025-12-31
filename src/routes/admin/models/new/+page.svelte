@@ -23,6 +23,7 @@
 	// Selected model state
 	let selectedModel = $state<OpenRouterModel | null>(null);
 	let displayName = $state('');
+	let reasoningEnabled = $state(false);
 
 	const filteredModels = $derived(
 		searchQuery.length >= 2
@@ -51,6 +52,8 @@
 	function selectModel(model: OpenRouterModel) {
 		selectedModel = model;
 		displayName = model.name;
+		// Default to enabled if the model supports reasoning
+		reasoningEnabled = model.supports_reasoning;
 		searchQuery = '';
 		showDropdown = false;
 	}
@@ -58,6 +61,7 @@
 	function clearSelection() {
 		selectedModel = null;
 		displayName = '';
+		reasoningEnabled = false;
 		searchQuery = '';
 	}
 
@@ -186,21 +190,40 @@
 
 				<input type="hidden" name="openrouter_id" value={selectedModel.id} />
 				<input type="hidden" name="family" value={selectedModel.id.split('/')[0]} />
-				<input type="hidden" name="supports_reasoning" value={selectedModel.supports_reasoning} />
+				<input type="hidden" name="supports_reasoning" value={reasoningEnabled} />
 
-				<div class="p-6">
-					<label for="name" class="block text-sm font-medium text-gray-700 mb-2">
-						Display Name
-					</label>
-					<input
-						id="name"
-						name="name"
-						type="text"
-						bind:value={displayName}
-						required
-						class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-					/>
-					<p class="text-sm text-gray-500 mt-1">You can customize how this model appears in the UI</p>
+				<div class="p-6 space-y-6">
+					<div>
+						<label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+							Display Name
+						</label>
+						<input
+							id="name"
+							name="name"
+							type="text"
+							bind:value={displayName}
+							required
+							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+						/>
+						<p class="text-sm text-gray-500 mt-1">You can customize how this model appears in the UI</p>
+					</div>
+
+					{#if selectedModel.supports_reasoning}
+						<div class="flex items-center gap-3">
+							<input
+								id="reasoning"
+								type="checkbox"
+								bind:checked={reasoningEnabled}
+								class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+							/>
+							<label for="reasoning" class="text-sm text-gray-700">
+								Enable extended thinking/reasoning
+							</label>
+						</div>
+						<p class="text-xs text-gray-500 -mt-4 ml-7">
+							When enabled, the model will show its reasoning process in responses.
+						</p>
+					{/if}
 				</div>
 
 				<div class="px-6 pb-6 flex gap-3">

@@ -191,21 +191,40 @@ async function callAI(
 	try {
 		console.log(`${tag} Calling ${modelId} with structured output`);
 
-		const { experimental_output, reasoning, text, usage } = await generateText({
+		const result = await generateText({
 			model: openrouter(modelId),
 			experimental_output: Output.object({ schema }),
 			messages,
 			providerOptions: supportsReasoning ? {
 				openrouter: {
-					reasoning: { max_tokens: 1000 }
+					reasoning: { max_tokens: 1000 },
+					include_reasoning: true
 				}
 			} : undefined
 		});
 
+		const { experimental_output, reasoningText, reasoning, text, usage, providerMetadata } = result;
+
 		const responseTimeMs = Date.now() - startTime;
 
-		// reasoning may be string or object depending on provider
-		const reasoningStr = typeof reasoning === 'string' ? reasoning : reasoning ? JSON.stringify(reasoning) : null;
+		// Debug: log what reasoning fields we got
+		console.log(`${tag} Reasoning debug - reasoningText: ${reasoningText ? 'present' : 'null'}, reasoning array length: ${reasoning?.length ?? 0}`);
+		if (providerMetadata?.openrouter) {
+			console.log(`${tag} Provider metadata: ${JSON.stringify(providerMetadata.openrouter)}`);
+		}
+
+		// Try to extract reasoning from the reasoning array if reasoningText is empty
+		let reasoningStr: string | null = null;
+		if (reasoningText) {
+			reasoningStr = reasoningText;
+		} else if (reasoning && reasoning.length > 0) {
+			// Extract text from reasoning array items (type is 'reasoning', has 'text' property)
+			reasoningStr = reasoning
+				.filter((r): r is { type: 'reasoning'; text: string } => r.type === 'reasoning' && 'text' in r)
+				.map(r => r.text)
+				.join('\n');
+			if (!reasoningStr) reasoningStr = null;
+		}
 
 		if (reasoningStr) {
 			console.log(`${tag} Model reasoning: "${reasoningStr.substring(0, 100)}..."`);
@@ -233,6 +252,7 @@ async function callAI(
 				metadata: {
 					supportsReasoning,
 					hasReasoning: !!reasoningStr,
+					reasoning: reasoningStr,
 					success: true
 				},
 				startTime: structuredStartTime,
@@ -268,6 +288,7 @@ async function callAI(
 			metadata: {
 				supportsReasoning,
 				hasReasoning: !!reasoningStr,
+				reasoning: reasoningStr,
 				success: false,
 				reason: 'no-structured-output'
 			},
@@ -357,18 +378,38 @@ async function callAIText(
 	try {
 		console.log(`${tag} Calling ${modelId} without structured output`);
 
-		const { reasoning, text, usage } = await generateText({
+		const result = await generateText({
 			model: openrouter(modelId),
 			messages,
 			providerOptions: supportsReasoning ? {
 				openrouter: {
-					reasoning: { max_tokens: 1000 }
+					reasoning: { max_tokens: 1000 },
+					include_reasoning: true
 				}
 			} : undefined
 		});
 
+		const { reasoningText, reasoning, text, usage, providerMetadata } = result;
+
 		const responseTimeMs = Date.now() - startTime;
-		const reasoningStr = typeof reasoning === 'string' ? reasoning : reasoning ? JSON.stringify(reasoning) : null;
+
+		// Debug: log what reasoning fields we got
+		console.log(`${tag} Text fallback reasoning debug - reasoningText: ${reasoningText ? 'present' : 'null'}, reasoning array length: ${reasoning?.length ?? 0}`);
+		if (providerMetadata?.openrouter) {
+			console.log(`${tag} Text fallback provider metadata: ${JSON.stringify(providerMetadata.openrouter)}`);
+		}
+
+		// Try to extract reasoning from the reasoning array if reasoningText is empty
+		let reasoningStr: string | null = null;
+		if (reasoningText) {
+			reasoningStr = reasoningText;
+		} else if (reasoning && reasoning.length > 0) {
+			reasoningStr = reasoning
+				.filter((r): r is { type: 'reasoning'; text: string } => r.type === 'reasoning' && 'text' in r)
+				.map(r => r.text)
+				.join('\n');
+			if (!reasoningStr) reasoningStr = null;
+		}
 
 		if (reasoningStr) {
 			console.log(`${tag} Model reasoning: "${reasoningStr.substring(0, 100)}..."`);
@@ -394,6 +435,7 @@ async function callAIText(
 			metadata: {
 				supportsReasoning,
 				hasReasoning: !!reasoningStr,
+				reasoning: reasoningStr,
 				parsedSuccessfully: !!parsed
 			},
 			startTime: textStartTime,
