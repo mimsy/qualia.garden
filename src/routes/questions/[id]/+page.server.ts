@@ -40,7 +40,6 @@ interface Question {
 	options: string | null;
 	status: QuestionStatus;
 	benchmark_source_id: string | null;
-	answer_labels: string | null;
 }
 
 interface BenchmarkSource {
@@ -57,6 +56,8 @@ interface HumanDistribution {
 	continent: string | null;
 	education_level: string | null;
 	settlement_type: string | null;
+	age_group: string | null;
+	gender: string | null;
 	distribution: string;
 	sample_size: number;
 }
@@ -124,18 +125,11 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 	}
 
 	// Sort answers for display
+	// With 1-based keys, ordinal questions sort numerically, nominal by count
 	let sortedAnswers: Array<{ answer: string; count: number; percentage: number }>;
 
-	// Parse answer labels for sorting (need this before the benchmark fetch)
-	const questionAnswerLabels: Record<string, string> | null = question.answer_labels
-		? JSON.parse(question.answer_labels)
-		: null;
-	const questionLabelToKey: Record<string, string> | null = questionAnswerLabels
-		? Object.fromEntries(Object.entries(questionAnswerLabels).map(([k, v]) => [v, k]))
-		: null;
-
-	if (question.response_type === 'scale') {
-		// Sort numerically for scale
+	if (question.response_type === 'ordinal') {
+		// Sort numerically for ordinal scales
 		sortedAnswers = Object.entries(answerCounts)
 			.map(([answer, count]) => ({
 				answer,
@@ -143,21 +137,8 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 				percentage: responses.length > 0 ? (count / responses.length) * 100 : 0
 			}))
 			.sort((a, b) => parseInt(a.answer) - parseInt(b.answer));
-	} else if (questionLabelToKey) {
-		// For benchmark questions, sort by key order to match human data
-		sortedAnswers = Object.entries(answerCounts)
-			.map(([answer, count]) => ({
-				answer,
-				count,
-				percentage: responses.length > 0 ? (count / responses.length) * 100 : 0
-			}))
-			.sort((a, b) => {
-				const keyA = questionLabelToKey[a.answer] || a.answer;
-				const keyB = questionLabelToKey[b.answer] || b.answer;
-				return parseInt(keyA) - parseInt(keyB);
-			});
 	} else {
-		// Sort by count for other types
+		// Sort by count for nominal choices
 		sortedAnswers = Object.entries(answerCounts)
 			.map(([answer, count]) => ({
 				answer,
@@ -188,7 +169,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		humanDistributions = distResult.results;
 	}
 
-	// Get unique continents and education levels for filters
+	// Get unique filter values from distributions
 	const continents = [
 		...new Set(humanDistributions.filter((d) => d.continent).map((d) => d.continent as string))
 	].sort();
@@ -196,6 +177,12 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		...new Set(
 			humanDistributions.filter((d) => d.education_level).map((d) => d.education_level as string)
 		)
+	].sort();
+	const ageGroups = [
+		...new Set(humanDistributions.filter((d) => d.age_group).map((d) => d.age_group as string))
+	].sort();
+	const genders = [
+		...new Set(humanDistributions.filter((d) => d.gender).map((d) => d.gender as string))
 	].sort();
 
 	// For admins: load all polls (for history) and active models (for poll trigger)
@@ -248,10 +235,10 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		totalResponses: responses.length,
 		benchmarkSource,
 		humanDistributions,
-		answerLabels: questionAnswerLabels,
-		labelToKey: questionLabelToKey,
 		continents,
 		educationLevels,
+		ageGroups,
+		genders,
 		allPolls,
 		availableModels,
 		categories
@@ -274,23 +261,20 @@ export const actions: Actions = {
 			return fail(400, { error: 'Question text is required' });
 		}
 
-		// Parse options for multiple choice
-		let options: string | null = null;
-		if (responseType === 'multiple_choice') {
-			const optionsList = optionsRaw
-				.split('\n')
-				.map((o) => o.trim())
-				.filter(Boolean);
-			if (optionsList.length < 2) {
-				return fail(400, { error: 'Multiple choice requires at least 2 options' });
-			}
-			options = JSON.stringify(optionsList);
+		// Parse options (required for both ordinal and nominal)
+		const optionsList = optionsRaw
+			.split('\n')
+			.map((o) => o.trim())
+			.filter(Boolean);
+		if (optionsList.length < 2) {
+			return fail(400, { error: 'At least 2 options are required' });
 		}
+		const options = JSON.stringify(optionsList);
 
 		await updateQuestion(platform.env.DB, params.id, {
 			text: text.trim(),
 			category: category?.trim() || null,
-			response_type: responseType as 'multiple_choice' | 'scale' | 'yes_no',
+			response_type: responseType as 'ordinal' | 'nominal',
 			options
 		});
 

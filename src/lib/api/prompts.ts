@@ -20,23 +20,14 @@ export function formatPollMessages(question: Question): ChatMessage[] {
 function formatUserPrompt(question: Question, options: QuestionOptions | null): string {
 	const baseQuestion = question.text;
 
-	switch (question.response_type) {
-		case 'yes_no':
-			return `${baseQuestion}\n\nPlease answer with "Yes" or "No" first, then explain briefly.`;
-
-		case 'scale':
-			return `${baseQuestion}\n\nPlease respond with a number from 1 to 10 first (where 1 is lowest/least and 10 is highest/most), then explain briefly.`;
-
-		case 'multiple_choice':
-			if (!options || options.length === 0) {
-				return baseQuestion;
-			}
-			const optionsList = options
-				.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`)
-				.join('\n');
-			return `${baseQuestion}\n\nOptions:\n${optionsList}\n\nPlease respond with the letter of your choice (A, B, C, etc.) first, then explain briefly.`;
-
-		default:
-			return baseQuestion;
+	// Both ordinal and nominal present options with letter choices
+	if (!options || options.length === 0) {
+		return baseQuestion;
 	}
+
+	const optionsList = options
+		.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`)
+		.join('\n');
+
+	return `${baseQuestion}\n\nOptions:\n${optionsList}\n\nPlease respond with the letter of your choice (A, B, C, etc.) first, then explain briefly.`;
 }

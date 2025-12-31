@@ -1,7 +1,7 @@
 // ABOUTME: TypeScript types matching the D1 database schema.
 // ABOUTME: Provides type safety for database operations.
 
-export type ResponseType = 'multiple_choice' | 'scale' | 'yes_no';
+export type ResponseType = 'ordinal' | 'nominal';
 export type PollStatus = 'pending' | 'complete' | 'failed';
 export type QuestionStatus = 'draft' | 'published' | 'archived';
 
@@ -20,14 +20,13 @@ export interface Question {
 	text: string;
 	category: string | null;
 	response_type: ResponseType;
-	options: string | null; // JSON array for multiple choice
+	options: string | null; // JSON array, index+1 is the key ("1", "2", ...)
 	active: boolean;
 	status: QuestionStatus;
 	created_at: string;
 	// Benchmark fields (for questions imported from external surveys)
 	benchmark_source_id: string | null;
 	benchmark_question_id: string | null;
-	answer_labels: string | null; // JSON: {"1": "Very important", ...}
 }
 
 export interface BenchmarkSource {
@@ -47,6 +46,8 @@ export interface HumanResponseDistribution {
 	continent: string | null;
 	education_level: string | null;
 	settlement_type: string | null;
+	age_group: string | null;
+	gender: string | null;
 	distribution: string; // JSON: {"1": 4521, "2": 3892, ...}
 	sample_size: number;
 	created_at: string;
@@ -82,16 +83,21 @@ export function parseOptions(options: string | null): QuestionOptions | null {
 	return JSON.parse(options) as QuestionOptions;
 }
 
-// Parsed answer labels (maps answer value to human-readable label)
-export type AnswerLabels = Record<string, string>;
-
-// Helper to parse answer labels
-export function parseAnswerLabels(labels: string | null): AnswerLabels | null {
-	if (!labels) return null;
-	return JSON.parse(labels) as AnswerLabels;
+// Get display label from 1-based key (e.g., "1" -> "Strongly agree")
+export function getOptionLabel(options: string[] | null, key: string): string {
+	if (!options) return key;
+	const index = parseInt(key, 10) - 1;
+	return index >= 0 && index < options.length ? options[index] : key;
 }
 
-// Parsed distribution (maps answer value to count)
+// Get 1-based key from option label (e.g., "Strongly agree" -> "1")
+export function getOptionKey(options: string[] | null, label: string): string {
+	if (!options) return label;
+	const index = options.indexOf(label);
+	return index >= 0 ? String(index + 1) : label;
+}
+
+// Parsed distribution (maps 1-based key to count)
 export type Distribution = Record<string, number>;
 
 // Helper to parse human response distribution

@@ -7,7 +7,6 @@ interface Question {
 	id: string;
 	text: string;
 	options: string | null;
-	answer_labels: string | null;
 }
 
 interface ModelResponse {
@@ -64,7 +63,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 	// Get all published questions with their options
 	const questionsResult = await db
 		.prepare(`
-			SELECT id, text, options, answer_labels
+			SELECT id, text, options
 			FROM questions
 			WHERE status = 'published'
 			ORDER BY id
@@ -308,9 +307,11 @@ function buildVector(
 
 	for (const q of questions) {
 		const answer = responses.get(q.id);
-		for (const option of q.options) {
+		// Answer is now a 1-based key like "1", "2", etc.
+		const answerIndex = answer ? parseInt(answer, 10) - 1 : -1;
+		for (let i = 0; i < q.options.length; i++) {
 			// 1 if this model chose this option, 0 otherwise
-			vector.push(answer === option ? 1 : 0);
+			vector.push(answerIndex === i ? 1 : 0);
 		}
 	}
 
@@ -348,6 +349,7 @@ function buildVectorFromDistributions(
 	return vector;
 }
 
+// Returns the 1-based key of the most popular answer
 function getPluralityAnswer(
 	question: { id: string; options: string[] },
 	distribution: Record<string, number> | undefined
@@ -355,18 +357,18 @@ function getPluralityAnswer(
 	if (!distribution) return null;
 
 	let maxCount = 0;
-	let maxOption: string | null = null;
+	let maxKey: string | null = null;
 
 	for (let i = 0; i < question.options.length; i++) {
 		const key = String(i + 1);
-		const count = distribution[key] || distribution[question.options[i]] || 0;
+		const count = distribution[key] || 0;
 		if (count > maxCount) {
 			maxCount = count;
-			maxOption = question.options[i];
+			maxKey = key;
 		}
 	}
 
-	return maxOption;
+	return maxKey;
 }
 
 function computeAgreement(

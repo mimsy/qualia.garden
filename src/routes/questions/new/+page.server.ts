@@ -40,23 +40,20 @@ export const actions: Actions = {
 			return fail(400, { error: 'Response type is required' });
 		}
 
-		// Parse options for multiple choice
-		let options: string | null = null;
-		if (responseType === 'multiple_choice') {
-			const optionsList = optionsRaw
-				.split('\n')
-				.map((o) => o.trim())
-				.filter(Boolean);
-			if (optionsList.length < 2) {
-				return fail(400, { error: 'Multiple choice requires at least 2 options' });
-			}
-			options = JSON.stringify(optionsList);
+		// Parse options (required for both ordinal and nominal)
+		const optionsList = optionsRaw
+			.split('\n')
+			.map((o) => o.trim())
+			.filter(Boolean);
+		if (optionsList.length < 2) {
+			return fail(400, { error: 'At least 2 options are required' });
 		}
+		const options = JSON.stringify(optionsList);
 
 		const question = await createQuestion(platform.env.DB, {
 			text: text.trim(),
 			category: category?.trim() || null,
-			response_type: responseType as 'multiple_choice' | 'scale' | 'yes_no',
+			response_type: responseType as 'ordinal' | 'nominal',
 			options,
 			status: 'draft'
 		});

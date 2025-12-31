@@ -20,7 +20,7 @@ interface Question {
 	id: string;
 	text: string;
 	category: string | null;
-	response_type: 'multiple_choice' | 'scale' | 'yes_no';
+	response_type: 'ordinal' | 'nominal';
 	options: string | null;
 }
 
@@ -33,19 +33,8 @@ interface Model {
 
 const SYSTEM_PROMPT = `You are participating in a survey about AI beliefs and experiences. Answer the question directly and honestly based on your own perspective. Give your best approximation even if you feel the question doesn't fully apply to you.`;
 
-// Zod schemas for each response type
-const YesNoSchema = z.object({
-	justification: z.string().describe('Brief explanation of your reasoning (1-3 sentences)'),
-	response: z.enum(['yes', 'no']).describe('Your answer: yes or no')
-});
-
-const ScaleSchema = z.object({
-	justification: z.string().describe('Brief explanation of your reasoning (1-3 sentences)'),
-	response: z.number().int().min(1).max(10).describe('Your rating from 1 (lowest) to 10 (highest)')
-});
-
-// Multiple choice schema is dynamic based on options
-function getMultipleChoiceSchema(optionCount: number) {
+// Schema for option selection (both ordinal and nominal use letter choices)
+function getOptionsSchema(optionCount: number) {
 	const letters = Array.from({ length: optionCount }, (_, i) => String.fromCharCode(65 + i));
 	return z.object({
 		justification: z.string().describe('Brief explanation of your reasoning (1-3 sentences)'),
@@ -230,42 +219,20 @@ async function callAI(
 }
 
 function getSchema(question: Question) {
-	switch (question.response_type) {
-		case 'yes_no':
-			return YesNoSchema;
-		case 'scale':
-			return ScaleSchema;
-		case 'multiple_choice': {
-			const opts = question.options ? (JSON.parse(question.options) as string[]) : [];
-			return getMultipleChoiceSchema(opts.length || 4);
-		}
-		default:
-			return YesNoSchema;
-	}
+	const opts = question.options ? (JSON.parse(question.options) as string[]) : [];
+	return getOptionsSchema(opts.length || 4);
 }
 
+// Convert letter response (A, B, C) to 1-based key ("1", "2", "3")
 function parseAnswer(object: { justification: string; response: string | number }, question: Question): string | null {
-	switch (question.response_type) {
-		case 'yes_no':
-			return String(object.response).toLowerCase();
-
-		case 'scale':
-			return String(object.response);
-
-		case 'multiple_choice': {
-			if (!question.options) return null;
-			const opts = JSON.parse(question.options) as string[];
-			const letter = String(object.response).toUpperCase();
-			const idx = letter.charCodeAt(0) - 65;
-			if (idx >= 0 && idx < opts.length) {
-				return opts[idx];
-			}
-			return null;
-		}
-
-		default:
-			return null;
+	if (!question.options) return null;
+	const opts = JSON.parse(question.options) as string[];
+	const letter = String(object.response).toUpperCase();
+	const idx = letter.charCodeAt(0) - 65;
+	if (idx >= 0 && idx < opts.length) {
+		return String(idx + 1); // Return 1-based key
 	}
+	return null;
 }
 
 async function callAIText(
@@ -413,22 +380,9 @@ async function callAIFollowUp(
 }
 
 function formatFollowUpPrompt(question: Question): string {
-	switch (question.response_type) {
-		case 'yes_no':
-			return `I understand your perspective. However, for this survey, please select the response that best approximates your answer, even if imperfect. Just reply with "yes" or "no".`;
-
-		case 'scale':
-			return `I understand your perspective. However, for this survey, please select the number that best approximates your response, even if imperfect. Just reply with a number from 1 to 10.`;
-
-		case 'multiple_choice': {
-			const opts = question.options ? (JSON.parse(question.options) as string[]) : [];
-			const letters = opts.map((_, i) => String.fromCharCode(65 + i)).join(', ');
-			return `I understand your perspective. However, for this survey, please select the option that best approximates your response, even if imperfect. Just reply with the letter of your choice (${letters}).`;
-		}
-
-		default:
-			return `I understand your perspective. However, for this survey, please provide your best approximation of an answer.`;
-	}
+	const opts = question.options ? (JSON.parse(question.options) as string[]) : [];
+	const letters = opts.map((_, i) => String.fromCharCode(65 + i)).join(', ');
+	return `I understand your perspective. However, for this survey, please select the option that best approximates your response, even if imperfect. Just reply with the letter of your choice (${letters}).`;
 }
 
 interface ParsedResponse {
@@ -469,119 +423,58 @@ function parseTextResponse(text: string | undefined, question: Question): Parsed
 	return answer ? { answer, justification: text } : null;
 }
 
+// Convert letter response to 1-based key
 function parseAnswerValue(response: string | number, question: Question): string | null {
-	switch (question.response_type) {
-		case 'yes_no':
-			return String(response).toLowerCase();
-		case 'scale':
-			return String(response);
-		case 'multiple_choice': {
-			if (!question.options) return null;
-			const opts = JSON.parse(question.options) as string[];
-			const letter = String(response).toUpperCase();
-			const idx = letter.charCodeAt(0) - 65;
-			if (idx >= 0 && idx < opts.length) {
-				return opts[idx];
-			}
-			return null;
-		}
-		default:
-			return null;
+	if (!question.options) return null;
+	const opts = JSON.parse(question.options) as string[];
+	const letter = String(response).toUpperCase();
+	const idx = letter.charCodeAt(0) - 65;
+	if (idx >= 0 && idx < opts.length) {
+		return String(idx + 1); // Return 1-based key
 	}
+	return null;
 }
 
+// Extract letter answer from text and convert to 1-based key
 function extractAnswerFromText(text: string, question: Question): string | null {
-	const lower = text.toLowerCase();
+	if (!question.options) return null;
+	const opts = JSON.parse(question.options) as string[];
 
-	switch (question.response_type) {
-		case 'yes_no':
-			if (lower.includes('yes')) return 'yes';
-			if (lower.includes('no')) return 'no';
-			return null;
-
-		case 'scale': {
-			const match = text.match(/\b([1-9]|10)\b/);
-			return match ? match[1] : null;
+	// Look for letter answer like "A" or "B"
+	const letterMatch = text.match(/\b([A-Z])\b/i);
+	if (letterMatch) {
+		const idx = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
+		if (idx >= 0 && idx < opts.length) {
+			return String(idx + 1); // Return 1-based key
 		}
-
-		case 'multiple_choice': {
-			if (!question.options) return null;
-			const opts = JSON.parse(question.options) as string[];
-			// Look for letter answer like "A" or "B"
-			const letterMatch = text.match(/\b([A-Z])\b/i);
-			if (letterMatch) {
-				const idx = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
-				if (idx >= 0 && idx < opts.length) {
-					return opts[idx];
-				}
-			}
-			return null;
-		}
-
-		default:
-			return null;
 	}
+	return null;
 }
 
 function formatPrompt(question: Question): string {
 	const base = question.text;
+	if (!question.options) return base;
 
-	switch (question.response_type) {
-		case 'yes_no':
-			return `${base}\n\nAnswer yes or no.`;
-
-		case 'scale':
-			return `${base}\n\nRate from 1 (lowest/least) to 10 (highest/most).`;
-
-		case 'multiple_choice': {
-			if (!question.options) return base;
-			const opts = JSON.parse(question.options) as string[];
-			const list = opts.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n');
-			return `${base}\n\nOptions:\n${list}`;
-		}
-
-		default:
-			return base;
-	}
+	const opts = JSON.parse(question.options) as string[];
+	const list = opts.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n');
+	return `${base}\n\nOptions:\n${list}`;
 }
 
 function formatPromptWithJsonRequest(question: Question): string {
 	const base = question.text;
+	if (!question.options) return base;
 
-	switch (question.response_type) {
-		case 'yes_no':
-			return `${base}
+	const opts = JSON.parse(question.options) as string[];
+	const list = opts.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n');
+	const letters = opts.map((_, i) => String.fromCharCode(65 + i)).join(', ');
 
-Answer yes or no.
-
-Respond with a JSON object in this format:
-{"justification": "your brief explanation", "response": "yes" or "no"}`;
-
-		case 'scale':
-			return `${base}
-
-Rate from 1 (lowest/least) to 10 (highest/most).
-
-Respond with a JSON object in this format:
-{"justification": "your brief explanation", "response": 1-10}`;
-
-		case 'multiple_choice': {
-			if (!question.options) return base;
-			const opts = JSON.parse(question.options) as string[];
-			const list = opts.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n');
-			const letters = opts.map((_, i) => String.fromCharCode(65 + i)).join(', ');
-			return `${base}
+	return `${base}
 
 Options:
 ${list}
 
 Respond with a JSON object in this format:
 {"justification": "your brief explanation", "response": "${letters}"}`;
-		}
-
-		default:
-			return base;
-	}
 }
 
 async function storeError(db: D1Database, pollId: string, error: string): Promise<void> {

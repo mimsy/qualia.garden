@@ -131,12 +131,12 @@ export async function getQuestionsByCategory(
 export async function createQuestion(
 	db: D1Database,
 	data: Pick<Question, 'text' | 'category' | 'response_type' | 'options'> &
-		Partial<Pick<Question, 'benchmark_source_id' | 'benchmark_question_id' | 'answer_labels' | 'status'>>
+		Partial<Pick<Question, 'benchmark_source_id' | 'benchmark_question_id' | 'status'>>
 ): Promise<Question> {
 	const id = nanoid(12);
 	await db
 		.prepare(
-			'INSERT INTO questions (id, text, category, response_type, options, status, benchmark_source_id, benchmark_question_id, answer_labels) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+			'INSERT INTO questions (id, text, category, response_type, options, status, benchmark_source_id, benchmark_question_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
 		)
 		.bind(
 			id,
@@ -146,8 +146,7 @@ export async function createQuestion(
 			data.options,
 			data.status ?? 'draft',
 			data.benchmark_source_id ?? null,
-			data.benchmark_question_id ?? null,
-			data.answer_labels ?? null
+			data.benchmark_question_id ?? null
 		)
 		.run();
 	return (await getQuestion(db, id))!;

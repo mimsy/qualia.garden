@@ -449,7 +449,7 @@
 							<div class="flex-1 h-6 bg-gray-100 rounded overflow-hidden">
 								<div
 									class="h-full rounded transition-all"
-									style="width: {item.score}%; background-color: {item.type === 'human' ? '#374151' : getColor(data.entities.find(e => e.id === item.id)?.family || '')}"
+									style="width: {item.score}%; background-color: {item.type === 'human' ? '#374151' : getColor(data.entities.find((e: { id: string; family: string }) => e.id === item.id)?.family || '')}"
 								></div>
 							</div>
 							<div class="w-12 text-sm text-gray-600 text-right">

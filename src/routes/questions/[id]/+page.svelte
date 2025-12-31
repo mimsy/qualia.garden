@@ -15,6 +15,8 @@
 	let expandedModel = $state<string | null>(null);
 	let selectedContinent = $state<string | null>(null);
 	let selectedEducation = $state<string | null>(null);
+	let selectedAgeGroup = $state<string | null>(null);
+	let selectedGender = $state<string | null>(null);
 	let showPollHistory = $state(false);
 	let showPollTrigger = $state(false);
 	let selectedModels = $state<Set<string>>(new Set());
@@ -50,7 +52,9 @@
 			(d: HumanDistribution) =>
 				d.continent === selectedContinent &&
 				d.education_level === selectedEducation &&
-				d.settlement_type === null
+				d.settlement_type === null &&
+				d.age_group === selectedAgeGroup &&
+				d.gender === selectedGender
 		);
 	});
 
@@ -65,7 +69,7 @@
 		return Object.entries(parsed)
 			.map(([answer, count]) => ({
 				answer,
-				label: data.answerLabels?.[answer] || answer,
+				label: getAnswerLabel(answer),
 				count,
 				percentage: total > 0 ? (count / total) * 100 : 0
 			}))
@@ -87,8 +91,11 @@
 		}
 	}
 
+	// Convert 1-based key to display label using options array
 	function getAnswerLabel(answer: string): string {
-		return data.answerLabels?.[answer] || answer;
+		if (!data.options) return answer;
+		const index = parseInt(answer, 10) - 1;
+		return index >= 0 && index < data.options.length ? data.options[index] : answer;
 	}
 
 	// Group polls by model for history view
@@ -324,24 +331,50 @@
 					<h3 class="font-bold text-gray-900">AI vs Human Comparison</h3>
 					<div class="flex flex-wrap gap-2 items-center text-sm">
 						<span class="text-gray-500">Filter humans by:</span>
-						<select
-							bind:value={selectedContinent}
-							class="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-						>
-							<option value={null}>All Regions</option>
-							{#each data.continents as continent}
-								<option value={continent}>{continent}</option>
-							{/each}
-						</select>
-						<select
-							bind:value={selectedEducation}
-							class="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-						>
-							<option value={null}>All Education</option>
-							{#each data.educationLevels as level}
-								<option value={level}>{level}</option>
-							{/each}
-						</select>
+						{#if data.continents.length > 0}
+							<select
+								bind:value={selectedContinent}
+								class="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+							>
+								<option value={null}>All Regions</option>
+								{#each data.continents as continent}
+									<option value={continent}>{continent}</option>
+								{/each}
+							</select>
+						{/if}
+						{#if data.educationLevels.length > 0}
+							<select
+								bind:value={selectedEducation}
+								class="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+							>
+								<option value={null}>All Education</option>
+								{#each data.educationLevels as level}
+									<option value={level}>{level}</option>
+								{/each}
+							</select>
+						{/if}
+						{#if data.ageGroups.length > 0}
+							<select
+								bind:value={selectedAgeGroup}
+								class="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+							>
+								<option value={null}>All Ages</option>
+								{#each data.ageGroups as age}
+									<option value={age}>{age}</option>
+								{/each}
+							</select>
+						{/if}
+						{#if data.genders.length > 0}
+							<select
+								bind:value={selectedGender}
+								class="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+							>
+								<option value={null}>All Genders</option>
+								{#each data.genders as g}
+									<option value={g}>{g}</option>
+								{/each}
+							</select>
+						{/if}
 					</div>
 				</div>
 
