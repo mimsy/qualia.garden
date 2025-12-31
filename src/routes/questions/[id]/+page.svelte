@@ -25,7 +25,42 @@
 	let editText = $state(data.question.text);
 	let editCategory = $state(data.question.category || '');
 	let editResponseType = $state(data.question.response_type);
-	let editOptions = $state(data.options?.join('\n') || '');
+	let editOptionsList = $state<string[]>(data.options || ['']);
+
+	function addOption() {
+		editOptionsList = [...editOptionsList, ''];
+	}
+
+	function removeOption(index: number) {
+		if (editOptionsList.length > 1) {
+			editOptionsList = editOptionsList.filter((_, i) => i !== index);
+		}
+	}
+
+	function updateOption(index: number, value: string) {
+		editOptionsList = editOptionsList.map((opt, i) => (i === index ? value : opt));
+	}
+
+	// Move option up in the list (for ordinal)
+	function moveOptionUp(index: number) {
+		if (index > 0) {
+			const newList = [...editOptionsList];
+			[newList[index - 1], newList[index]] = [newList[index], newList[index - 1]];
+			editOptionsList = newList;
+		}
+	}
+
+	// Move option down in the list (for ordinal)
+	function moveOptionDown(index: number) {
+		if (index < editOptionsList.length - 1) {
+			const newList = [...editOptionsList];
+			[newList[index], newList[index + 1]] = [newList[index + 1], newList[index]];
+			editOptionsList = newList;
+		}
+	}
+
+	// Serialize options for form submission
+	const serializedOptions = $derived(editOptionsList.filter((o) => o.trim()).join('\n'));
 
 	function getUniqueFamilies(responses: ResponseType[]): string[] {
 		const familySet = new Set<string>();
@@ -260,14 +295,116 @@
 					</div>
 
 					<div>
-						<label for="options" class="block text-sm font-medium text-gray-700 mb-1">Options (one per line, in order)</label>
-							<textarea
-								id="options"
-								name="options"
-								bind:value={editOptions}
-								rows="4"
-								class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-							></textarea>
+						<input type="hidden" name="options" value={serializedOptions} />
+						<div class="flex items-center justify-between mb-2">
+							<label class="block text-sm font-medium text-gray-700">
+								{#if editResponseType === 'ordinal'}
+									Options (ordered scale, first = lowest)
+								{:else}
+									Options (unordered choices)
+								{/if}
+							</label>
+							<button
+								type="button"
+								onclick={addOption}
+								class="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+							>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+								</svg>
+								Add option
+							</button>
+						</div>
+
+						{#if editResponseType === 'ordinal'}
+							<!-- Ordinal: numbered scale with up/down reordering -->
+							<div class="space-y-2 border-l-4 border-gradient-to-b from-red-300 via-yellow-300 to-green-300 pl-3 py-2 bg-gradient-to-b from-red-50 via-yellow-50 to-green-50 rounded-r">
+								{#each editOptionsList as option, i}
+									<div class="flex items-center gap-2">
+										<span class="w-6 text-center text-sm font-medium text-gray-500">{i + 1}.</span>
+										<input
+											type="text"
+											value={option}
+											oninput={(e) => updateOption(i, e.currentTarget.value)}
+											placeholder="Option {i + 1}"
+											class="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+										/>
+										<div class="flex flex-col gap-0.5">
+											<button
+												type="button"
+												onclick={() => moveOptionUp(i)}
+												disabled={i === 0}
+												class="p-0.5 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+												title="Move up"
+											>
+												<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+												</svg>
+											</button>
+											<button
+												type="button"
+												onclick={() => moveOptionDown(i)}
+												disabled={i === editOptionsList.length - 1}
+												class="p-0.5 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+												title="Move down"
+											>
+												<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+												</svg>
+											</button>
+										</div>
+										<button
+											type="button"
+											onclick={() => removeOption(i)}
+											disabled={editOptionsList.length <= 1}
+											class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+											title="Remove option"
+										>
+											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+											</svg>
+										</button>
+									</div>
+								{/each}
+								<div class="text-xs text-gray-500 mt-2 flex items-center gap-2">
+									<span class="inline-block w-3 h-3 bg-red-200 rounded"></span>
+									Low
+									<span class="inline-block flex-1 h-1 bg-gradient-to-r from-red-200 via-yellow-200 to-green-200 rounded"></span>
+									High
+									<span class="inline-block w-3 h-3 bg-green-200 rounded"></span>
+								</div>
+							</div>
+						{:else}
+							<!-- Nominal: unordered choices with bullet points -->
+							<div class="space-y-2 bg-gray-50 rounded p-3 border border-gray-200">
+								{#each editOptionsList as option, i}
+									<div class="flex items-center gap-2">
+										<span class="w-6 text-center text-gray-400">•</span>
+										<input
+											type="text"
+											value={option}
+											oninput={(e) => updateOption(i, e.currentTarget.value)}
+											placeholder="Option"
+											class="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+										/>
+										<button
+											type="button"
+											onclick={() => removeOption(i)}
+											disabled={editOptionsList.length <= 1}
+											class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+											title="Remove option"
+										>
+											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+											</svg>
+										</button>
+									</div>
+								{/each}
+								<div class="text-xs text-gray-500 mt-2">
+									Options are unordered — no inherent ranking or scale
+								</div>
+							</div>
+						{/if}
 					</div>
 
 					<div class="flex justify-end">

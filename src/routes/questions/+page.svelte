@@ -6,10 +6,11 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	function buildUrl(params: { category?: string | null; status?: string }) {
+	function buildUrl(params: { category?: string | null; status?: string; source?: string | null }) {
 		const url = new URL('/questions', 'http://localhost');
 		if (params.category) url.searchParams.set('category', params.category);
 		if (params.status && params.status !== 'published') url.searchParams.set('status', params.status);
+		if (params.source) url.searchParams.set('source', params.source);
 		return url.pathname + url.search;
 	}
 
@@ -73,7 +74,7 @@
 					<nav class="space-y-2 mb-8">
 						{#each statusOptions as option}
 							<a
-								href={buildUrl({ category: data.selectedCategory, status: option.value })}
+								href={buildUrl({ category: data.selectedCategory, status: option.value, source: data.selectedSource })}
 								class="block px-3 py-2 rounded {data.selectedStatus === option.value
 									? 'bg-blue-100 text-blue-700'
 									: 'text-gray-600 hover:bg-gray-100'}"
@@ -84,10 +85,40 @@
 					</nav>
 				{/if}
 
+				<h2 class="font-medium text-gray-900 mb-4">Survey Source</h2>
+				<nav class="space-y-2 mb-8">
+					<a
+						href={buildUrl({ category: data.selectedCategory, status: data.selectedStatus })}
+						class="block px-3 py-2 rounded {data.selectedSource === null
+							? 'bg-blue-100 text-blue-700'
+							: 'text-gray-600 hover:bg-gray-100'}"
+					>
+						All
+					</a>
+					{#each data.sources as source}
+						<a
+							href={buildUrl({ category: data.selectedCategory, status: data.selectedStatus, source: source.id })}
+							class="block px-3 py-2 rounded {data.selectedSource === source.id
+								? 'bg-blue-100 text-blue-700'
+								: 'text-gray-600 hover:bg-gray-100'}"
+						>
+							{source.short_name}
+						</a>
+					{/each}
+					<a
+						href={buildUrl({ category: data.selectedCategory, status: data.selectedStatus, source: 'none' })}
+						class="block px-3 py-2 rounded {data.selectedSource === 'none'
+							? 'bg-blue-100 text-blue-700'
+							: 'text-gray-600 hover:bg-gray-100'}"
+					>
+						No source
+					</a>
+				</nav>
+
 				<h2 class="font-medium text-gray-900 mb-4">Categories</h2>
 				<nav class="space-y-2">
 					<a
-						href={buildUrl({ status: data.selectedStatus })}
+						href={buildUrl({ status: data.selectedStatus, source: data.selectedSource })}
 						class="block px-3 py-2 rounded {data.selectedCategory === null
 							? 'bg-blue-100 text-blue-700'
 							: 'text-gray-600 hover:bg-gray-100'}"
@@ -96,7 +127,7 @@
 					</a>
 					{#each data.categories as category}
 						<a
-							href={buildUrl({ category, status: data.selectedStatus })}
+							href={buildUrl({ category, status: data.selectedStatus, source: data.selectedSource })}
 							class="block px-3 py-2 rounded {data.selectedCategory === category
 								? 'bg-blue-100 text-blue-700'
 								: 'text-gray-600 hover:bg-gray-100'}"
@@ -131,13 +162,18 @@
 										{question.text}
 									</h3>
 									<div class="flex items-center gap-4 text-sm text-gray-500">
+										{#if question.source_short_name}
+											<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+												{question.source_short_name}
+											</span>
+										{/if}
 										{#if question.category}
 											<span class="px-2 py-1 bg-gray-100 rounded text-xs">
 												{question.category}
 											</span>
 										{/if}
 										<span>
-											{question.response_type.replace('_', ' ')}
+											{question.response_type}
 										</span>
 										{#if data.isAdmin}
 											<span class="px-2 py-1 rounded text-xs {getStatusBadgeClass(question.status)}">
