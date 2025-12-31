@@ -318,10 +318,10 @@
 
 						{#if editResponseType === 'ordinal'}
 							<!-- Ordinal: numbered scale with up/down reordering -->
-							<div class="space-y-2 border-l-4 border-gradient-to-b from-red-300 via-yellow-300 to-green-300 pl-3 py-2 bg-gradient-to-b from-red-50 via-yellow-50 to-green-50 rounded-r">
+							<div class="space-y-2 bg-blue-50 rounded p-3 border border-blue-200">
 								{#each editOptionsList as option, i}
 									<div class="flex items-center gap-2">
-										<span class="w-6 text-center text-sm font-medium text-gray-500">{i + 1}.</span>
+										<span class="w-6 text-center text-sm font-medium text-blue-600">{i + 1}.</span>
 										<input
 											type="text"
 											value={option}
@@ -334,7 +334,7 @@
 												type="button"
 												onclick={() => moveOptionUp(i)}
 												disabled={i === 0}
-												class="p-0.5 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+												class="p-0.5 rounded hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed"
 												title="Move up"
 											>
 												<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -345,7 +345,7 @@
 												type="button"
 												onclick={() => moveOptionDown(i)}
 												disabled={i === editOptionsList.length - 1}
-												class="p-0.5 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+												class="p-0.5 rounded hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed"
 												title="Move down"
 											>
 												<svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -366,12 +366,8 @@
 										</button>
 									</div>
 								{/each}
-								<div class="text-xs text-gray-500 mt-2 flex items-center gap-2">
-									<span class="inline-block w-3 h-3 bg-red-200 rounded"></span>
-									Low
-									<span class="inline-block flex-1 h-1 bg-gradient-to-r from-red-200 via-yellow-200 to-green-200 rounded"></span>
-									High
-									<span class="inline-block w-3 h-3 bg-green-200 rounded"></span>
+								<div class="text-xs text-gray-500 mt-2">
+									Options are ordered — first option is lowest on the scale
 								</div>
 							</div>
 						{:else}
