@@ -171,19 +171,35 @@ export function arrayMode(answers: string[]): string | null {
 }
 
 // Calculate agreement score (0-5) for ordinal questions
-// Based on difference in normalized means
+// Uses power function to penalize larger differences more heavily
 export function ordinalAgreementScore(humanMean: number, aiMean: number): number {
 	// humanMean and aiMean are already normalized to 0-1
 	const diff = Math.abs(humanMean - aiMean);
+	// Power 1.5 curve: small diffs forgiven, large diffs penalized more
 	// diff of 0 = score of 5, diff of 1 = score of 0
-	return Math.round((1 - diff) * 50) / 10; // Round to 1 decimal
+	return Math.round(Math.pow(1 - diff, 1.5) * 50) / 10;
 }
 
 // Calculate consensus score (0-5) for ordinal questions
-// Based on how concentrated the AI answers are
-export function ordinalConsensusScore(normalizedStdDev: number): number {
-	// stdDev of 0 = score of 5, stdDev of 1 = score of 0
-	return Math.round((1 - Math.min(1, normalizedStdDev)) * 50) / 10;
+// Blends mode dominance (unanimity) with spread penalty
+export function ordinalConsensusScore(answers: string[], optionCount: number): number {
+	if (answers.length < 2) return 5; // Perfect consensus if only one answer
+
+	// Mode dominance (unanimity) - what percentage chose the most common answer
+	const counts = new Map<string, number>();
+	for (const a of answers) {
+		counts.set(a, (counts.get(a) || 0) + 1);
+	}
+	const maxCount = Math.max(...counts.values());
+	const unanimity = maxCount / answers.length;
+
+	// Spread penalty based on normalized std dev
+	const normalizedStdDev = arrayStdDevNormalized(answers, optionCount);
+	const spreadScore = 1 - Math.min(1, normalizedStdDev);
+
+	// Blend: 70% unanimity, 30% spread
+	const blended = unanimity * 0.7 + spreadScore * 0.3;
+	return Math.round(blended * 50) / 10;
 }
 
 // Calculate overlap between two distributions (0-1 scale)
@@ -265,8 +281,7 @@ export function computeQuestionStats(
 			if (humanMean !== null && aiMean !== null) {
 				humanAiScore = ordinalAgreementScore(humanMean, aiMean);
 			}
-			const normalizedStdDev = arrayStdDevNormalized(aiAnswers, q.options.length);
-			aiConsensusScore = ordinalConsensusScore(normalizedStdDev);
+			aiConsensusScore = ordinalConsensusScore(aiAnswers, q.options.length);
 		} else {
 			// Nominal: use distribution overlap
 			// Convert AI answers from 1-indexed numbers to option labels
