@@ -25,7 +25,7 @@ export interface QuestionStats {
 }
 
 // Cache version - increment when calculation method changes
-export const CACHE_VERSION = 2;
+export const CACHE_VERSION = 3;
 
 export interface SourceStats {
 	overallScore: number;           // 0-100: aggregate AI-human agreement
@@ -67,6 +67,24 @@ function keyToIndex(key: string, options: string[]): number {
 	// Otherwise look up by option label
 	const labelIdx = options.indexOf(key);
 	return labelIdx >= 0 ? labelIdx : -1;
+}
+
+// Normalize a distribution to use 1-indexed numeric keys
+// This ensures human distributions (which may use label keys) and AI distributions
+// (which use numeric keys) can be compared properly
+export function normalizeDistributionKeys(
+	dist: Record<string, number>,
+	options: string[]
+): Record<string, number> {
+	const normalized: Record<string, number> = {};
+	for (const [key, count] of Object.entries(dist)) {
+		const idx = keyToIndex(key, options);
+		if (idx >= 0) {
+			const numKey = String(idx + 1); // Convert to 1-indexed string
+			normalized[numKey] = (normalized[numKey] || 0) + count;
+		}
+	}
+	return normalized;
 }
 
 // Calculate normalized mean (0-1) from a distribution
@@ -180,11 +198,16 @@ export function arrayMode(answers: string[]): string | null {
 // Calculate agreement score (0-100) for ordinal questions using distribution overlap
 // This properly handles cases where means are similar but distributions differ
 // (e.g., AI picks middle while humans are spread across spectrum)
+// Both distributions are normalized to numeric keys before comparison
 export function ordinalAgreementScore(
 	humanDist: Record<string, number>,
-	aiDist: Record<string, number>
+	aiDist: Record<string, number>,
+	options?: string[]
 ): number {
-	const overlap = distributionOverlap(humanDist, aiDist);
+	// Normalize both distributions to numeric keys if options provided
+	const normalizedHuman = options ? normalizeDistributionKeys(humanDist, options) : humanDist;
+	const normalizedAi = options ? normalizeDistributionKeys(aiDist, options) : aiDist;
+	const overlap = distributionOverlap(normalizedHuman, normalizedAi);
 	return Math.round(overlap * 100);
 }
 
@@ -328,7 +351,7 @@ export function computeQuestionStats(
 			}
 
 			if (humanDist && Object.keys(aiDist).length > 0) {
-				humanAiScore = ordinalAgreementScore(humanDist, aiDist);
+				humanAiScore = ordinalAgreementScore(humanDist, aiDist, q.options);
 			}
 			aiAgreementScore = ordinalInternalAgreement(aiAnswers, q.options.length);
 

@@ -297,7 +297,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 					aiDist[ans] = (aiDist[ans] || 0) + 1;
 				}
 				if (Object.keys(aiDist).length > 0) {
-					humanAiScore = ordinalAgreementScore(humanDist, aiDist);
+					humanAiScore = ordinalAgreementScore(humanDist, aiDist, options);
 				}
 			} else {
 				// Nominal: convert AI answers to labels and build distribution

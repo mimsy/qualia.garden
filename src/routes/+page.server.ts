@@ -467,7 +467,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 				if (q.responseType === 'ordinal') {
 					// Build single-answer AI distribution for overlap calculation
 					const aiDist: Record<string, number> = { [answer]: 1 };
-					score = ordinalAgreementScore(humanDist, aiDist);
+					score = ordinalAgreementScore(humanDist, aiDist, q.options);
 				} else {
 					// Nominal: convert AI answer to label and compute overlap
 					const idx = parseInt(answer, 10) - 1;
