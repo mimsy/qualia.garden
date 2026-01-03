@@ -7,6 +7,8 @@ import { computeMedian, computeMode } from '$lib/db/types';
 import {
 	ordinalAgreementScore,
 	nominalAgreementScore,
+	ordinalConsensusScore,
+	nominalConsensusScore,
 	distributionMeanNormalized,
 	arrayMeanNormalized,
 	distributionMode,
@@ -138,6 +140,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			model: { ...model, supports_reasoning: Boolean(model.supports_reasoning), active: Boolean(model.active) },
 			questionCount: 0,
 			overallHumanAlignment: null,
+			overallSelfConsistency: null,
 			categoryScores: [],
 			mostSimilar: [],
 			mostDifferent: [],
@@ -186,15 +189,34 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		}
 	}
 
-	// Compute this model's aggregated response per question
+	// Compute this model's aggregated response per question and self-consistency
 	const modelResponses: Record<string, string | null> = {};
+	const questionSelfConsistency: Record<string, number> = {};
+
 	for (const [qId, answers] of responsesByQuestion) {
 		const q = questionMap.get(qId);
 		if (!q) continue;
+
 		modelResponses[qId] = q.response_type === 'ordinal'
 			? computeMedian(answers)
 			: computeMode(answers);
+
+		// Compute self-consistency for this question
+		const options = q.options ? JSON.parse(q.options) as string[] : [];
+		if (answers.length >= 2 && options.length > 0) {
+			questionSelfConsistency[qId] = q.response_type === 'ordinal'
+				? ordinalConsensusScore(answers, options.length)
+				: nominalConsensusScore(answers);
+		} else if (answers.length === 1) {
+			questionSelfConsistency[qId] = 5; // Perfect consistency with one sample
+		}
 	}
+
+	// Compute overall self-consistency (average across questions)
+	const consistencyValues = Object.values(questionSelfConsistency);
+	const overallSelfConsistency = consistencyValues.length > 0
+		? Math.round((consistencyValues.reduce((a, b) => a + b, 0) / consistencyValues.length) * 10) / 10
+		: null;
 
 	// Compute per-question human alignment scores
 	const questionScores: QuestionWithScore[] = [];
@@ -379,6 +401,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		questionCount: questionIds.length,
 		questionsWithHumanData: questionsWithHumanData.length,
 		overallHumanAlignment,
+		overallSelfConsistency,
 		categoryScores,
 		mostSimilar,
 		mostDifferent,

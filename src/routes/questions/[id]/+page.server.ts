@@ -6,6 +6,14 @@ import type { PageServerLoad, Actions } from './$types';
 import { getModels, updateQuestion, createPollBatch } from '$lib/db/queries';
 import type { QuestionStatus, Model, AggregatedResponse } from '$lib/db/types';
 import { computeMedian, computeMode } from '$lib/db/types';
+import {
+	distributionMeanNormalized,
+	arrayMeanNormalized,
+	ordinalAgreementScore,
+	nominalAgreementScore,
+	ordinalConsensusScore,
+	nominalConsensusScore
+} from '$lib/alignment';
 
 interface PollResponseRow {
 	model_id: string;
@@ -254,6 +262,81 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		...new Set(humanDistributions.filter((d) => d.gender).map((d) => d.gender as string))
 	].sort();
 
+	// Compute question-level scores
+	let humanAiScore: number | null = null;
+	let aiConsensusScore: number | null = null;
+	const modelSelfConsistency: Record<string, number> = {};
+
+	// Get the overall human distribution (no demographic filters)
+	const overallHumanDist = humanDistributions.find(
+		(d) => !d.continent && !d.education_level && !d.age_group && !d.gender
+	);
+
+	if (options && respondedModels.length > 0) {
+		// Get all aggregated answers for AI consensus
+		const allAggregatedAnswers = respondedModels
+			.map((r) => r.aggregated_answer)
+			.filter((a): a is string => a !== null);
+
+		// Compute AI consensus score
+		if (allAggregatedAnswers.length >= 2) {
+			aiConsensusScore =
+				question.response_type === 'ordinal'
+					? ordinalConsensusScore(allAggregatedAnswers, options.length)
+					: nominalConsensusScore(allAggregatedAnswers);
+		} else if (allAggregatedAnswers.length === 1) {
+			aiConsensusScore = 5; // Perfect consensus with only one model
+		}
+
+		// Compute human-AI agreement score (using overall human distribution)
+		if (overallHumanDist) {
+			const humanDist = JSON.parse(overallHumanDist.distribution) as Record<string, number>;
+
+			if (question.response_type === 'ordinal') {
+				const humanMean = distributionMeanNormalized(humanDist, options);
+				const aiMean = arrayMeanNormalized(allAggregatedAnswers, options.length);
+				if (humanMean !== null && aiMean !== null) {
+					humanAiScore = ordinalAgreementScore(humanMean, aiMean);
+				}
+			} else {
+				// Nominal: convert AI answers to labels and build distribution
+				const aiAnswersLabeled = allAggregatedAnswers.map((ans) => {
+					const idx = parseInt(ans, 10) - 1;
+					return idx >= 0 && idx < options.length ? options[idx] : ans;
+				});
+				const aiDist: Record<string, number> = {};
+				for (const ans of aiAnswersLabeled) {
+					aiDist[ans] = (aiDist[ans] || 0) + 1;
+				}
+
+				// Convert human distribution keys to labels
+				const humanDistLabeled: Record<string, number> = {};
+				for (const [key, count] of Object.entries(humanDist)) {
+					const idx = parseInt(key, 10) - 1;
+					const label = idx >= 0 && idx < options.length ? options[idx] : key;
+					humanDistLabeled[label] = (humanDistLabeled[label] || 0) + count;
+				}
+				humanAiScore = nominalAgreementScore(humanDistLabeled, aiDist);
+			}
+		}
+
+		// Compute per-model self-consistency scores
+		for (const response of aggregatedResponses) {
+			const answers = response.samples
+				.map((s) => s.parsed_answer)
+				.filter((a): a is string => a !== null);
+
+			if (answers.length < 2) {
+				modelSelfConsistency[response.model_id] = 5; // Perfect if only one sample
+			} else {
+				modelSelfConsistency[response.model_id] =
+					question.response_type === 'ordinal'
+						? ordinalConsensusScore(answers, options.length)
+						: nominalConsensusScore(answers);
+			}
+		}
+	}
+
 	// For admins: load all polls (for history) and active models (for poll trigger)
 	let allPolls: PollWithDetails[] = [];
 	let availableModels: Model[] = [];
@@ -308,6 +391,9 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		educationLevels,
 		ageGroups,
 		genders,
+		humanAiScore,
+		aiConsensusScore,
+		modelSelfConsistency,
 		allPolls,
 		availableModels,
 		categories

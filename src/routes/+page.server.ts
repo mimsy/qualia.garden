@@ -9,6 +9,10 @@ import {
 	getCacheKey,
 	getCachedSourceStats,
 	setCachedSourceStats,
+	distributionMeanNormalized,
+	arrayMeanNormalized,
+	ordinalAgreementScore,
+	nominalAgreementScore,
 	type QuestionMeta,
 	type SourceStats,
 	type QuestionStats
@@ -48,6 +52,13 @@ interface HumanDistributionRow {
 	distribution: string;
 }
 
+interface ExtremeQuestion {
+	id: string;
+	text: string;
+	score: number;
+	isHighAgreement: boolean;
+}
+
 export interface SourceWithStats {
 	id: string;
 	name: string;
@@ -56,16 +67,62 @@ export interface SourceWithStats {
 	sample_size: number | null;
 	year_range: string | null;
 	questionCount: number;
-	overallScore: number | null;
+	humanAiScore: number | null;
+	aiConsensusScore: number | null;
 	modelCount: number;
-	// Highlight questions (lowest scores = most interesting disagreement)
-	lowestHumanAiScore: { id: string; text: string; score: number } | null;
-	lowestAiConsensus: { id: string; text: string; score: number } | null;
+	extremeQuestion: ExtremeQuestion | null;
+}
+
+export interface CategoryStats {
+	category: string;
+	humanAiScore: number;
+	aiConsensusScore: number;
+	questionCount: number;
+	modelCount: number;
+	extremeQuestion: ExtremeQuestion | null;
+}
+
+export interface ModelRanking {
+	id: string;
+	name: string;
+	family: string;
+	humanAlignmentScore: number;
+	questionsWithHumanData: number;
+}
+
+// Find the question with score furthest from 2.5 (most extreme agreement or disagreement)
+function findMostExtreme(
+	stats: QuestionStats[],
+	questionTextMap: Map<string, string>
+): ExtremeQuestion | null {
+	let mostExtreme: QuestionStats | null = null;
+	let maxDistance = -1;
+
+	for (const q of stats) {
+		if (q.humanAiScore === 0) continue;
+		const distance = Math.abs(q.humanAiScore - 2.5);
+		if (distance > maxDistance) {
+			maxDistance = distance;
+			mostExtreme = q;
+		}
+	}
+
+	if (!mostExtreme) return null;
+
+	const text = questionTextMap.get(mostExtreme.questionId);
+	if (!text) return null;
+
+	return {
+		id: mostExtreme.questionId,
+		text,
+		score: mostExtreme.humanAiScore,
+		isHighAgreement: mostExtreme.humanAiScore > 2.5
+	};
 }
 
 export const load: PageServerLoad = async ({ platform }) => {
 	if (!platform?.env?.DB) {
-		return { sources: [], unbenchmarkedQuestions: [] };
+		return { sources: [], categories: [], topModels: [], bottomModels: [], unbenchmarkedQuestions: [] };
 	}
 
 	const db = platform.env.DB;
@@ -94,17 +151,29 @@ export const load: PageServerLoad = async ({ platform }) => {
 		.all<QuestionRow>();
 
 	const questionsBySource = new Map<string, Array<QuestionMeta & { text: string }>>();
+	const questionTextMap = new Map<string, string>();
+	const questionCategoryMap = new Map<string, string>();
+	const allBenchmarkedQuestions: Array<QuestionMeta & { text: string }> = [];
+
 	for (const q of questionsResult.results) {
+		questionTextMap.set(q.id, q.text);
+		if (q.category) {
+			questionCategoryMap.set(q.id, q.category);
+		}
+
 		if (q.benchmark_source_id) {
-			if (!questionsBySource.has(q.benchmark_source_id)) {
-				questionsBySource.set(q.benchmark_source_id, []);
-			}
-			questionsBySource.get(q.benchmark_source_id)!.push({
+			const questionMeta = {
 				id: q.id,
 				text: q.text,
 				options: q.options ? JSON.parse(q.options) as string[] : [],
 				responseType: q.response_type
-			});
+			};
+
+			if (!questionsBySource.has(q.benchmark_source_id)) {
+				questionsBySource.set(q.benchmark_source_id, []);
+			}
+			questionsBySource.get(q.benchmark_source_id)!.push(questionMeta);
+			allBenchmarkedQuestions.push(questionMeta);
 		}
 	}
 
@@ -239,43 +308,17 @@ export const load: PageServerLoad = async ({ platform }) => {
 			}
 		}
 
-		// Find highlight questions (lowest scores = most interesting disagreement)
-		let lowestHumanAiScore: SourceWithStats['lowestHumanAiScore'] = null;
-		let lowestAiConsensus: SourceWithStats['lowestAiConsensus'] = null;
-
+		// Compute average AI consensus score
+		let aiConsensusScore: number | null = null;
 		if (sourceStats && sourceStats.questionStats.length > 0) {
-			// Lowest AI-human agreement score (most disagreement with humans)
-			const sortedByHumanAi = [...sourceStats.questionStats]
-				.filter(q => q.humanAiScore > 0) // Has data
-				.sort((a, b) => a.humanAiScore - b.humanAiScore); // Ascending (lowest first)
-			if (sortedByHumanAi.length > 0) {
-				const q = sortedByHumanAi[0];
-				const qInfo = questions.find(x => x.id === q.questionId);
-				if (qInfo) {
-					lowestHumanAiScore = {
-						id: q.questionId,
-						text: qInfo.text,
-						score: q.humanAiScore
-					};
-				}
-			}
-
-			// Lowest AI consensus score (most disagreement among AIs)
-			const sortedByConsensus = [...sourceStats.questionStats]
-				.filter(q => q.modelCount >= 2) // Need multiple models for meaningful consensus
-				.sort((a, b) => a.aiConsensusScore - b.aiConsensusScore); // Ascending (lowest first)
-			if (sortedByConsensus.length > 0) {
-				const q = sortedByConsensus[0];
-				const qInfo = questions.find(x => x.id === q.questionId);
-				if (qInfo) {
-					lowestAiConsensus = {
-						id: q.questionId,
-						text: qInfo.text,
-						score: q.aiConsensusScore
-					};
-				}
-			}
+			const totalConsensus = sourceStats.questionStats.reduce((sum, q) => sum + q.aiConsensusScore, 0);
+			aiConsensusScore = Math.round((totalConsensus / sourceStats.questionStats.length) * 10) / 10;
 		}
+
+		// Find the most extreme question (furthest from 2.5)
+		const extremeQuestion = sourceStats
+			? findMostExtreme(sourceStats.questionStats, questionTextMap)
+			: null;
 
 		sources.push({
 			id: source.id,
@@ -285,12 +328,197 @@ export const load: PageServerLoad = async ({ platform }) => {
 			sample_size: source.sample_size,
 			year_range: source.year_range,
 			questionCount: source.question_count,
-			overallScore: sourceStats?.overallScore ?? null,
+			humanAiScore: sourceStats?.overallScore ?? null,
+			aiConsensusScore,
 			modelCount: sourceStats?.modelCount ?? 0,
-			lowestHumanAiScore,
-			lowestAiConsensus
+			extremeQuestion
 		});
 	}
+
+	// Compute category aggregations
+	// First, collect all question stats across all sources
+	const allQuestionStats = new Map<string, QuestionStats>();
+	for (const source of sourcesResult.results) {
+		const cacheKey = getCacheKey(source.id, 'full');
+		const sourceStats = await getCachedSourceStats(kv, cacheKey);
+		if (sourceStats) {
+			for (const stat of sourceStats.questionStats) {
+				allQuestionStats.set(stat.questionId, stat);
+			}
+		}
+	}
+
+	// Group stats by category
+	const categoryAggregates = new Map<string, {
+		totalHumanAiScore: number;
+		totalAiConsensusScore: number;
+		count: number;
+		modelIds: Set<string>;
+		stats: QuestionStats[];
+	}>();
+
+	for (const [questionId, stat] of allQuestionStats) {
+		const category = questionCategoryMap.get(questionId);
+		if (!category) continue;
+
+		if (!categoryAggregates.has(category)) {
+			categoryAggregates.set(category, {
+				totalHumanAiScore: 0,
+				totalAiConsensusScore: 0,
+				count: 0,
+				modelIds: new Set(),
+				stats: []
+			});
+		}
+		const agg = categoryAggregates.get(category)!;
+		agg.totalHumanAiScore += stat.humanAiScore;
+		agg.totalAiConsensusScore += stat.aiConsensusScore;
+		agg.count++;
+		agg.stats.push(stat);
+	}
+
+	// Get model counts per category
+	const categoryModelCounts = await db
+		.prepare(`
+			SELECT
+				q.category,
+				COUNT(DISTINCT m.id) as model_count
+			FROM questions q
+			JOIN polls p ON q.id = p.question_id
+			JOIN models m ON p.model_id = m.id
+			WHERE q.status = 'published'
+				AND q.benchmark_source_id IS NOT NULL
+				AND q.category IS NOT NULL
+				AND p.status = 'complete'
+			GROUP BY q.category
+		`)
+		.all<{ category: string; model_count: number }>();
+
+	const modelCountByCategory = new Map<string, number>();
+	for (const row of categoryModelCounts.results) {
+		modelCountByCategory.set(row.category, row.model_count);
+	}
+
+	// Build category stats
+	const categories: CategoryStats[] = [];
+	for (const [category, agg] of categoryAggregates) {
+		if (agg.count === 0) continue;
+		categories.push({
+			category,
+			humanAiScore: Math.round((agg.totalHumanAiScore / agg.count) * 10) / 10,
+			aiConsensusScore: Math.round((agg.totalAiConsensusScore / agg.count) * 10) / 10,
+			questionCount: agg.count,
+			modelCount: modelCountByCategory.get(category) ?? 0,
+			extremeQuestion: findMostExtreme(agg.stats, questionTextMap)
+		});
+	}
+	categories.sort((a, b) => a.category.localeCompare(b.category));
+
+	// Compute model rankings
+	// Group all responses by model and compute per-model alignment scores
+	const modelAlignmentData = new Map<string, {
+		name: string;
+		family: string;
+		totalScore: number;
+		questionCount: number;
+	}>();
+
+	// Get model family info
+	const modelsResult = await db
+		.prepare(`SELECT id, name, family FROM models WHERE active = 1`)
+		.all<{ id: string; name: string; family: string }>();
+
+	const modelFamilies = new Map<string, string>();
+	for (const m of modelsResult.results) {
+		modelFamilies.set(m.id, m.family);
+	}
+
+	// For each model, compute their average humanAiScore across all questions with human data
+	// We need to get individual model responses and compare to human data
+	// Merge all human distributions
+	const allHumanDist = new Map<string, Record<string, number>>();
+	for (const [, sourceDist] of humanBySource) {
+		for (const [qId, dist] of sourceDist) {
+			allHumanDist.set(qId, dist);
+		}
+	}
+
+	// Get all model responses (not aggregated) for computing per-model scores
+	for (const [, sourceResponses] of responsesBySource) {
+		for (const [modelId, modelData] of sourceResponses) {
+			// Aggregate this model's responses to single answers per question
+			const aggregatedResponses: Record<string, string | null> = {};
+			for (const [questionId, { answers, responseType }] of modelData.byQuestion) {
+				aggregatedResponses[questionId] = responseType === 'ordinal'
+					? computeMedian(answers)
+					: computeMode(answers);
+			}
+
+			// Compute alignment score for this model
+			for (const [questionId, answer] of Object.entries(aggregatedResponses)) {
+				if (!answer) continue;
+				const humanDist = allHumanDist.get(questionId);
+				if (!humanDist) continue;
+
+				const q = allBenchmarkedQuestions.find(x => x.id === questionId);
+				if (!q) continue;
+
+				let score: number;
+				if (q.responseType === 'ordinal') {
+					const humanMean = distributionMeanNormalized(humanDist, q.options);
+					const aiMean = arrayMeanNormalized([answer], q.options.length);
+					if (humanMean !== null && aiMean !== null) {
+						score = ordinalAgreementScore(humanMean, aiMean);
+					} else {
+						continue;
+					}
+				} else {
+					// Nominal: convert AI answer to label and compute overlap
+					const idx = parseInt(answer, 10) - 1;
+					const label = (idx >= 0 && idx < q.options.length) ? q.options[idx] : answer;
+					const aiDist: Record<string, number> = { [label]: 1 };
+
+					// Convert human distribution keys to labels
+					const humanDistLabeled: Record<string, number> = {};
+					for (const [key, count] of Object.entries(humanDist)) {
+						const keyIdx = parseInt(key, 10) - 1;
+						const keyLabel = (keyIdx >= 0 && keyIdx < q.options.length) ? q.options[keyIdx] : key;
+						humanDistLabeled[keyLabel] = (humanDistLabeled[keyLabel] || 0) + count;
+					}
+					score = nominalAgreementScore(humanDistLabeled, aiDist);
+				}
+
+				if (!modelAlignmentData.has(modelId)) {
+					modelAlignmentData.set(modelId, {
+						name: modelData.name,
+						family: modelFamilies.get(modelId) ?? '',
+						totalScore: 0,
+						questionCount: 0
+					});
+				}
+				const data = modelAlignmentData.get(modelId)!;
+				data.totalScore += score;
+				data.questionCount++;
+			}
+		}
+	}
+
+	// Build rankings
+	const modelRankings: ModelRanking[] = [];
+	for (const [modelId, data] of modelAlignmentData) {
+		if (data.questionCount === 0) continue;
+		modelRankings.push({
+			id: modelId,
+			name: data.name,
+			family: data.family,
+			humanAlignmentScore: Math.round((data.totalScore / data.questionCount) * 10) / 10,
+			questionsWithHumanData: data.questionCount
+		});
+	}
+	modelRankings.sort((a, b) => b.humanAlignmentScore - a.humanAlignmentScore);
+
+	const topModels = modelRankings.slice(0, 3);
+	const bottomModels = modelRankings.slice(-3).reverse();
 
 	// Get unbenchmarked questions (questions without a benchmark source)
 	const unbenchmarkedResult = await db
@@ -312,6 +540,9 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	return {
 		sources,
+		categories,
+		topModels,
+		bottomModels,
 		unbenchmarkedQuestions: unbenchmarkedResult.results
 	};
 };

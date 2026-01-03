@@ -67,12 +67,15 @@
 		<!-- Model Header -->
 		<div class="bg-white rounded-xl border border-slate-200 p-6 mb-8">
 			<div class="flex items-start justify-between gap-4">
-				<div>
+				<div class="flex-1">
 					<div class="flex items-center gap-3 flex-wrap mb-3">
 						<h1 class="text-2xl font-bold text-slate-900 tracking-tight">{data.model.name}</h1>
-						<span class="px-2.5 py-1 bg-slate-100 text-slate-600 text-sm rounded-lg capitalize font-medium">
+						<a
+							href="/models/families/{encodeURIComponent(data.model.family)}"
+							class="px-2.5 py-1 bg-slate-100 text-slate-600 text-sm rounded-lg capitalize font-medium hover:bg-slate-200 transition-colors"
+						>
 							{data.model.family}
-						</span>
+						</a>
 						{#if data.model.supports_reasoning}
 							<span class="text-xs text-violet-600 bg-violet-50 px-2 py-1 rounded-md font-medium">
 								reasoning
@@ -93,6 +96,28 @@
 						{/if}
 					</p>
 				</div>
+
+				<!-- Quick Stats -->
+				{#if data.overallHumanAlignment !== null || data.overallSelfConsistency !== null}
+					<div class="flex gap-6">
+						{#if data.overallHumanAlignment !== null}
+							<div class="text-center">
+								<div class="text-xs text-slate-500 mb-1">Human Alignment</div>
+								<div class="text-2xl font-bold {getScoreColor(data.overallHumanAlignment)}">
+									{data.overallHumanAlignment.toFixed(1)}
+								</div>
+							</div>
+						{/if}
+						{#if data.overallSelfConsistency !== null}
+							<div class="text-center">
+								<div class="text-xs text-slate-500 mb-1">Self-Consistency</div>
+								<div class="text-2xl font-bold {getScoreColor(data.overallSelfConsistency)}">
+									{data.overallSelfConsistency.toFixed(1)}
+								</div>
+							</div>
+						{/if}
+					</div>
+				{/if}
 			</div>
 		</div>
 

@@ -60,7 +60,15 @@
 				{@const familyModels = modelsByFamily()[family]}
 				<section>
 					<div class="flex items-baseline justify-between mb-5">
-						<h2 class="text-xl font-semibold text-slate-800 capitalize">{family}</h2>
+						<a
+							href="/models/families/{encodeURIComponent(family)}"
+							class="text-xl font-semibold text-slate-800 capitalize hover:text-slate-600 transition-colors group flex items-center gap-2"
+						>
+							{family}
+							<svg class="w-4 h-4 text-slate-300 group-hover:text-slate-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+							</svg>
+						</a>
 						<span class="text-sm text-slate-400">{familyModels.length} model{familyModels.length === 1 ? '' : 's'}</span>
 					</div>
 					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
