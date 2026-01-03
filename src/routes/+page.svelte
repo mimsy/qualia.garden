@@ -123,7 +123,7 @@
 									<div class="flex-1">
 										<div class="flex items-center justify-between mb-1">
 											<span class="text-xs text-slate-500">AI-Human</span>
-											<span class="text-sm font-semibold {getScoreColor(source.humanAiScore)}">{Math.round(source.humanAiScore)}%</span>
+											<span class="text-sm font-semibold {getScoreColor(source.humanAiScore)}">{Math.round(source.humanAiScore)}</span>
 										</div>
 										<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
 											<div
@@ -136,7 +136,7 @@
 										<div class="flex-1">
 											<div class="flex items-center justify-between mb-1">
 												<span class="text-xs text-slate-500">AI Agreement</span>
-												<span class="text-sm font-semibold {getScoreColor(source.aiAgreementScore)}">{Math.round(source.aiAgreementScore)}%</span>
+												<span class="text-sm font-semibold {getScoreColor(source.aiAgreementScore)}">{Math.round(source.aiAgreementScore)}</span>
 											</div>
 											<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
 												<div
@@ -166,14 +166,14 @@
 												<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
 											</svg>
 											<span class="text-xs font-medium {getScoreColor(source.extremeQuestion.score)}">
-												Strong Alignment · {Math.round(source.extremeQuestion.score)}%
+												Strong Alignment · {Math.round(source.extremeQuestion.score)}
 											</span>
 										{:else}
 											<svg class="w-3.5 h-3.5 {getScoreColor(source.extremeQuestion.score)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 												<path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
 											</svg>
 											<span class="text-xs font-medium {getScoreColor(source.extremeQuestion.score)}">
-												Divergence · {Math.round(source.extremeQuestion.score)}%
+												Divergence · {Math.round(source.extremeQuestion.score)}
 											</span>
 										{/if}
 									</div>
@@ -225,7 +225,7 @@
 									<div class="flex-1">
 										<div class="flex items-center justify-between mb-1">
 											<span class="text-xs text-slate-500">AI-Human</span>
-											<span class="text-sm font-semibold {getScoreColor(category.humanAiScore)}">{Math.round(category.humanAiScore)}%</span>
+											<span class="text-sm font-semibold {getScoreColor(category.humanAiScore)}">{Math.round(category.humanAiScore)}</span>
 										</div>
 										<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
 											<div
@@ -237,7 +237,7 @@
 									<div class="flex-1">
 										<div class="flex items-center justify-between mb-1">
 											<span class="text-xs text-slate-500">AI Agreement</span>
-											<span class="text-sm font-semibold {getScoreColor(category.aiAgreementScore)}">{Math.round(category.aiAgreementScore)}%</span>
+											<span class="text-sm font-semibold {getScoreColor(category.aiAgreementScore)}">{Math.round(category.aiAgreementScore)}</span>
 										</div>
 										<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
 											<div
@@ -261,14 +261,14 @@
 													<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
 												</svg>
 												<span class="text-xs font-medium {getScoreColor(category.extremeQuestion.score)}">
-													{Math.round(category.extremeQuestion.score)}%
+													{Math.round(category.extremeQuestion.score)}
 												</span>
 											{:else}
 												<svg class="w-3 h-3 {getScoreColor(category.extremeQuestion.score)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 													<path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
 												</svg>
 												<span class="text-xs font-medium {getScoreColor(category.extremeQuestion.score)}">
-													{Math.round(category.extremeQuestion.score)}%
+													{Math.round(category.extremeQuestion.score)}
 												</span>
 											{/if}
 										</div>
@@ -315,7 +315,7 @@
 												<div class="text-xs text-slate-400">{model.family} · {model.questionsWithHumanData} questions</div>
 											</div>
 											<div class="text-right">
-												<div class="font-semibold {getScoreColor(model.humanAlignmentScore)}">{Math.round(model.humanAlignmentScore)}%</div>
+												<div class="font-semibold {getScoreColor(model.humanAlignmentScore)}">{Math.round(model.humanAlignmentScore)}</div>
 											</div>
 										</a>
 									{/each}
@@ -346,7 +346,7 @@
 												<div class="text-xs text-slate-400">{model.family} · {model.questionsWithHumanData} questions</div>
 											</div>
 											<div class="text-right">
-												<div class="font-semibold {getScoreColor(model.humanAlignmentScore)}">{Math.round(model.humanAlignmentScore)}%</div>
+												<div class="font-semibold {getScoreColor(model.humanAlignmentScore)}">{Math.round(model.humanAlignmentScore)}</div>
 											</div>
 										</a>
 									{/each}

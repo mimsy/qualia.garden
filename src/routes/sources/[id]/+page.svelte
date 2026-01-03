@@ -121,7 +121,7 @@
 							<div class="text-center">
 								<div class="text-xs text-slate-500 mb-1">AI-Human</div>
 								<div class="text-2xl font-bold {getScoreColor(data.overallScore)}">
-									{Math.round(data.overallScore)}%
+									{Math.round(data.overallScore)}
 								</div>
 								<div class="text-xs {getScoreColor(data.overallScore)} font-medium">
 									{getScoreLabel(data.overallScore)}
@@ -132,7 +132,7 @@
 							<div class="text-center">
 								<div class="text-xs text-slate-500 mb-1">AI Agreement</div>
 								<div class="text-2xl font-bold {getScoreColor(data.overallAiAgreement)}">
-									{Math.round(data.overallAiAgreement)}%
+									{Math.round(data.overallAiAgreement)}
 								</div>
 								<div class="text-xs {getScoreColor(data.overallAiAgreement)} font-medium">
 									{getScoreLabel(data.overallAiAgreement)}
@@ -206,7 +206,7 @@
 								<div class="text-xs text-slate-400 mb-1.5">AI-Human</div>
 								{#if question.humanAiScore > 0}
 									<div class="text-xl font-bold {getScoreColor(question.humanAiScore)}">
-										{Math.round(question.humanAiScore)}%
+										{Math.round(question.humanAiScore)}
 									</div>
 									<div class="text-xs {getScoreColor(question.humanAiScore)} font-medium">{getScoreLabel(question.humanAiScore)}</div>
 								{:else}
@@ -218,7 +218,7 @@
 								<div class="text-xs text-slate-400 mb-1.5">AI Agreement</div>
 								{#if question.modelCount >= 2}
 									<div class="text-xl font-bold {getScoreColor(question.aiAgreementScore)}">
-										{Math.round(question.aiAgreementScore)}%
+										{Math.round(question.aiAgreementScore)}
 									</div>
 									<div class="text-xs {getScoreColor(question.aiAgreementScore)} font-medium">{getScoreLabel(question.aiAgreementScore)}</div>
 								{:else}

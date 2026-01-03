@@ -104,7 +104,7 @@
 							<div class="text-center">
 								<div class="text-xs text-slate-500 mb-1">Human Alignment</div>
 								<div class="text-2xl font-bold {getScoreColor(data.overallHumanAlignment)}">
-									{Math.round(data.overallHumanAlignment)}%
+									{Math.round(data.overallHumanAlignment)}
 								</div>
 							</div>
 						{/if}
@@ -112,7 +112,7 @@
 							<div class="text-center">
 								<div class="text-xs text-slate-500 mb-1">Self-Consistency</div>
 								<div class="text-2xl font-bold {getScoreColor(data.overallSelfConsistency)}">
-									{Math.round(data.overallSelfConsistency)}%
+									{Math.round(data.overallSelfConsistency)}
 								</div>
 							</div>
 						{/if}
@@ -136,7 +136,7 @@
 							<div class="text-sm text-slate-500 mb-2">Overall Score</div>
 							<div class="flex items-baseline gap-2">
 								<span class="text-3xl font-bold {getScoreColor(data.overallHumanAlignment)}">
-									{Math.round(data.overallHumanAlignment)}%
+									{Math.round(data.overallHumanAlignment)}
 								</span>
 								<span class="text-sm {getScoreColor(data.overallHumanAlignment)} font-medium ml-1">
 									{getScoreLabel(data.overallHumanAlignment)}
@@ -160,7 +160,7 @@
 											<div class="flex items-center gap-3">
 												<span class="text-xs text-slate-400">{cat.questionCount}q</span>
 												<span class="text-sm font-semibold {getScoreColor(cat.score)} w-14 text-right">
-													{Math.round(cat.score)}%
+													{Math.round(cat.score)}
 												</span>
 											</div>
 										</div>
@@ -192,7 +192,7 @@
 										<div class="flex items-center gap-3">
 											<span class="text-xs text-slate-400">{model.sharedQuestions}q</span>
 											<span class="text-sm font-semibold text-emerald-600 w-12 text-right">
-												{model.agreement.toFixed(0)}%
+												{model.agreement.toFixed(0)}
 											</span>
 										</div>
 									</a>
@@ -212,7 +212,7 @@
 										<div class="flex items-center gap-3">
 											<span class="text-xs text-slate-400">{model.sharedQuestions}q</span>
 											<span class="text-sm font-semibold text-orange-500 w-12 text-right">
-												{model.agreement.toFixed(0)}%
+												{model.agreement.toFixed(0)}
 											</span>
 										</div>
 									</a>
@@ -257,7 +257,7 @@
 									</div>
 									<div class="shrink-0 text-right">
 										<div class="text-lg font-bold {getScoreColor(q.humanAiScore)}">
-											{Math.round(q.humanAiScore)}%
+											{Math.round(q.humanAiScore)}
 										</div>
 										<div class="text-xs {getScoreColor(q.humanAiScore)}">{getScoreLabel(q.humanAiScore)}</div>
 									</div>

@@ -46,7 +46,6 @@
 		<span class="font-semibold {sizeClasses[size].text} {colorClasses[level].split(' ')[0]}">
 			{Math.round(score)}
 		</span>
-		<span class="text-xs text-gray-500">%</span>
 		<span class="text-xs {colorClasses[level].split(' ')[0]}">{displayLabel}</span>
 	</div>
 	{#if showBar}

@@ -486,7 +486,7 @@
 						<div class="text-sm text-gray-500 mb-2">AI-Human Agreement</div>
 						{#if data.humanAiScore !== null}
 							<div class="text-3xl font-bold {getScoreColor(data.humanAiScore)}">
-								{Math.round(data.humanAiScore)}%
+								{Math.round(data.humanAiScore)}
 							</div>
 							<div class="text-xs text-gray-400 mt-1">{getScoreLabel(data.humanAiScore)}</div>
 							<div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -506,7 +506,7 @@
 						<div class="text-sm text-gray-500 mb-2">AI Agreement</div>
 						{#if data.aiConsensusScore !== null}
 							<div class="text-3xl font-bold {getScoreColor(data.aiConsensusScore)}">
-								{Math.round(data.aiConsensusScore)}%
+								{Math.round(data.aiConsensusScore)}
 							</div>
 							<div class="text-xs text-gray-400 mt-1">{getScoreLabel(data.aiConsensusScore)}</div>
 							<div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -526,7 +526,7 @@
 						<div class="text-sm text-gray-500 mb-2">Avg Self-Consistency</div>
 						{#if avgSelfConsistency !== null}
 							<div class="text-3xl font-bold {getScoreColor(avgSelfConsistency)}">
-								{Math.round(avgSelfConsistency)}%
+								{Math.round(avgSelfConsistency)}
 							</div>
 							<div class="text-xs text-gray-400 mt-1">{getScoreLabel(avgSelfConsistency)}</div>
 							<div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -770,8 +770,8 @@
 								<div class="flex items-center gap-4">
 									{#if data.modelSelfConsistency[response.model_id] !== undefined}
 										{@const sc = data.modelSelfConsistency[response.model_id]}
-										<span class="text-xs {getScoreColor(sc)}" title="Self-consistency: {Math.round(sc)}%">
-											{Math.round(sc)}%
+										<span class="text-xs {getScoreColor(sc)}" title="Self-consistency: {Math.round(sc)}">
+											{Math.round(sc)}
 										</span>
 									{/if}
 									{#if response.complete_count > 0 && response.aggregated_answer}
