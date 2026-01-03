@@ -10,6 +10,7 @@ import {
 	getCacheKey,
 	getCachedSourceStats,
 	setCachedSourceStats,
+	CACHE_VERSION,
 	type QuestionMeta,
 	type SourceStats
 } from '$lib/alignment';
@@ -114,12 +115,11 @@ export const load: PageServerLoad = async ({ params, platform, url }) => {
 		responseType: q.response_type
 	}));
 
-	// Check cache (validate format - old cache may have different shape)
+	// Check cache (validate format and version)
 	const cacheKey = getCacheKey(sourceId, 'full');
 	let sourceStats = await getCachedSourceStats(kv, cacheKey);
-	// Invalidate cache if it has old format (missing questionStats or using old divergence fields)
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	if (sourceStats && (!sourceStats.questionStats || (sourceStats.questionStats[0] as any)?.humanAiDivergence !== undefined)) {
+	// Invalidate cache if version mismatch or old format
+	if (sourceStats && sourceStats.cacheVersion !== CACHE_VERSION) {
 		sourceStats = null;
 	}
 
@@ -224,7 +224,8 @@ export const load: PageServerLoad = async ({ params, platform, url }) => {
 			questionStats,
 			modelCount: modelResponses.size,
 			questionCount: questions.length,
-			computedAt: new Date().toISOString()
+			computedAt: new Date().toISOString(),
+			cacheVersion: CACHE_VERSION
 		};
 
 		await setCachedSourceStats(kv, cacheKey, sourceStats);

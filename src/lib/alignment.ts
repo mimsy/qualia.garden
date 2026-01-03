@@ -24,6 +24,9 @@ export interface QuestionStats {
 	modelCount: number;
 }
 
+// Cache version - increment when calculation method changes
+export const CACHE_VERSION = 2;
+
 export interface SourceStats {
 	overallScore: number;           // 0-100: aggregate AI-human agreement
 	overallAiAgreement: number;     // 0-100: aggregate AI agreement
@@ -32,6 +35,7 @@ export interface SourceStats {
 	modelCount: number;
 	questionCount: number;
 	computedAt: string;
+	cacheVersion?: number;          // Added in v2 for cache invalidation
 }
 
 // Score display helpers (0-100 scale)

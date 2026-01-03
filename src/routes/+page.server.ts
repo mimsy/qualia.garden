@@ -9,6 +9,7 @@ import {
 	getCacheKey,
 	getCachedSourceStats,
 	setCachedSourceStats,
+	CACHE_VERSION,
 	distributionMeanNormalized,
 	arrayMeanNormalized,
 	ordinalAgreementScore,
@@ -266,9 +267,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 	for (const source of sourcesResult.results) {
 		const cacheKey = getCacheKey(source.id, 'full');
 		let sourceStats = await getCachedSourceStats(kv, cacheKey);
-		// Invalidate cache if it has old format (missing questionStats or using old divergence fields)
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		if (sourceStats && (!sourceStats.questionStats || (sourceStats.questionStats[0] as any)?.humanAiDivergence !== undefined)) {
+		// Invalidate cache if version mismatch or old format
+		if (sourceStats && sourceStats.cacheVersion !== CACHE_VERSION) {
 			sourceStats = null;
 		}
 
@@ -302,7 +302,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 					questionStats,
 					modelCount: modelResponses.size,
 					questionCount: questions.length,
-					computedAt: new Date().toISOString()
+					computedAt: new Date().toISOString(),
+					cacheVersion: CACHE_VERSION
 				};
 
 				// Cache the result
@@ -339,7 +340,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 	for (const source of sourcesResult.results) {
 		const cacheKey = getCacheKey(source.id, 'full');
 		const sourceStats = await getCachedSourceStats(kv, cacheKey);
-		if (sourceStats) {
+		// Only use cached stats if version matches
+		if (sourceStats && sourceStats.cacheVersion === CACHE_VERSION) {
 			for (const stat of sourceStats.questionStats) {
 				allQuestionStats.set(stat.questionId, stat);
 			}
