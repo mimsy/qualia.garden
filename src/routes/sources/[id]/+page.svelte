@@ -26,9 +26,13 @@
 		return qs;
 	});
 
-	function formatMean(val: number | null): string {
-		if (val === null) return '—';
-		return `${Math.round(val * 100)}%`;
+	function getClosestOption(normalizedMean: number | null, options: string[]): string {
+		if (normalizedMean === null || options.length === 0) return '—';
+		if (options.length === 1) return options[0];
+		// Convert normalized mean (0-1) back to option index
+		const index = Math.round(normalizedMean * (options.length - 1));
+		const clampedIndex = Math.max(0, Math.min(options.length - 1, index));
+		return options[clampedIndex];
 	}
 
 	function getScoreColor(score: number): string {
@@ -111,25 +115,30 @@
 						{/if}
 					</p>
 				</div>
-				{#if data.overallScore !== null}
-					<div class="text-right shrink-0">
-						<div class="text-xs text-slate-500 mb-1">AI-Human Agreement</div>
-						<div class="flex items-baseline gap-1 justify-end">
-							<span class="text-3xl font-bold {getScoreColor(data.overallScore)}">
-								{data.overallScore.toFixed(1)}
-							</span>
-							<span class="text-slate-400">/5</span>
-						</div>
-						<div class="text-sm {getScoreColor(data.overallScore)} font-medium">
-							{getScoreLabel(data.overallScore)}
-						</div>
-						<div class="mt-2 w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-							<div
-								class="h-full rounded-full {getScoreBgColor(data.overallScore)}"
-								style="width: {(data.overallScore / 5) * 100}%"
-							></div>
-						</div>
-						<div class="text-xs text-slate-400 mt-2">{data.modelCount} models polled</div>
+				{#if data.overallScore !== null || data.overallAiConsensus !== null}
+					<div class="flex gap-6 shrink-0">
+						{#if data.overallScore !== null}
+							<div class="text-center">
+								<div class="text-xs text-slate-500 mb-1">AI-Human</div>
+								<div class="text-2xl font-bold {getScoreColor(data.overallScore)}">
+									{data.overallScore.toFixed(1)}
+								</div>
+								<div class="text-xs {getScoreColor(data.overallScore)} font-medium">
+									{getScoreLabel(data.overallScore)}
+								</div>
+							</div>
+						{/if}
+						{#if data.overallAiConsensus !== null}
+							<div class="text-center">
+								<div class="text-xs text-slate-500 mb-1">AI Consensus</div>
+								<div class="text-2xl font-bold {getScoreColor(data.overallAiConsensus)}">
+									{data.overallAiConsensus.toFixed(1)}
+								</div>
+								<div class="text-xs {getScoreColor(data.overallAiConsensus)} font-medium">
+									{getScoreLabel(data.overallAiConsensus)}
+								</div>
+							</div>
+						{/if}
 					</div>
 				{/if}
 			</div>
@@ -224,12 +233,12 @@
 						<div class="mt-4 pt-4 border-t border-slate-100 text-sm text-slate-500 flex gap-6 flex-wrap">
 							{#if question.responseType === 'ordinal'}
 								<div>
-									<span class="text-slate-400">Human avg:</span>
-									<span class="font-medium text-slate-600">{formatMean(question.humanMean)}</span>
+									<span class="text-slate-400">Human:</span>
+									<span class="font-medium text-slate-600">{getClosestOption(question.humanMean, question.options)}</span>
 								</div>
 								<div>
-									<span class="text-slate-400">AI avg:</span>
-									<span class="font-medium text-slate-600">{formatMean(question.aiMean)}</span>
+									<span class="text-slate-400">AI:</span>
+									<span class="font-medium text-slate-600">{getClosestOption(question.aiMean, question.options)}</span>
 								</div>
 							{:else}
 								{#if question.humanMode}

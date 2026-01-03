@@ -249,11 +249,18 @@ export const load: PageServerLoad = async ({ params, platform, url }) => {
 	// Get unique categories
 	const categories = [...new Set(questions.filter(q => q.category).map(q => q.category as string))];
 
+	// Compute overall AI consensus (average of per-question consensus scores)
+	const questionsWithConsensus = questionsWithStats.filter(q => q.modelCount >= 2 && q.aiConsensusScore > 0);
+	const overallAiConsensus = questionsWithConsensus.length > 0
+		? Math.round((questionsWithConsensus.reduce((sum, q) => sum + q.aiConsensusScore, 0) / questionsWithConsensus.length) * 10) / 10
+		: null;
+
 	return {
 		source: sourceResult,
 		questions: questionsWithStats,
 		categories,
 		overallScore: sourceStats?.overallScore ?? null,
+		overallAiConsensus,
 		modelCount: sourceStats?.modelCount ?? 0
 	};
 };
