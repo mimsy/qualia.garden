@@ -104,7 +104,7 @@
 							<div class="text-center">
 								<div class="text-xs text-slate-500 mb-1">Human Alignment</div>
 								<div class="text-2xl font-bold {getScoreColor(data.overallHumanAlignment)}">
-									{data.overallHumanAlignment.toFixed(1)}
+									{Math.round(data.overallHumanAlignment)}%
 								</div>
 							</div>
 						{/if}
@@ -112,7 +112,7 @@
 							<div class="text-center">
 								<div class="text-xs text-slate-500 mb-1">Self-Consistency</div>
 								<div class="text-2xl font-bold {getScoreColor(data.overallSelfConsistency)}">
-									{data.overallSelfConsistency.toFixed(1)}
+									{Math.round(data.overallSelfConsistency)}%
 								</div>
 							</div>
 						{/if}
@@ -136,9 +136,8 @@
 							<div class="text-sm text-slate-500 mb-2">Overall Score</div>
 							<div class="flex items-baseline gap-2">
 								<span class="text-3xl font-bold {getScoreColor(data.overallHumanAlignment)}">
-									{data.overallHumanAlignment.toFixed(1)}
+									{Math.round(data.overallHumanAlignment)}%
 								</span>
-								<span class="text-slate-400">/5</span>
 								<span class="text-sm {getScoreColor(data.overallHumanAlignment)} font-medium ml-1">
 									{getScoreLabel(data.overallHumanAlignment)}
 								</span>
@@ -146,7 +145,7 @@
 							<div class="mt-2 w-full h-2 bg-slate-100 rounded-full overflow-hidden">
 								<div
 									class="h-full rounded-full {getScoreBgColor(data.overallHumanAlignment)}"
-									style="width: {(data.overallHumanAlignment / 5) * 100}%"
+									style="width: {data.overallHumanAlignment}%"
 								></div>
 							</div>
 						</div>
@@ -160,8 +159,8 @@
 											<span class="text-sm text-slate-700 flex-1 truncate">{cat.category}</span>
 											<div class="flex items-center gap-3">
 												<span class="text-xs text-slate-400">{cat.questionCount}q</span>
-												<span class="text-sm font-semibold {getScoreColor(cat.score)} w-12 text-right">
-													{cat.score.toFixed(1)}
+												<span class="text-sm font-semibold {getScoreColor(cat.score)} w-14 text-right">
+													{Math.round(cat.score)}%
 												</span>
 											</div>
 										</div>
@@ -258,7 +257,7 @@
 									</div>
 									<div class="shrink-0 text-right">
 										<div class="text-lg font-bold {getScoreColor(q.humanAiScore)}">
-											{q.humanAiScore.toFixed(1)}
+											{Math.round(q.humanAiScore)}%
 										</div>
 										<div class="text-xs {getScoreColor(q.humanAiScore)}">{getScoreLabel(q.humanAiScore)}</div>
 									</div>

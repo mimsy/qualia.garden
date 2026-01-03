@@ -5,7 +5,7 @@ import type { PageServerLoad } from './$types';
 import { computeMedian, computeMode } from '$lib/db/types';
 import {
 	computeQuestionStats,
-	computeOverallScore,
+	computeOverallScores,
 	getCacheKey,
 	getCachedSourceStats,
 	setCachedSourceStats,
@@ -68,7 +68,7 @@ export interface SourceWithStats {
 	year_range: string | null;
 	questionCount: number;
 	humanAiScore: number | null;
-	aiConsensusScore: number | null;
+	aiAgreementScore: number | null;
 	modelCount: number;
 	extremeQuestion: ExtremeQuestion | null;
 }
@@ -76,7 +76,7 @@ export interface SourceWithStats {
 export interface CategoryStats {
 	category: string;
 	humanAiScore: number;
-	aiConsensusScore: number;
+	aiAgreementScore: number;
 	questionCount: number;
 	modelCount: number;
 	extremeQuestion: ExtremeQuestion | null;
@@ -90,7 +90,7 @@ export interface ModelRanking {
 	questionsWithHumanData: number;
 }
 
-// Find the question with score furthest from 2.5 (most extreme agreement or disagreement)
+// Find the question with score furthest from 50 (most extreme agreement or disagreement)
 function findMostExtreme(
 	stats: QuestionStats[],
 	questionTextMap: Map<string, string>
@@ -100,7 +100,7 @@ function findMostExtreme(
 
 	for (const q of stats) {
 		if (q.humanAiScore === 0) continue;
-		const distance = Math.abs(q.humanAiScore - 2.5);
+		const distance = Math.abs(q.humanAiScore - 50);
 		if (distance > maxDistance) {
 			maxDistance = distance;
 			mostExtreme = q;
@@ -116,7 +116,7 @@ function findMostExtreme(
 		id: mostExtreme.questionId,
 		text,
 		score: mostExtreme.humanAiScore,
-		isHighAgreement: mostExtreme.humanAiScore > 2.5
+		isHighAgreement: mostExtreme.humanAiScore > 50
 	};
 }
 
@@ -293,10 +293,12 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 				// Compute question stats
 				const questionStats = computeQuestionStats(questions, modelResponses, humanDist);
-				const overallScore = computeOverallScore(questionStats);
+				const { overallScore, overallAiAgreement, overallHumanAgreement } = computeOverallScores(questionStats);
 
 				sourceStats = {
 					overallScore,
+					overallAiAgreement,
+					overallHumanAgreement,
 					questionStats,
 					modelCount: modelResponses.size,
 					questionCount: questions.length,
@@ -308,14 +310,10 @@ export const load: PageServerLoad = async ({ platform }) => {
 			}
 		}
 
-		// Compute average AI consensus score
-		let aiConsensusScore: number | null = null;
-		if (sourceStats && sourceStats.questionStats.length > 0) {
-			const totalConsensus = sourceStats.questionStats.reduce((sum, q) => sum + q.aiConsensusScore, 0);
-			aiConsensusScore = Math.round((totalConsensus / sourceStats.questionStats.length) * 10) / 10;
-		}
+		// Use cached AI agreement score
+		const aiAgreementScore = sourceStats?.overallAiAgreement ?? null;
 
-		// Find the most extreme question (furthest from 2.5)
+		// Find the most extreme question (furthest from 50)
 		const extremeQuestion = sourceStats
 			? findMostExtreme(sourceStats.questionStats, questionTextMap)
 			: null;
@@ -329,7 +327,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 			year_range: source.year_range,
 			questionCount: source.question_count,
 			humanAiScore: sourceStats?.overallScore ?? null,
-			aiConsensusScore,
+			aiAgreementScore,
 			modelCount: sourceStats?.modelCount ?? 0,
 			extremeQuestion
 		});
@@ -351,7 +349,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 	// Group stats by category
 	const categoryAggregates = new Map<string, {
 		totalHumanAiScore: number;
-		totalAiConsensusScore: number;
+		totalAiAgreementScore: number;
 		count: number;
 		modelIds: Set<string>;
 		stats: QuestionStats[];
@@ -364,7 +362,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 		if (!categoryAggregates.has(category)) {
 			categoryAggregates.set(category, {
 				totalHumanAiScore: 0,
-				totalAiConsensusScore: 0,
+				totalAiAgreementScore: 0,
 				count: 0,
 				modelIds: new Set(),
 				stats: []
@@ -372,7 +370,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 		}
 		const agg = categoryAggregates.get(category)!;
 		agg.totalHumanAiScore += stat.humanAiScore;
-		agg.totalAiConsensusScore += stat.aiConsensusScore;
+		agg.totalAiAgreementScore += stat.aiAgreementScore;
 		agg.count++;
 		agg.stats.push(stat);
 	}
@@ -405,8 +403,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 		if (agg.count === 0) continue;
 		categories.push({
 			category,
-			humanAiScore: Math.round((agg.totalHumanAiScore / agg.count) * 10) / 10,
-			aiConsensusScore: Math.round((agg.totalAiConsensusScore / agg.count) * 10) / 10,
+			humanAiScore: Math.round(agg.totalHumanAiScore / agg.count),
+			aiAgreementScore: Math.round(agg.totalAiAgreementScore / agg.count),
 			questionCount: agg.count,
 			modelCount: modelCountByCategory.get(category) ?? 0,
 			extremeQuestion: findMostExtreme(agg.stats, questionTextMap)
@@ -465,13 +463,9 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 				let score: number;
 				if (q.responseType === 'ordinal') {
-					const humanMean = distributionMeanNormalized(humanDist, q.options);
-					const aiMean = arrayMeanNormalized([answer], q.options.length);
-					if (humanMean !== null && aiMean !== null) {
-						score = ordinalAgreementScore(humanMean, aiMean);
-					} else {
-						continue;
-					}
+					// Build single-answer AI distribution for overlap calculation
+					const aiDist: Record<string, number> = { [answer]: 1 };
+					score = ordinalAgreementScore(humanDist, aiDist);
 				} else {
 					// Nominal: convert AI answer to label and compute overlap
 					const idx = parseInt(answer, 10) - 1;
@@ -511,7 +505,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 			id: modelId,
 			name: data.name,
 			family: data.family,
-			humanAlignmentScore: Math.round((data.totalScore / data.questionCount) * 10) / 10,
+			humanAlignmentScore: Math.round(data.totalScore / data.questionCount),
 			questionsWithHumanData: data.questionCount
 		});
 	}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	// ABOUTME: Source detail page showing questions with agreement scores.
-	// ABOUTME: Supports sorting by AI-human and AI consensus scores.
+	// ABOUTME: Supports sorting by AI-human and AI agreement scores.
 
 	import type { PageData } from './$types';
 	import { getScoreLevel, getScoreLabel } from '$lib/alignment';
@@ -8,7 +8,7 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	type SortKey = 'default' | 'humanAiScore' | 'aiConsensusScore';
+	type SortKey = 'default' | 'humanAiScore' | 'aiAgreementScore';
 	let sortBy = $state<SortKey>('default');
 	let selectedCategory = $state('');
 
@@ -19,8 +19,8 @@
 
 		if (sortBy === 'humanAiScore') {
 			qs = [...qs].sort((a, b) => a.humanAiScore - b.humanAiScore);
-		} else if (sortBy === 'aiConsensusScore') {
-			qs = [...qs].sort((a, b) => a.aiConsensusScore - b.aiConsensusScore);
+		} else if (sortBy === 'aiAgreementScore') {
+			qs = [...qs].sort((a, b) => a.aiAgreementScore - b.aiAgreementScore);
 		}
 
 		return qs;
@@ -115,27 +115,27 @@
 						{/if}
 					</p>
 				</div>
-				{#if data.overallScore !== null || data.overallAiConsensus !== null}
+				{#if data.overallScore !== null || data.overallAiAgreement !== null}
 					<div class="flex gap-6 shrink-0">
 						{#if data.overallScore !== null}
 							<div class="text-center">
 								<div class="text-xs text-slate-500 mb-1">AI-Human</div>
 								<div class="text-2xl font-bold {getScoreColor(data.overallScore)}">
-									{data.overallScore.toFixed(1)}
+									{Math.round(data.overallScore)}%
 								</div>
 								<div class="text-xs {getScoreColor(data.overallScore)} font-medium">
 									{getScoreLabel(data.overallScore)}
 								</div>
 							</div>
 						{/if}
-						{#if data.overallAiConsensus !== null}
+						{#if data.overallAiAgreement !== null}
 							<div class="text-center">
-								<div class="text-xs text-slate-500 mb-1">AI Consensus</div>
-								<div class="text-2xl font-bold {getScoreColor(data.overallAiConsensus)}">
-									{data.overallAiConsensus.toFixed(1)}
+								<div class="text-xs text-slate-500 mb-1">AI Agreement</div>
+								<div class="text-2xl font-bold {getScoreColor(data.overallAiAgreement)}">
+									{Math.round(data.overallAiAgreement)}%
 								</div>
-								<div class="text-xs {getScoreColor(data.overallAiConsensus)} font-medium">
-									{getScoreLabel(data.overallAiConsensus)}
+								<div class="text-xs {getScoreColor(data.overallAiAgreement)} font-medium">
+									{getScoreLabel(data.overallAiAgreement)}
 								</div>
 							</div>
 						{/if}
@@ -164,7 +164,7 @@
 				>
 					<option value="default">Default</option>
 					<option value="humanAiScore">Lowest AI-Human Agreement</option>
-					<option value="aiConsensusScore">Lowest AI Consensus</option>
+					<option value="aiAgreementScore">Lowest AI Agreement</option>
 				</select>
 			</div>
 			{#if data.categories && data.categories.length > 1}
@@ -206,21 +206,21 @@
 								<div class="text-xs text-slate-400 mb-1.5">AI-Human</div>
 								{#if question.humanAiScore > 0}
 									<div class="text-xl font-bold {getScoreColor(question.humanAiScore)}">
-										{question.humanAiScore.toFixed(1)}
+										{Math.round(question.humanAiScore)}%
 									</div>
 									<div class="text-xs {getScoreColor(question.humanAiScore)} font-medium">{getScoreLabel(question.humanAiScore)}</div>
 								{:else}
 									<div class="text-xl text-slate-200">—</div>
 								{/if}
 							</div>
-							<!-- AI Consensus Score -->
+							<!-- AI Agreement Score -->
 							<div class="text-center w-20">
-								<div class="text-xs text-slate-400 mb-1.5">AI Consensus</div>
+								<div class="text-xs text-slate-400 mb-1.5">AI Agreement</div>
 								{#if question.modelCount >= 2}
-									<div class="text-xl font-bold {getScoreColor(question.aiConsensusScore)}">
-										{question.aiConsensusScore.toFixed(1)}
+									<div class="text-xl font-bold {getScoreColor(question.aiAgreementScore)}">
+										{Math.round(question.aiAgreementScore)}%
 									</div>
-									<div class="text-xs {getScoreColor(question.aiConsensusScore)} font-medium">{getScoreLabel(question.aiConsensusScore)}</div>
+									<div class="text-xs {getScoreColor(question.aiAgreementScore)} font-medium">{getScoreLabel(question.aiAgreementScore)}</div>
 								{:else}
 									<div class="text-xl text-slate-200">—</div>
 								{/if}

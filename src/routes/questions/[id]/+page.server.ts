@@ -7,8 +7,6 @@ import { getModels, updateQuestion, createPollBatch } from '$lib/db/queries';
 import type { QuestionStatus, Model, AggregatedResponse } from '$lib/db/types';
 import { computeMedian, computeMode } from '$lib/db/types';
 import {
-	distributionMeanNormalized,
-	arrayMeanNormalized,
 	ordinalAgreementScore,
 	nominalAgreementScore,
 	ordinalConsensusScore,
@@ -278,14 +276,14 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 			.map((r) => r.aggregated_answer)
 			.filter((a): a is string => a !== null);
 
-		// Compute AI consensus score
+		// Compute AI agreement score (how much AI models agree with each other)
 		if (allAggregatedAnswers.length >= 2) {
 			aiConsensusScore =
 				question.response_type === 'ordinal'
 					? ordinalConsensusScore(allAggregatedAnswers, options.length)
 					: nominalConsensusScore(allAggregatedAnswers);
 		} else if (allAggregatedAnswers.length === 1) {
-			aiConsensusScore = 5; // Perfect consensus with only one model
+			aiConsensusScore = 100; // Perfect agreement with only one model
 		}
 
 		// Compute human-AI agreement score (using overall human distribution)
@@ -293,10 +291,13 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 			const humanDist = JSON.parse(overallHumanDist.distribution) as Record<string, number>;
 
 			if (question.response_type === 'ordinal') {
-				const humanMean = distributionMeanNormalized(humanDist, options);
-				const aiMean = arrayMeanNormalized(allAggregatedAnswers, options.length);
-				if (humanMean !== null && aiMean !== null) {
-					humanAiScore = ordinalAgreementScore(humanMean, aiMean);
+				// Build AI distribution for overlap calculation
+				const aiDist: Record<string, number> = {};
+				for (const ans of allAggregatedAnswers) {
+					aiDist[ans] = (aiDist[ans] || 0) + 1;
+				}
+				if (Object.keys(aiDist).length > 0) {
+					humanAiScore = ordinalAgreementScore(humanDist, aiDist);
 				}
 			} else {
 				// Nominal: convert AI answers to labels and build distribution
@@ -327,7 +328,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 				.filter((a): a is string => a !== null);
 
 			if (answers.length < 2) {
-				modelSelfConsistency[response.model_id] = 5; // Perfect if only one sample
+				modelSelfConsistency[response.model_id] = 100; // Perfect if only one sample
 			} else {
 				modelSelfConsistency[response.model_id] =
 					question.response_type === 'ordinal'

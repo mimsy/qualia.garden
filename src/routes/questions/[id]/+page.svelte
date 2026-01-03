@@ -473,10 +473,10 @@
 		{/if}
 
 		<!-- Scores Summary Section -->
-		{#if data.totalResponses > 0 && (data.humanAiScore !== null || data.aiConsensusScore !== null)}
-			{@const selfConsistencyValues = Object.values(data.modelSelfConsistency)}
+		{#if data.totalResponses > 0 && (data.humanAiScore !== null || data.aiAgreementScore !== null)}
+			{@const selfConsistencyValues = Object.values(data.modelSelfConsistency).filter((v): v is number => v !== null)}
 			{@const avgSelfConsistency = selfConsistencyValues.length > 0
-				? selfConsistencyValues.reduce((a, b) => a + b, 0) / selfConsistencyValues.length
+				? selfConsistencyValues.reduce((a: number, b: number) => a + b, 0) / selfConsistencyValues.length
 				: null}
 			<div class="bg-white rounded-lg shadow p-6 mb-8">
 				<h3 class="font-bold text-gray-900 mb-4">Scores</h3>
@@ -486,13 +486,13 @@
 						<div class="text-sm text-gray-500 mb-2">AI-Human Agreement</div>
 						{#if data.humanAiScore !== null}
 							<div class="text-3xl font-bold {getScoreColor(data.humanAiScore)}">
-								{data.humanAiScore.toFixed(1)}
+								{Math.round(data.humanAiScore)}%
 							</div>
 							<div class="text-xs text-gray-400 mt-1">{getScoreLabel(data.humanAiScore)}</div>
 							<div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
 								<div
 									class="h-full {getScoreBgColor(data.humanAiScore)} rounded-full transition-all"
-									style="width: {(data.humanAiScore / 5) * 100}%"
+									style="width: {data.humanAiScore}%"
 								></div>
 							</div>
 						{:else}
@@ -501,18 +501,18 @@
 						{/if}
 					</div>
 
-					<!-- AI Consensus -->
+					<!-- AI Agreement -->
 					<div class="text-center">
-						<div class="text-sm text-gray-500 mb-2">AI Consensus</div>
+						<div class="text-sm text-gray-500 mb-2">AI Agreement</div>
 						{#if data.aiConsensusScore !== null}
 							<div class="text-3xl font-bold {getScoreColor(data.aiConsensusScore)}">
-								{data.aiConsensusScore.toFixed(1)}
+								{Math.round(data.aiConsensusScore)}%
 							</div>
 							<div class="text-xs text-gray-400 mt-1">{getScoreLabel(data.aiConsensusScore)}</div>
 							<div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
 								<div
 									class="h-full {getScoreBgColor(data.aiConsensusScore)} rounded-full transition-all"
-									style="width: {(data.aiConsensusScore / 5) * 100}%"
+									style="width: {data.aiConsensusScore}%"
 								></div>
 							</div>
 						{:else}
@@ -526,13 +526,13 @@
 						<div class="text-sm text-gray-500 mb-2">Avg Self-Consistency</div>
 						{#if avgSelfConsistency !== null}
 							<div class="text-3xl font-bold {getScoreColor(avgSelfConsistency)}">
-								{avgSelfConsistency.toFixed(1)}
+								{Math.round(avgSelfConsistency)}%
 							</div>
 							<div class="text-xs text-gray-400 mt-1">{getScoreLabel(avgSelfConsistency)}</div>
 							<div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
 								<div
 									class="h-full {getScoreBgColor(avgSelfConsistency)} rounded-full transition-all"
-									style="width: {(avgSelfConsistency / 5) * 100}%"
+									style="width: {avgSelfConsistency}%"
 								></div>
 							</div>
 						{:else}
@@ -770,8 +770,8 @@
 								<div class="flex items-center gap-4">
 									{#if data.modelSelfConsistency[response.model_id] !== undefined}
 										{@const sc = data.modelSelfConsistency[response.model_id]}
-										<span class="text-xs {getScoreColor(sc)}" title="Self-consistency: {sc.toFixed(1)}/5">
-											{sc.toFixed(1)}
+										<span class="text-xs {getScoreColor(sc)}" title="Self-consistency: {Math.round(sc)}%">
+											{Math.round(sc)}%
 										</span>
 									{/if}
 									{#if response.complete_count > 0 && response.aggregated_answer}

@@ -17,36 +17,39 @@ export interface QuestionStats {
 	aiMean: number | null;          // For ordinal: normalized mean (0-1)
 	humanMode: string | null;       // For nominal: most common human answer
 	aiMode: string | null;          // For nominal: most common AI answer
-	humanAiScore: number;           // 0-5: AI-human agreement score
-	aiConsensusScore: number;       // 0-5: how much AI models agree
+	humanAiScore: number;           // 0-100: AI-human agreement score
+	aiAgreementScore: number;       // 0-100: how much AI models agree with each other
+	humanAgreementScore: number | null; // 0-100: how much humans agree with each other
 	responseType: string;
 	modelCount: number;
 }
 
 export interface SourceStats {
-	overallScore: number;           // 0-5: aggregate AI-human agreement
+	overallScore: number;           // 0-100: aggregate AI-human agreement
+	overallAiAgreement: number;     // 0-100: aggregate AI agreement
+	overallHumanAgreement: number | null; // 0-100: aggregate human agreement
 	questionStats: QuestionStats[];
 	modelCount: number;
 	questionCount: number;
 	computedAt: string;
 }
 
-// Score display helpers
+// Score display helpers (0-100 scale)
 export type ScoreLevel = 'very-low' | 'low' | 'moderate' | 'high' | 'very-high';
 
 export function getScoreLabel(score: number): string {
-	if (score >= 4.5) return 'Very High';
-	if (score >= 3.5) return 'High';
-	if (score >= 2.5) return 'Moderate';
-	if (score >= 1.5) return 'Low';
+	if (score >= 90) return 'Very High';
+	if (score >= 70) return 'High';
+	if (score >= 50) return 'Moderate';
+	if (score >= 30) return 'Low';
 	return 'Very Low';
 }
 
 export function getScoreLevel(score: number): ScoreLevel {
-	if (score >= 4.5) return 'very-high';
-	if (score >= 3.5) return 'high';
-	if (score >= 2.5) return 'moderate';
-	if (score >= 1.5) return 'low';
+	if (score >= 90) return 'very-high';
+	if (score >= 70) return 'high';
+	if (score >= 50) return 'moderate';
+	if (score >= 30) return 'low';
 	return 'very-low';
 }
 
@@ -170,20 +173,31 @@ export function arrayMode(answers: string[]): string | null {
 	return maxKey;
 }
 
-// Calculate agreement score (0-5) for ordinal questions
-// Uses power function to penalize larger differences more heavily
-export function ordinalAgreementScore(humanMean: number, aiMean: number): number {
-	// humanMean and aiMean are already normalized to 0-1
-	const diff = Math.abs(humanMean - aiMean);
-	// Power 1.5 curve: small diffs forgiven, large diffs penalized more
-	// diff of 0 = score of 5, diff of 1 = score of 0
-	return Math.round(Math.pow(1 - diff, 1.5) * 50) / 10;
+// Calculate agreement score (0-100) for ordinal questions using distribution overlap
+// This properly handles cases where means are similar but distributions differ
+// (e.g., AI picks middle while humans are spread across spectrum)
+export function ordinalAgreementScore(
+	humanDist: Record<string, number>,
+	aiDist: Record<string, number>
+): number {
+	const overlap = distributionOverlap(humanDist, aiDist);
+	return Math.round(overlap * 100);
 }
 
-// Calculate consensus score (0-5) for ordinal questions
+// Legacy mean-based ordinal agreement (kept for reference, not used)
+export function ordinalAgreementScoreMeanBased(humanMean: number, aiMean: number, optionCount: number): number {
+	const diff = Math.abs(humanMean - aiMean);
+	if (optionCount <= 2) {
+		return Math.round(Math.max(0, (1 - diff * 2)) * 100);
+	}
+	return Math.round(Math.pow(1 - diff, 1.5) * 100);
+}
+
+// Calculate internal agreement score (0-100) for ordinal questions
+// Measures how much a group of responses agree with each other
 // Blends mode dominance (unanimity) with spread penalty
-export function ordinalConsensusScore(answers: string[], optionCount: number): number {
-	if (answers.length < 2) return 5; // Perfect consensus if only one answer
+export function ordinalInternalAgreement(answers: string[], optionCount: number): number {
+	if (answers.length < 2) return 100; // Perfect agreement if only one answer
 
 	// Mode dominance (unanimity) - what percentage chose the most common answer
 	const counts = new Map<string, number>();
@@ -199,7 +213,7 @@ export function ordinalConsensusScore(answers: string[], optionCount: number): n
 
 	// Blend: 70% unanimity, 30% spread
 	const blended = unanimity * 0.7 + spreadScore * 0.3;
-	return Math.round(blended * 50) / 10;
+	return Math.round(blended * 100);
 }
 
 // Calculate overlap between two distributions (0-1 scale)
@@ -222,7 +236,7 @@ export function distributionOverlap(
 	return overlap;
 }
 
-// Calculate agreement score (0-5) for nominal questions
+// Calculate agreement score (0-100) for nominal questions
 // Based on distribution overlap
 export function nominalAgreementScore(
 	humanDist: Record<string, number> | null,
@@ -230,20 +244,43 @@ export function nominalAgreementScore(
 ): number {
 	if (!humanDist || Object.keys(aiDist).length === 0) return 0;
 	const overlap = distributionOverlap(humanDist, aiDist);
-	return Math.round(overlap * 50) / 10; // 0-5 scale, 1 decimal
+	return Math.round(overlap * 100);
 }
 
-// Calculate consensus score (0-5) for nominal questions
-// Based on how concentrated the AI answers are (unanimity)
-export function nominalConsensusScore(answers: string[]): number {
-	if (answers.length < 2) return 5; // Perfect consensus if only one answer
+// Calculate internal agreement score (0-100) for nominal questions
+// Based on how concentrated the answers are (unanimity)
+export function nominalInternalAgreement(answers: string[]): number {
+	if (answers.length < 2) return 100; // Perfect agreement if only one answer
 	const counts = new Map<string, number>();
 	for (const a of answers) {
 		counts.set(a, (counts.get(a) || 0) + 1);
 	}
 	const maxCount = Math.max(...counts.values());
 	const unanimity = maxCount / answers.length;
-	return Math.round(unanimity * 50) / 10; // 0-5 scale, 1 decimal
+	return Math.round(unanimity * 100);
+}
+
+// Calculate internal agreement from a distribution (0-100)
+// Used for computing human agreement from survey data
+export function distributionInternalAgreement(dist: Record<string, number>, optionCount: number, isOrdinal: boolean): number {
+	const total = Object.values(dist).reduce((a, b) => a + b, 0);
+	if (total === 0) return 0;
+
+	if (isOrdinal) {
+		// For ordinal: use the same unanimity + spread formula
+		// Convert distribution to array of answers for calculation
+		const answers: string[] = [];
+		for (const [key, count] of Object.entries(dist)) {
+			for (let i = 0; i < count; i++) {
+				answers.push(key);
+			}
+		}
+		return ordinalInternalAgreement(answers, optionCount);
+	} else {
+		// For nominal: pure unanimity
+		const maxCount = Math.max(...Object.values(dist));
+		return Math.round((maxCount / total) * 100);
+	}
 }
 
 // Compute per-question stats for a source
@@ -271,17 +308,30 @@ export function computeQuestionStats(
 		let humanMode: string | null = null;
 		let aiMode: string | null = null;
 		let humanAiScore = 0;
-		let aiConsensusScore = 0;
+		let aiAgreementScore = 0;
+		let humanAgreementScore: number | null = null;
+		const isOrdinal = q.responseType === 'ordinal';
 
-		if (q.responseType === 'ordinal') {
-			// Ordinal: use normalized means (0-1 scale)
+		if (isOrdinal) {
+			// Ordinal: use distribution overlap for AI-Human agreement
 			humanMean = humanDist ? distributionMeanNormalized(humanDist, q.options) : null;
 			aiMean = arrayMeanNormalized(aiAnswers, q.options.length);
 
-			if (humanMean !== null && aiMean !== null) {
-				humanAiScore = ordinalAgreementScore(humanMean, aiMean);
+			// Build AI distribution for overlap calculation
+			const aiDist: Record<string, number> = {};
+			for (const ans of aiAnswers) {
+				aiDist[ans] = (aiDist[ans] || 0) + 1;
 			}
-			aiConsensusScore = ordinalConsensusScore(aiAnswers, q.options.length);
+
+			if (humanDist && Object.keys(aiDist).length > 0) {
+				humanAiScore = ordinalAgreementScore(humanDist, aiDist);
+			}
+			aiAgreementScore = ordinalInternalAgreement(aiAnswers, q.options.length);
+
+			// Compute human internal agreement
+			if (humanDist) {
+				humanAgreementScore = distributionInternalAgreement(humanDist, q.options.length, true);
+			}
 		} else {
 			// Nominal: use distribution overlap
 			// Convert AI answers from 1-indexed numbers to option labels
@@ -311,7 +361,12 @@ export function computeQuestionStats(
 			}
 
 			humanAiScore = nominalAgreementScore(humanDistLabeled, aiDist);
-			aiConsensusScore = nominalConsensusScore(aiAnswersLabeled);
+			aiAgreementScore = nominalInternalAgreement(aiAnswersLabeled);
+
+			// Compute human internal agreement
+			if (humanDistLabeled) {
+				humanAgreementScore = distributionInternalAgreement(humanDistLabeled, q.options.length, false);
+			}
 		}
 
 		stats.push({
@@ -321,7 +376,8 @@ export function computeQuestionStats(
 			humanMode,
 			aiMode,
 			humanAiScore,
-			aiConsensusScore,
+			aiAgreementScore,
+			humanAgreementScore,
 			responseType: q.responseType,
 			modelCount: aiAnswers.length
 		});
@@ -330,11 +386,36 @@ export function computeQuestionStats(
 	return stats;
 }
 
-// Compute overall score (average of question scores)
+// Compute overall scores (averages of question scores)
+export function computeOverallScores(questionStats: QuestionStats[]): {
+	overallScore: number;
+	overallAiAgreement: number;
+	overallHumanAgreement: number | null;
+} {
+	if (questionStats.length === 0) {
+		return { overallScore: 0, overallAiAgreement: 0, overallHumanAgreement: null };
+	}
+
+	const totalHumanAi = questionStats.reduce((sum, q) => sum + q.humanAiScore, 0);
+	const totalAiAgreement = questionStats.reduce((sum, q) => sum + q.aiAgreementScore, 0);
+
+	const humanAgreementStats = questionStats.filter(q => q.humanAgreementScore !== null);
+	const totalHumanAgreement = humanAgreementStats.reduce((sum, q) => sum + (q.humanAgreementScore ?? 0), 0);
+
+	return {
+		overallScore: Math.round(totalHumanAi / questionStats.length),
+		overallAiAgreement: Math.round(totalAiAgreement / questionStats.length),
+		overallHumanAgreement: humanAgreementStats.length > 0
+			? Math.round(totalHumanAgreement / humanAgreementStats.length)
+			: null
+	};
+}
+
+// Legacy: Compute overall score only (for backwards compatibility)
 export function computeOverallScore(questionStats: QuestionStats[]): number {
 	if (questionStats.length === 0) return 0;
 	const totalScore = questionStats.reduce((sum, q) => sum + q.humanAiScore, 0);
-	return Math.round((totalScore / questionStats.length) * 10) / 10;
+	return Math.round(totalScore / questionStats.length);
 }
 
 // Aggregate multiple raw answers into a single representative answer
@@ -456,6 +537,12 @@ export async function invalidateSourceCache(
 		// Ignore cache invalidation failures
 	}
 }
+
+// ---- Backward compatibility aliases ----
+// These map old function names to new ones during migration
+
+export const ordinalConsensusScore = ordinalInternalAgreement;
+export const nominalConsensusScore = nominalInternalAgreement;
 
 // ---- Legacy exports for backwards compatibility ----
 // These are used by the map page and will be removed once it's updated

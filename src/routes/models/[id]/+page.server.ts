@@ -232,11 +232,9 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 
 		if (humanDist && options.length > 0) {
 			if (q.response_type === 'ordinal') {
-				const humanMean = distributionMeanNormalized(humanDist, options);
-				const aiMean = arrayMeanNormalized([answer], options.length);
-				if (humanMean !== null && aiMean !== null) {
-					humanAiScore = ordinalAgreementScore(humanMean, aiMean);
-				}
+				// Build single-answer AI distribution for overlap calculation
+				const aiDist: Record<string, number> = { [answer]: 1 };
+				humanAiScore = ordinalAgreementScore(humanDist, aiDist);
 			} else {
 				// Convert to labels for comparison
 				const idx = parseInt(answer, 10) - 1;

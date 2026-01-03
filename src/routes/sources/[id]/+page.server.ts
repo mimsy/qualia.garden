@@ -6,7 +6,7 @@ import { error } from '@sveltejs/kit';
 import { computeMedian, computeMode } from '$lib/db/types';
 import {
 	computeQuestionStats,
-	computeOverallScore,
+	computeOverallScores,
 	getCacheKey,
 	getCachedSourceStats,
 	setCachedSourceStats,
@@ -57,9 +57,10 @@ export interface QuestionWithStats {
 	aiMean: number | null;
 	humanMode: string | null;
 	aiMode: string | null;
-	// Scores (0-5 scale)
+	// Scores (0-100 scale)
 	humanAiScore: number;
-	aiConsensusScore: number;
+	aiAgreementScore: number;
+	humanAgreementScore: number | null;
 	modelCount: number;
 }
 
@@ -214,10 +215,12 @@ export const load: PageServerLoad = async ({ params, platform, url }) => {
 	// Compute stats if not cached
 	if (!sourceStats && modelResponses.size > 0 && humanDistributions.size > 0) {
 		const questionStats = computeQuestionStats(questionMeta, modelResponses, humanDistributions);
-		const overallScore = computeOverallScore(questionStats);
+		const { overallScore, overallAiAgreement, overallHumanAgreement } = computeOverallScores(questionStats);
 
 		sourceStats = {
 			overallScore,
+			overallAiAgreement,
+			overallHumanAgreement,
 			questionStats,
 			modelCount: modelResponses.size,
 			questionCount: questions.length,
@@ -241,7 +244,8 @@ export const load: PageServerLoad = async ({ params, platform, url }) => {
 			humanMode: stats?.humanMode ?? null,
 			aiMode: stats?.aiMode ?? null,
 			humanAiScore: stats?.humanAiScore ?? 0,
-			aiConsensusScore: stats?.aiConsensusScore ?? 0,
+			aiAgreementScore: stats?.aiAgreementScore ?? 0,
+			humanAgreementScore: stats?.humanAgreementScore ?? null,
 			modelCount: stats?.modelCount ?? 0
 		};
 	});
@@ -249,18 +253,17 @@ export const load: PageServerLoad = async ({ params, platform, url }) => {
 	// Get unique categories
 	const categories = [...new Set(questions.filter(q => q.category).map(q => q.category as string))];
 
-	// Compute overall AI consensus (average of per-question consensus scores)
-	const questionsWithConsensus = questionsWithStats.filter(q => q.modelCount >= 2 && q.aiConsensusScore > 0);
-	const overallAiConsensus = questionsWithConsensus.length > 0
-		? Math.round((questionsWithConsensus.reduce((sum, q) => sum + q.aiConsensusScore, 0) / questionsWithConsensus.length) * 10) / 10
-		: null;
+	// Overall AI agreement is computed as part of sourceStats
+	const overallAiAgreement = sourceStats?.overallAiAgreement ?? null;
+	const overallHumanAgreement = sourceStats?.overallHumanAgreement ?? null;
 
 	return {
 		source: sourceResult,
 		questions: questionsWithStats,
 		categories,
 		overallScore: sourceStats?.overallScore ?? null,
-		overallAiConsensus,
+		overallAiAgreement,
+		overallHumanAgreement,
 		modelCount: sourceStats?.modelCount ?? 0
 	};
 };

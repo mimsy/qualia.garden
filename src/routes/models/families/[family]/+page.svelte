@@ -109,7 +109,7 @@
 							<div class="text-center">
 								<div class="text-xs text-slate-500 mb-1">Avg Human Alignment</div>
 								<div class="text-2xl font-bold {getScoreColor(data.avgHumanAlignment)}">
-									{data.avgHumanAlignment.toFixed(1)}
+									{Math.round(data.avgHumanAlignment)}%
 								</div>
 							</div>
 						{/if}
@@ -117,7 +117,7 @@
 							<div class="text-center">
 								<div class="text-xs text-slate-500 mb-1">Avg Self-Consistency</div>
 								<div class="text-2xl font-bold {getScoreColor(data.avgSelfConsistency)}">
-									{data.avgSelfConsistency.toFixed(1)}
+									{Math.round(data.avgSelfConsistency)}%
 								</div>
 							</div>
 						{/if}
@@ -161,7 +161,7 @@
 									<div class="text-center w-20">
 										<div class="text-xs text-slate-400 mb-0.5">Human</div>
 										<div class="text-lg font-semibold {getScoreColor(model.humanAlignment)}">
-											{model.humanAlignment.toFixed(1)}
+											{Math.round(model.humanAlignment)}%
 										</div>
 									</div>
 								{:else}
@@ -175,7 +175,7 @@
 									<div class="text-center w-20">
 										<div class="text-xs text-slate-400 mb-0.5">Consistency</div>
 										<div class="text-lg font-semibold {getScoreColor(model.selfConsistency)}">
-											{model.selfConsistency.toFixed(1)}
+											{Math.round(model.selfConsistency)}%
 										</div>
 									</div>
 								{:else}

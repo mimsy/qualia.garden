@@ -225,18 +225,16 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 						: nominalConsensusScore(answers);
 				selfConsistencyScores.push(sc);
 			} else if (answers.length === 1) {
-				selfConsistencyScores.push(5);
+				selfConsistencyScores.push(100);
 			}
 
 			// Human alignment
 			const humanDist = humanDistMap.get(qId);
 			if (humanDist && aggregatedAnswer) {
 				if (q.response_type === 'ordinal') {
-					const humanMean = distributionMeanNormalized(humanDist, options);
-					const aiMean = arrayMeanNormalized([aggregatedAnswer], options.length);
-					if (humanMean !== null && aiMean !== null) {
-						humanAlignmentScores.push(ordinalAgreementScore(humanMean, aiMean));
-					}
+					// Build single-answer AI distribution for overlap calculation
+					const aiDist: Record<string, number> = { [aggregatedAnswer]: 1 };
+					humanAlignmentScores.push(ordinalAgreementScore(humanDist, aiDist));
 				} else {
 					const idx = parseInt(aggregatedAnswer, 10) - 1;
 					const answerLabel = idx >= 0 && idx < options.length ? options[idx] : aggregatedAnswer;

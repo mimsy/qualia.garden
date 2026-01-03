@@ -1,5 +1,5 @@
-<!-- ABOUTME: Reusable component for displaying agreement/consensus scores. -->
-<!-- ABOUTME: Shows score value, colored bar, and descriptive label (0-5 scale). -->
+<!-- ABOUTME: Reusable component for displaying agreement scores. -->
+<!-- ABOUTME: Shows score value, colored bar, and descriptive label (0-100 scale). -->
 <script lang="ts">
 	import { getScoreLabel, getScoreLevel, type ScoreLevel } from '$lib/alignment';
 
@@ -44,16 +44,16 @@
 	{/if}
 	<div class="flex items-center gap-2">
 		<span class="font-semibold {sizeClasses[size].text} {colorClasses[level].split(' ')[0]}">
-			{score.toFixed(1)}
+			{Math.round(score)}
 		</span>
-		<span class="text-xs text-gray-500">/5</span>
+		<span class="text-xs text-gray-500">%</span>
 		<span class="text-xs {colorClasses[level].split(' ')[0]}">{displayLabel}</span>
 	</div>
 	{#if showBar}
 		<div class="w-full rounded-full {bgColorClasses[level]} {sizeClasses[size].bar}">
 			<div
 				class="h-full rounded-full {colorClasses[level].split(' ')[1]}"
-				style="width: {(score / 5) * 100}%"
+				style="width: {score}%"
 			></div>
 		</div>
 	{/if}
