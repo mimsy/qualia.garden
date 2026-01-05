@@ -213,7 +213,7 @@
 					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 						{#each data.categories as category}
 							<a
-								href="/questions?category={encodeURIComponent(category.category)}"
+								href="/categories/{encodeURIComponent(category.category)}"
 								class="group bg-white rounded-xl border border-slate-200 p-5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-200"
 							>
 								<h3 class="font-semibold text-slate-900 group-hover:text-slate-700 transition-colors mb-3">

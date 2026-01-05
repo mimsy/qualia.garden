@@ -122,59 +122,42 @@
 		</div>
 
 		<!-- Questions with Full Results -->
-		<div class="space-y-6">
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 			{#each sortedQuestions() as question}
-				<div class="bg-white rounded-xl border border-slate-200 p-6">
+				<div class="bg-white rounded-xl border border-slate-200 p-5">
 					<!-- Question Header -->
-					<div class="flex items-start justify-between gap-4 mb-6">
-						<div class="flex-1">
-							<a href="/questions/{question.id}" class="text-slate-800 hover:text-blue-600 transition-colors font-medium leading-relaxed">
-								{question.text}
-							</a>
-							<div class="mt-2 text-sm text-slate-500">
-								{question.modelCount} model{question.modelCount === 1 ? '' : 's'}
-								{#if question.humanSampleSize}
-									· {question.humanSampleSize.toLocaleString()} human respondents
-								{/if}
-							</div>
-						</div>
-						<div class="flex gap-4 shrink-0">
+					<div class="mb-4">
+						<a href="/questions/{question.id}" class="text-slate-800 hover:text-blue-600 transition-colors font-medium leading-relaxed text-sm">
+							{question.text}
+						</a>
+						<div class="mt-2 flex items-center gap-3 text-xs text-slate-500">
+							<span>{question.modelCount} model{question.modelCount === 1 ? '' : 's'}</span>
 							{#if question.humanResults.length > 0}
-								<div class="text-center w-16">
-									<div class="text-xs text-slate-400 mb-1">AI-Human</div>
-									<div class="text-lg font-bold {getScoreColor(question.humanAiScore)}">
-										{Math.round(question.humanAiScore)}
-									</div>
-								</div>
+								<span class="font-medium {getScoreColor(question.humanAiScore)}">AI-Human: {Math.round(question.humanAiScore)}</span>
 							{/if}
 							{#if question.modelCount >= 2}
-								<div class="text-center w-16">
-									<div class="text-xs text-slate-400 mb-1">AI Agree</div>
-									<div class="text-lg font-bold {getScoreColor(question.aiAgreementScore)}">
-										{Math.round(question.aiAgreementScore)}
-									</div>
-								</div>
+								<span class="font-medium {getScoreColor(question.aiAgreementScore)}">AI Agree: {Math.round(question.aiAgreementScore)}</span>
 							{/if}
 						</div>
 					</div>
 
 					<!-- Results Comparison -->
 					{#if question.modelCount > 0}
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+						<div class="grid grid-cols-2 gap-4">
 							<!-- AI Results -->
 							<div>
-								<div class="flex items-center gap-2 mb-3">
-									<div class="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
-									<span class="text-sm font-medium text-slate-600">AI Models</span>
+								<div class="flex items-center gap-1.5 mb-2">
+									<div class="w-2 h-2 rounded-full bg-blue-500"></div>
+									<span class="text-xs font-medium text-slate-600">AI</span>
 								</div>
-								<div class="space-y-2">
+								<div class="space-y-1.5">
 									{#each question.aiResults as result}
 										<div>
-											<div class="flex justify-between text-sm mb-1">
-												<span class="text-slate-600 truncate pr-2">{result.label}</span>
+											<div class="flex justify-between text-xs mb-0.5">
+												<span class="text-slate-600 truncate pr-1">{result.label}</span>
 												<span class="text-slate-400 flex-shrink-0">{result.percentage.toFixed(0)}%</span>
 											</div>
-											<div class="h-4 bg-slate-100 rounded overflow-hidden">
+											<div class="h-2.5 bg-slate-100 rounded overflow-hidden">
 												<div
 													class="h-full bg-blue-500 rounded transition-all"
 													style="width: {result.percentage}%"
@@ -187,19 +170,19 @@
 
 							<!-- Human Results -->
 							<div>
-								<div class="flex items-center gap-2 mb-3">
-									<div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-									<span class="text-sm font-medium text-slate-600">Humans</span>
+								<div class="flex items-center gap-1.5 mb-2">
+									<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+									<span class="text-xs font-medium text-slate-600">Humans</span>
 								</div>
 								{#if question.humanResults.length > 0}
-									<div class="space-y-2">
+									<div class="space-y-1.5">
 										{#each question.humanResults as result}
 											<div>
-												<div class="flex justify-between text-sm mb-1">
-													<span class="text-slate-600 truncate pr-2">{result.label}</span>
+												<div class="flex justify-between text-xs mb-0.5">
+													<span class="text-slate-600 truncate pr-1">{result.label}</span>
 													<span class="text-slate-400 flex-shrink-0">{result.percentage.toFixed(0)}%</span>
 												</div>
-												<div class="h-4 bg-slate-100 rounded overflow-hidden">
+												<div class="h-2.5 bg-slate-100 rounded overflow-hidden">
 													<div
 														class="h-full bg-emerald-500 rounded transition-all"
 														style="width: {result.percentage}%"
@@ -209,24 +192,25 @@
 										{/each}
 									</div>
 								{:else}
-									<div class="text-sm text-slate-400 py-4 text-center">
-										No human data available
+									<div class="text-xs text-slate-400 py-2 text-center">
+										No human data
 									</div>
 								{/if}
 							</div>
 						</div>
 					{:else}
-						<div class="text-sm text-slate-400 py-4 text-center">
+						<div class="text-xs text-slate-400 py-4 text-center">
 							No AI responses yet
 						</div>
 					{/if}
 				</div>
-			{:else}
-				<div class="text-center py-16">
-					<p class="text-slate-500">No questions in this category.</p>
-				</div>
 			{/each}
 		</div>
+		{#if sortedQuestions().length === 0}
+			<div class="text-center py-16">
+				<p class="text-slate-500">No questions in this category.</p>
+			</div>
+		{/if}
 	</main>
 
 	<footer class="border-t border-slate-200 py-8 px-6 mt-12">
