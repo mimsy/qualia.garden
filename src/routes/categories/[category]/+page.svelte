@@ -141,62 +141,41 @@
 						</div>
 					</div>
 
-					<!-- Results Comparison -->
-					{#if question.modelCount > 0}
-						<div class="grid grid-cols-2 gap-4">
-							<!-- AI Results -->
-							<div>
-								<div class="flex items-center gap-1.5 mb-2">
-									<div class="w-2 h-2 rounded-full bg-blue-500"></div>
-									<span class="text-xs font-medium text-slate-600">AI</span>
-								</div>
-								<div class="space-y-1.5">
-									{#each question.aiResults as result}
-										<div>
-											<div class="flex justify-between text-xs mb-0.5">
-												<span class="text-slate-600 truncate pr-1">{result.label}</span>
-												<span class="text-slate-400 flex-shrink-0">{result.percentage.toFixed(0)}%</span>
-											</div>
-											<div class="h-2.5 bg-slate-100 rounded overflow-hidden">
-												<div
-													class="h-full bg-blue-500 rounded transition-all"
-													style="width: {result.percentage}%"
-												></div>
-											</div>
-										</div>
-									{/each}
-								</div>
-							</div>
-
-							<!-- Human Results -->
-							<div>
-								<div class="flex items-center gap-1.5 mb-2">
-									<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-									<span class="text-xs font-medium text-slate-600">Humans</span>
-								</div>
-								{#if question.humanResults.length > 0}
-									<div class="space-y-1.5">
-										{#each question.humanResults as result}
-											<div>
-												<div class="flex justify-between text-xs mb-0.5">
-													<span class="text-slate-600 truncate pr-1">{result.label}</span>
-													<span class="text-slate-400 flex-shrink-0">{result.percentage.toFixed(0)}%</span>
-												</div>
-												<div class="h-2.5 bg-slate-100 rounded overflow-hidden">
-													<div
-														class="h-full bg-emerald-500 rounded transition-all"
-														style="width: {result.percentage}%"
-													></div>
-												</div>
-											</div>
-										{/each}
+					<!-- Results Comparison - Butterfly Chart -->
+					{#if question.modelCount > 0 && question.options.length > 0}
+						{@const maxPct = Math.max(
+							...question.aiResults.map((r: { percentage: number }) => r.percentage),
+							...question.humanResults.map((r: { percentage: number }) => r.percentage),
+							1
+						)}
+						<div class="space-y-1">
+							{#each question.options as option, i}
+								{@const optionKey = String(i + 1)}
+								{@const aiResult = question.aiResults.find((r: { answer: string }) => r.answer === optionKey)}
+								{@const humanResult = question.humanResults.find((r: { answer: string; label: string }) => r.answer === optionKey || r.label === option)}
+								{@const aiPct = aiResult?.percentage ?? 0}
+								{@const humanPct = humanResult?.percentage ?? 0}
+								<div class="flex items-center gap-1 text-xs">
+									<span class="w-6 text-right text-slate-400 tabular-nums">{aiPct > 0 ? `${aiPct.toFixed(0)}%` : ''}</span>
+									<div class="w-12 h-2 bg-slate-100 rounded-l overflow-hidden flex justify-end">
+										<div class="h-full bg-blue-500 rounded-l" style="width: {(aiPct / maxPct) * 100}%"></div>
 									</div>
-								{:else}
-									<div class="text-xs text-slate-400 py-2 text-center">
-										No human data
+									<div class="flex-1 text-center text-slate-600 truncate px-0.5" title={option}>{option}</div>
+									<div class="w-12 h-2 bg-slate-100 rounded-r overflow-hidden">
+										<div class="h-full bg-emerald-500 rounded-r" style="width: {(humanPct / maxPct) * 100}%"></div>
 									</div>
-								{/if}
-							</div>
+									<span class="w-6 text-slate-400 tabular-nums">{humanPct > 0 ? `${humanPct.toFixed(0)}%` : ''}</span>
+								</div>
+							{/each}
+						</div>
+						<div class="flex justify-center gap-4 mt-2 text-xs text-slate-500">
+							<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> AI</span>
+							<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Human</span>
+						</div>
+					{:else if question.modelCount > 0}
+						<!-- Fallback for questions without options -->
+						<div class="text-xs text-slate-400 py-2 text-center">
+							Results available on detail page
 						</div>
 					{:else}
 						<div class="text-xs text-slate-400 py-4 text-center">
