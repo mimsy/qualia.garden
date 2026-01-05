@@ -600,8 +600,71 @@
 
 				{#if humanAggregateResults().length > 0 || data.totalResponses > 0}
 				{@const humanResults = humanAggregateResults()}
+				{@const maxPercentage = Math.max(
+					...data.aggregateResults.map((r: { percentage: number }) => r.percentage),
+					...humanResults.map((r: { percentage: number }) => r.percentage),
+					1
+				)}
+					<!-- Legend -->
+					<div class="flex items-center justify-center gap-8 mb-6">
+						<div class="flex items-center gap-2">
+							<div class="w-3 h-3 rounded-full bg-blue-500"></div>
+							<span class="text-sm text-gray-700">AI Models</span>
+							<span class="text-xs text-gray-500">({data.totalResponses} models)</span>
+						</div>
+						<div class="flex items-center gap-2">
+							<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+							<span class="text-sm text-gray-700">Humans</span>
+							{#if selectedHumanDist()}
+								<span class="text-xs text-gray-500">({selectedHumanDist()?.sample_size.toLocaleString()} respondents)</span>
+							{/if}
+						</div>
+					</div>
+
+					<!-- Back-to-back butterfly chart -->
+					{#if data.options && data.options.length > 0}
+						<div class="space-y-2">
+							{#each data.options as option, i}
+								{@const optionKey = String(i + 1)}
+								{@const aiResult = data.aggregateResults.find((r: { answer: string }) => r.answer === optionKey)}
+								{@const humanResult = humanResults.find((r: { answer: string; label: string }) => r.answer === optionKey || r.label === option)}
+								{@const aiPct = aiResult?.percentage ?? 0}
+								{@const humanPct = humanResult?.percentage ?? 0}
+								<div class="flex items-center gap-2">
+									<!-- AI bar (right-aligned, grows left) -->
+									<div class="flex-1 flex items-center justify-end gap-2">
+										<span class="text-xs text-gray-500 tabular-nums w-8 text-right">
+											{aiPct > 0 ? `${aiPct.toFixed(0)}%` : ''}
+										</span>
+										<div class="w-32 sm:w-48 h-6 bg-gray-100 rounded-l overflow-hidden flex justify-end">
+											<div
+												class="h-full bg-blue-500 rounded-l transition-all"
+												style="width: {(aiPct / maxPercentage) * 100}%"
+											></div>
+										</div>
+									</div>
+									<!-- Center label -->
+									<div class="w-32 sm:w-40 text-center px-2">
+										<span class="text-sm text-gray-700 leading-tight">{option}</span>
+									</div>
+									<!-- Human bar (left-aligned, grows right) -->
+									<div class="flex-1 flex items-center gap-2">
+										<div class="w-32 sm:w-48 h-6 bg-gray-100 rounded-r overflow-hidden">
+											<div
+												class="h-full bg-emerald-500 rounded-r transition-all"
+												style="width: {(humanPct / maxPercentage) * 100}%"
+											></div>
+										</div>
+										<span class="text-xs text-gray-500 tabular-nums w-8">
+											{humanPct > 0 ? `${humanPct.toFixed(0)}%` : ''}
+										</span>
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else}
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-						<!-- AI Results -->
+						<!-- AI Results (fallback) -->
 						<div>
 							<div class="flex items-center gap-2 mb-4">
 								<div class="w-3 h-3 rounded-full bg-blue-500"></div>
@@ -665,6 +728,7 @@
 							{/if}
 						</div>
 					</div>
+					{/if}
 				{:else}
 					<div class="text-center py-8 text-gray-500">
 						No response data available yet.
