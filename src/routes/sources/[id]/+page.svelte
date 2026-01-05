@@ -204,16 +204,16 @@
 								{@const humanResult = question.humanResults.find((r: { answer: string; label: string }) => r.answer === optionKey || r.label === option)}
 								{@const aiPct = aiResult?.percentage ?? 0}
 								{@const humanPct = humanResult?.percentage ?? 0}
-								<div class="flex items-center gap-1 text-xs">
-									<span class="w-6 text-right text-slate-400 tabular-nums">{aiPct > 0 ? `${aiPct.toFixed(0)}%` : ''}</span>
-									<div class="w-12 h-2 bg-slate-100 rounded-l overflow-hidden flex justify-end">
+								<div class="flex items-center text-xs">
+									<span class="w-7 text-right text-slate-400 tabular-nums shrink-0">{aiPct > 0 ? `${aiPct.toFixed(0)}%` : ''}</span>
+									<div class="flex-1 h-2 bg-slate-100 rounded-l overflow-hidden flex justify-end">
 										<div class="h-full bg-blue-500 rounded-l" style="width: {(aiPct / maxPct) * 100}%"></div>
 									</div>
-									<div class="flex-1 text-center text-slate-600 truncate px-0.5" title={option}>{option}</div>
-									<div class="w-12 h-2 bg-slate-100 rounded-r overflow-hidden">
+									<div class="w-24 text-center text-slate-600 truncate px-1 shrink-0" title={option}>{option}</div>
+									<div class="flex-1 h-2 bg-slate-100 rounded-r overflow-hidden">
 										<div class="h-full bg-emerald-500 rounded-r" style="width: {(humanPct / maxPct) * 100}%"></div>
 									</div>
-									<span class="w-6 text-slate-400 tabular-nums">{humanPct > 0 ? `${humanPct.toFixed(0)}%` : ''}</span>
+									<span class="w-7 text-slate-400 tabular-nums shrink-0">{humanPct > 0 ? `${humanPct.toFixed(0)}%` : ''}</span>
 								</div>
 							{/each}
 						</div>
