@@ -1,29 +1,22 @@
 <script lang="ts">
-	// ABOUTME: Source detail page showing questions with full aggregate results.
+	// ABOUTME: Category detail page showing questions with full aggregate results.
 	// ABOUTME: Displays AI vs Human distribution comparison for each question.
 
 	import type { PageData } from './$types';
 	import { getScoreLevel, getScoreLabel } from '$lib/alignment';
-	import { marked } from 'marked';
 
 	let { data } = $props<{ data: PageData }>();
 
 	type SortKey = 'default' | 'humanAiScore' | 'aiAgreementScore';
 	let sortBy = $state<SortKey>('default');
-	let selectedCategory = $state('');
 
-	const filteredQuestions = $derived(() => {
-		let qs = selectedCategory
-			? data.questions.filter((q: { category: string | null }) => q.category === selectedCategory)
-			: data.questions;
-
+	const sortedQuestions = $derived(() => {
 		if (sortBy === 'humanAiScore') {
-			qs = [...qs].sort((a, b) => a.humanAiScore - b.humanAiScore);
+			return [...data.questions].sort((a, b) => a.humanAiScore - b.humanAiScore);
 		} else if (sortBy === 'aiAgreementScore') {
-			qs = [...qs].sort((a, b) => a.aiAgreementScore - b.aiAgreementScore);
+			return [...data.questions].sort((a, b) => a.aiAgreementScore - b.aiAgreementScore);
 		}
-
-		return qs;
+		return data.questions;
 	});
 
 	function getScoreColor(score: number): string {
@@ -40,8 +33,8 @@
 </script>
 
 <svelte:head>
-	<title>{data.source.name} — Qualia Garden</title>
-	<meta name="description" content="AI responses to questions from {data.source.name}" />
+	<title>{data.category} — Qualia Garden</title>
+	<meta name="description" content="AI responses to {data.category} questions" />
 </svelte:head>
 
 <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -64,36 +57,21 @@
 	<main class="max-w-6xl mx-auto px-6 py-8">
 		<!-- Breadcrumb -->
 		<div class="mb-8">
-			<a href="/" class="text-slate-500 hover:text-slate-700 text-sm flex items-center gap-1.5 transition-colors">
+			<a href="/questions" class="text-slate-500 hover:text-slate-700 text-sm flex items-center gap-1.5 transition-colors">
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
 				</svg>
-				All Sources
+				All Questions
 			</a>
 		</div>
 
-		<!-- Source Header -->
+		<!-- Category Header -->
 		<div class="bg-white rounded-xl border border-slate-200 p-6 mb-8">
 			<div class="flex items-start justify-between gap-6">
 				<div class="flex-1">
-					<div class="flex items-center gap-3 flex-wrap mb-3">
-						<h1 class="text-2xl font-bold text-slate-900 tracking-tight">{data.source.name}</h1>
-						<span class="px-2.5 py-1 bg-slate-100 text-slate-600 text-sm rounded-lg font-medium">{data.source.short_name}</span>
-					</div>
-					<p class="text-slate-500 flex items-center gap-2 flex-wrap">
-						{#if data.source.sample_size}
-							<span>{data.source.sample_size.toLocaleString()} respondents</span>
-						{/if}
-						{#if data.source.year_range}
-							<span class="text-slate-300">·</span>
-							<span>{data.source.year_range}</span>
-						{/if}
-						{#if data.source.url}
-							<span class="text-slate-300">·</span>
-							<a href={data.source.url} target="_blank" rel="noopener" class="text-slate-600 hover:text-slate-900 underline underline-offset-2 transition-colors">View source</a>
-						{/if}
-						<span class="text-slate-300">·</span>
-						<span>{data.questionCount} question{data.questionCount === 1 ? '' : 's'}</span>
+					<h1 class="text-2xl font-bold text-slate-900 tracking-tight mb-2">{data.category}</h1>
+					<p class="text-slate-500">
+						{data.questionCount} question{data.questionCount === 1 ? '' : 's'}
 					</p>
 				</div>
 				{#if data.overallHumanAiScore !== null || data.overallAiAgreement !== null}
@@ -125,16 +103,6 @@
 			</div>
 		</div>
 
-		<!-- About This Survey -->
-		{#if data.source.description}
-			<div class="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-				<h2 class="text-lg font-semibold text-slate-900 mb-4">About This Survey</h2>
-				<div class="prose prose-slate prose-sm max-w-none">
-					{@html marked(data.source.description)}
-				</div>
-			</div>
-		{/if}
-
 		<!-- Controls -->
 		<div class="flex flex-wrap gap-4 items-center mb-6">
 			<div class="flex items-center gap-2">
@@ -148,28 +116,14 @@
 					<option value="aiAgreementScore">Lowest AI Agreement</option>
 				</select>
 			</div>
-			{#if data.categories && data.categories.length > 1}
-				<div class="flex items-center gap-2">
-					<span class="text-sm text-slate-500">Category</span>
-					<select
-						bind:value={selectedCategory}
-						class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200"
-					>
-						<option value="">All</option>
-						{#each data.categories as cat}
-							<option value={cat}>{cat}</option>
-						{/each}
-					</select>
-				</div>
-			{/if}
 			<div class="text-sm text-slate-400 ml-auto">
-				{filteredQuestions().length} question{filteredQuestions().length === 1 ? '' : 's'}
+				{sortedQuestions().length} question{sortedQuestions().length === 1 ? '' : 's'}
 			</div>
 		</div>
 
 		<!-- Questions with Full Results -->
 		<div class="space-y-6">
-			{#each filteredQuestions() as question}
+			{#each sortedQuestions() as question}
 				<div class="bg-white rounded-xl border border-slate-200 p-6">
 					<!-- Question Header -->
 					<div class="flex items-start justify-between gap-4 mb-6">
@@ -178,9 +132,6 @@
 								{question.text}
 							</a>
 							<div class="mt-2 text-sm text-slate-500">
-								{#if question.category}
-									<span class="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md mr-2">{question.category}</span>
-								{/if}
 								{question.modelCount} model{question.modelCount === 1 ? '' : 's'}
 								{#if question.humanSampleSize}
 									· {question.humanSampleSize.toLocaleString()} human respondents
@@ -272,7 +223,7 @@
 				</div>
 			{:else}
 				<div class="text-center py-16">
-					<p class="text-slate-500">No questions in this source yet.</p>
+					<p class="text-slate-500">No questions in this category.</p>
 				</div>
 			{/each}
 		</div>

@@ -1,4 +1,4 @@
-// ABOUTME: Data loader for benchmark source detail page.
+// ABOUTME: Data loader for category detail page.
 // ABOUTME: Returns questions with full aggregate results for display.
 
 import type { PageServerLoad } from './$types';
@@ -9,18 +9,10 @@ import {
 	nominalAgreementScore,
 	ordinalInternalAgreement,
 	nominalInternalAgreement,
+	distributionMeanNormalized,
+	arrayMeanNormalized,
 	normalizeDistributionKeys
 } from '$lib/alignment';
-
-interface BenchmarkSource {
-	id: string;
-	name: string;
-	short_name: string;
-	url: string | null;
-	sample_size: number | null;
-	year_range: string | null;
-	description: string | null;
-}
 
 interface Question {
 	id: string;
@@ -28,6 +20,7 @@ interface Question {
 	category: string | null;
 	response_type: string;
 	options: string | null;
+	benchmark_source_id: string | null;
 }
 
 interface ModelResponseRow {
@@ -73,40 +66,23 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	}
 
 	const db = platform.env.DB;
-	const sourceId = params.id;
+	const category = decodeURIComponent(params.category);
 
-	// Get source metadata
-	const sourceResult = await db
-		.prepare('SELECT * FROM benchmark_sources WHERE id = ?')
-		.bind(sourceId)
-		.first<BenchmarkSource>();
-
-	if (!sourceResult) {
-		return error(404, 'Source not found');
-	}
-
-	// Get published questions for this source
+	// Get published questions for this category
 	const questionsResult = await db
 		.prepare(`
-			SELECT id, text, category, response_type, options
+			SELECT id, text, category, response_type, options, benchmark_source_id
 			FROM questions
-			WHERE benchmark_source_id = ?
+			WHERE category = ?
 				AND status = 'published'
-			ORDER BY category, text
+			ORDER BY text
 		`)
-		.bind(sourceId)
+		.bind(category)
 		.all<Question>();
 
 	const questions = questionsResult.results;
 	if (questions.length === 0) {
-		return {
-			source: sourceResult,
-			questions: [],
-			categories: [],
-			overallHumanAiScore: null,
-			overallAiAgreement: null,
-			questionCount: 0
-		};
+		return error(404, 'Category not found or has no published questions');
 	}
 
 	const questionIds = questions.map(q => q.id);
@@ -126,7 +102,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			JOIN questions q ON p.question_id = q.id
 			WHERE p.status = 'complete'
 				AND r.parsed_answer IS NOT NULL
-				AND q.benchmark_source_id = ?
+				AND q.category = ?
 				AND q.status = 'published'
 				AND (
 					(p.batch_id IS NOT NULL AND p.batch_id = (
@@ -148,7 +124,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 					))
 				)
 		`)
-		.bind(sourceId)
+		.bind(category)
 		.all<ModelResponseRow>();
 
 	// Group responses by question, then by model
@@ -278,9 +254,6 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		};
 	});
 
-	// Get unique categories
-	const categories = [...new Set(questions.filter(q => q.category).map(q => q.category as string))];
-
 	// Compute overall scores
 	const questionsWithHumanData = questionsWithResults.filter(q => q.humanResults.length > 0);
 	const overallHumanAiScore = questionsWithHumanData.length > 0
@@ -293,9 +266,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		: null;
 
 	return {
-		source: sourceResult,
+		category,
 		questions: questionsWithResults,
-		categories,
 		overallHumanAiScore,
 		overallAiAgreement,
 		questionCount: questions.length
