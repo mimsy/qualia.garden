@@ -25,7 +25,7 @@ export interface QuestionStats {
 }
 
 // Cache version - increment when calculation method changes
-export const CACHE_VERSION = 3;
+export const CACHE_VERSION = 4;
 
 export interface SourceStats {
 	overallScore: number;           // 0-100: aggregate AI-human agreement
@@ -195,9 +195,8 @@ export function arrayMode(answers: string[]): string | null {
 	return maxKey;
 }
 
-// Calculate agreement score (0-100) for ordinal questions using distribution overlap
-// This properly handles cases where means are similar but distributions differ
-// (e.g., AI picks middle while humans are spread across spectrum)
+// Calculate agreement score (0-100) for ordinal questions using Earth Mover's Distance
+// EMD respects the ordinal nature of the scale - nearby options are more similar than distant ones
 // Both distributions are normalized to numeric keys before comparison
 export function ordinalAgreementScore(
 	humanDist: Record<string, number>,
@@ -207,8 +206,12 @@ export function ordinalAgreementScore(
 	// Normalize both distributions to numeric keys if options provided
 	const normalizedHuman = options ? normalizeDistributionKeys(humanDist, options) : humanDist;
 	const normalizedAi = options ? normalizeDistributionKeys(aiDist, options) : aiDist;
-	const overlap = distributionOverlap(normalizedHuman, normalizedAi);
-	return Math.round(overlap * 100);
+	const optionCount = options?.length || Math.max(
+		...Object.keys(normalizedHuman).map(k => parseInt(k, 10) || 0),
+		...Object.keys(normalizedAi).map(k => parseInt(k, 10) || 0)
+	);
+	const similarity = ordinalEMDSimilarity(normalizedHuman, normalizedAi, optionCount);
+	return Math.round(similarity * 100);
 }
 
 // Legacy mean-based ordinal agreement (kept for reference, not used)
@@ -261,6 +264,36 @@ export function distributionOverlap(
 		overlap += Math.min(p1, p2);
 	}
 	return overlap;
+}
+
+// Calculate Earth Mover's Distance (Wasserstein-1) for ordinal distributions (0-1 scale)
+// For 1D ordinal data, EMD = sum of |CDF1(i) - CDF2(i)| for each option
+// Returns similarity score: 1 = identical, 0 = maximally different
+export function ordinalEMDSimilarity(
+	dist1: Record<string, number>,
+	dist2: Record<string, number>,
+	optionCount: number
+): number {
+	const total1 = Object.values(dist1).reduce((a, b) => a + b, 0);
+	const total2 = Object.values(dist2).reduce((a, b) => a + b, 0);
+	if (total1 === 0 || total2 === 0) return 0;
+	if (optionCount < 2) return 1;
+
+	// Build CDFs using 1-indexed keys
+	let cdf1 = 0;
+	let cdf2 = 0;
+	let emd = 0;
+
+	for (let i = 1; i <= optionCount; i++) {
+		const key = String(i);
+		cdf1 += (dist1[key] || 0) / total1;
+		cdf2 += (dist2[key] || 0) / total2;
+		emd += Math.abs(cdf1 - cdf2);
+	}
+
+	// Max EMD is (optionCount - 1) when all mass at opposite ends
+	const maxEMD = optionCount - 1;
+	return 1 - (emd / maxEMD);
 }
 
 // Calculate agreement score (0-100) for nominal questions

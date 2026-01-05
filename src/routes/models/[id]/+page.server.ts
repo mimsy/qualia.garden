@@ -189,8 +189,9 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		}
 	}
 
-	// Compute this model's aggregated response per question and self-consistency
+	// Compute this model's aggregated response and distribution per question, plus self-consistency
 	const modelResponses: Record<string, string | null> = {};
+	const modelDistributions: Record<string, Record<string, number>> = {};
 	const questionSelfConsistency: Record<string, number> = {};
 
 	for (const [qId, answers] of responsesByQuestion) {
@@ -201,6 +202,13 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			? computeMedian(answers)
 			: computeMode(answers);
 
+		// Build distribution from all samples
+		const dist: Record<string, number> = {};
+		for (const ans of answers) {
+			dist[ans] = (dist[ans] || 0) + 1;
+		}
+		modelDistributions[qId] = dist;
+
 		// Compute self-consistency for this question
 		const options = q.options ? JSON.parse(q.options) as string[] : [];
 		if (answers.length >= 2 && options.length > 0) {
@@ -208,7 +216,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 				? ordinalConsensusScore(answers, options.length)
 				: nominalConsensusScore(answers);
 		} else if (answers.length === 1) {
-			questionSelfConsistency[qId] = 5; // Perfect consistency with one sample
+			questionSelfConsistency[qId] = 100; // Perfect consistency with one sample
 		}
 	}
 
@@ -218,7 +226,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		? Math.round((consistencyValues.reduce((a, b) => a + b, 0) / consistencyValues.length) * 10) / 10
 		: null;
 
-	// Compute per-question human alignment scores
+	// Compute per-question human alignment scores using model's full distribution
 	const questionScores: QuestionWithScore[] = [];
 	for (const [qId, answer] of Object.entries(modelResponses)) {
 		if (!answer) continue;
@@ -226,20 +234,17 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		if (!q) continue;
 
 		const humanDist = humanDistMap.get(qId);
+		const modelDist = modelDistributions[qId];
 		const options = q.options ? JSON.parse(q.options) as string[] : [];
 		let humanAiScore = 0;
 		let humanMode: string | null = null;
 
-		if (humanDist && options.length > 0) {
+		if (humanDist && modelDist && options.length > 0) {
 			if (q.response_type === 'ordinal') {
-				// Build single-answer AI distribution for overlap calculation
-				const aiDist: Record<string, number> = { [answer]: 1 };
-				humanAiScore = ordinalAgreementScore(humanDist, aiDist, options);
+				// Use model's full distribution for EMD comparison
+				humanAiScore = ordinalAgreementScore(humanDist, modelDist, options);
 			} else {
-				// Convert to labels for comparison
-				const idx = parseInt(answer, 10) - 1;
-				const answerLabel = (idx >= 0 && idx < options.length) ? options[idx] : answer;
-
+				// Convert both distributions to labels for comparison
 				const humanDistLabeled: Record<string, number> = {};
 				for (const [key, count] of Object.entries(humanDist)) {
 					const hIdx = parseInt(key, 10) - 1;
@@ -247,9 +252,15 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 					humanDistLabeled[label] = (humanDistLabeled[label] || 0) + count;
 				}
 
+				const modelDistLabeled: Record<string, number> = {};
+				for (const [key, count] of Object.entries(modelDist)) {
+					const mIdx = parseInt(key, 10) - 1;
+					const label = (mIdx >= 0 && mIdx < options.length) ? options[mIdx] : key;
+					modelDistLabeled[label] = (modelDistLabeled[label] || 0) + count;
+				}
+
 				humanMode = distributionMode(humanDistLabeled);
-				const aiDist: Record<string, number> = { [answerLabel]: 1 };
-				humanAiScore = nominalAgreementScore(humanDistLabeled, aiDist);
+				humanAiScore = nominalAgreementScore(humanDistLabeled, modelDistLabeled);
 			}
 		}
 
