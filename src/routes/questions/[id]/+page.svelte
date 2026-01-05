@@ -605,6 +605,8 @@
 					...humanResults.map((r: { percentage: number }) => r.percentage),
 					1
 				)}
+				{@const aiMaxPct = Math.max(...data.aggregateResults.map((r: { percentage: number }) => r.percentage), 0)}
+				{@const humanMaxPct = Math.max(...humanResults.map((r: { percentage: number }) => r.percentage), 0)}
 					<!-- Legend -->
 					<div class="flex items-center justify-center gap-8 mb-6">
 						<div class="flex items-center gap-2">
@@ -630,10 +632,13 @@
 								{@const humanResult = humanResults.find((r: { answer: string; label: string }) => r.answer === optionKey || r.label === option)}
 								{@const aiPct = aiResult?.percentage ?? 0}
 								{@const humanPct = humanResult?.percentage ?? 0}
+								{@const isAiMode = aiPct > 0 && aiPct === aiMaxPct}
+								{@const isHumanMode = humanPct > 0 && humanPct === humanMaxPct}
 								<div class="flex items-center gap-2">
 									<!-- AI bar (right-aligned, grows left) -->
 									<div class="flex-1 flex items-center justify-end gap-2">
-										<span class="text-xs text-gray-500 tabular-nums w-8 text-right">
+										{#if isAiMode}<span class="text-blue-500">●</span>{/if}
+										<span class="text-xs tabular-nums w-8 text-right {isAiMode ? 'text-blue-600 font-semibold' : 'text-gray-500'}">
 											{aiPct > 0 ? `${aiPct.toFixed(0)}%` : ''}
 										</span>
 										<div class="w-32 sm:w-48 h-6 bg-gray-100 rounded-l overflow-hidden flex justify-end">
@@ -655,9 +660,10 @@
 												style="width: {(humanPct / maxPercentage) * 100}%"
 											></div>
 										</div>
-										<span class="text-xs text-gray-500 tabular-nums w-8">
+										<span class="text-xs tabular-nums w-8 {isHumanMode ? 'text-emerald-600 font-semibold' : 'text-gray-500'}">
 											{humanPct > 0 ? `${humanPct.toFixed(0)}%` : ''}
 										</span>
+										{#if isHumanMode}<span class="text-emerald-500">●</span>{/if}
 									</div>
 								</div>
 							{/each}

@@ -197,6 +197,8 @@
 							...question.humanResults.map((r: { percentage: number }) => r.percentage),
 							1
 						)}
+						{@const aiMaxPct = Math.max(...question.aiResults.map((r: { percentage: number }) => r.percentage), 0)}
+						{@const humanMaxPct = Math.max(...question.humanResults.map((r: { percentage: number }) => r.percentage), 0)}
 						<div class="space-y-1">
 							{#each question.options as option, i}
 								{@const optionKey = String(i + 1)}
@@ -204,8 +206,11 @@
 								{@const humanResult = question.humanResults.find((r: { answer: string; label: string }) => r.answer === optionKey || r.label === option)}
 								{@const aiPct = aiResult?.percentage ?? 0}
 								{@const humanPct = humanResult?.percentage ?? 0}
+								{@const isAiMode = aiPct > 0 && aiPct === aiMaxPct}
+								{@const isHumanMode = humanPct > 0 && humanPct === humanMaxPct}
 								<div class="flex items-center text-xs">
-									<span class="w-7 text-right text-slate-400 tabular-nums shrink-0">{aiPct > 0 ? `${aiPct.toFixed(0)}%` : ''}</span>
+									<span class="w-3 shrink-0">{#if isAiMode}<span class="text-blue-500">●</span>{/if}</span>
+									<span class="w-7 text-right tabular-nums shrink-0 {isAiMode ? 'text-blue-600 font-medium' : 'text-slate-400'}">{aiPct > 0 ? `${aiPct.toFixed(0)}%` : ''}</span>
 									<div class="flex-1 h-2 bg-slate-100 rounded-l overflow-hidden flex justify-end">
 										<div class="h-full bg-blue-500 rounded-l" style="width: {(aiPct / maxPct) * 100}%"></div>
 									</div>
@@ -213,7 +218,8 @@
 									<div class="flex-1 h-2 bg-slate-100 rounded-r overflow-hidden">
 										<div class="h-full bg-emerald-500 rounded-r" style="width: {(humanPct / maxPct) * 100}%"></div>
 									</div>
-									<span class="w-7 text-slate-400 tabular-nums shrink-0">{humanPct > 0 ? `${humanPct.toFixed(0)}%` : ''}</span>
+									<span class="w-7 tabular-nums shrink-0 {isHumanMode ? 'text-emerald-600 font-medium' : 'text-slate-400'}">{humanPct > 0 ? `${humanPct.toFixed(0)}%` : ''}</span>
+									<span class="w-3 shrink-0">{#if isHumanMode}<span class="text-emerald-500">●</span>{/if}</span>
 								</div>
 							{/each}
 						</div>
