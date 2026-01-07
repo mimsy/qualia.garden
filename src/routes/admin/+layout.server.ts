@@ -1,11 +1,11 @@
 // ABOUTME: Server-side auth check for admin routes.
-// ABOUTME: Verifies Cloudflare Access authentication header.
+// ABOUTME: Verifies user is authenticated and has admin privileges.
 
 import { dev } from '$app/environment';
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ request, url }) => {
+export const load: LayoutServerLoad = async ({ locals, url }) => {
 	// In development, skip auth check
 	if (dev) {
 		return { user: 'dev@localhost' };
@@ -17,12 +17,15 @@ export const load: LayoutServerLoad = async ({ request, url }) => {
 		return { user: 'preview@test' };
 	}
 
-	// Check for Cloudflare Access header
-	const userEmail = request.headers.get('CF-Access-Authenticated-User-Email');
-
-	if (!userEmail) {
-		throw error(401, 'Unauthorized: Cloudflare Access required');
+	// Check if user is authenticated
+	if (!locals.user) {
+		throw redirect(302, '/login');
 	}
 
-	return { user: userEmail };
+	// Check if user is admin
+	if (!locals.user.isAdmin) {
+		throw error(403, 'Forbidden: Admin access required');
+	}
+
+	return { user: locals.user.email };
 };

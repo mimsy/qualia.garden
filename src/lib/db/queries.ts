@@ -331,3 +331,34 @@ export async function getCategories(db: D1Database): Promise<string[]> {
 		.all<{ category: string }>();
 	return result.results.map((r) => r.category);
 }
+
+// Users
+export async function getUserCount(db: D1Database): Promise<number> {
+	const result = await db.prepare('SELECT COUNT(*) as count FROM user').first<{ count: number }>();
+	return result?.count ?? 0;
+}
+
+export async function isFirstUser(db: D1Database): Promise<boolean> {
+	const count = await getUserCount(db);
+	return count === 0;
+}
+
+export async function setUserAdmin(
+	db: D1Database,
+	userId: string,
+	isAdmin: boolean
+): Promise<void> {
+	await db
+		.prepare('UPDATE user SET isAdmin = ? WHERE id = ?')
+		.bind(isAdmin ? 1 : 0, userId)
+		.run();
+}
+
+export async function getAdminUsers(
+	db: D1Database
+): Promise<Array<{ id: string; email: string; name: string }>> {
+	const result = await db
+		.prepare('SELECT id, email, name FROM user WHERE isAdmin = 1')
+		.all<{ id: string; email: string; name: string }>();
+	return result.results;
+}
