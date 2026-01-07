@@ -33,15 +33,10 @@
 	let { data, form } = $props<{ data: PageData; form: ActionData }>();
 
 	type ResponseType = (typeof data.responses)[number];
-	type HumanDistribution = (typeof data.humanDistributions)[number];
 	type PollType = (typeof data.allPolls)[number];
 
 	let selectedFamily = $state<string | null>(null);
 	let expandedModel = $state<string | null>(null);
-	let selectedContinent = $state<string | null>(null);
-	let selectedEducation = $state<string | null>(null);
-	let selectedAgeGroup = $state<string | null>(null);
-	let selectedGender = $state<string | null>(null);
 	let showPollHistory = $state(false);
 	let showPollTrigger = $state(false);
 	let selectedModels = $state<Set<string>>(new Set());
@@ -105,25 +100,11 @@
 			: data.responses
 	);
 
-	// Get selected human distribution based on filters
-	const selectedHumanDist = $derived(() => {
-		if (!data.humanDistributions.length) return null;
-		return data.humanDistributions.find(
-			(d: HumanDistribution) =>
-				d.continent === selectedContinent &&
-				d.education_level === selectedEducation &&
-				d.settlement_type === null &&
-				d.age_group === selectedAgeGroup &&
-				d.gender === selectedGender
-		);
-	});
-
 	// Parse human distribution to aggregated format
 	const humanAggregateResults = $derived(() => {
-		const dist = selectedHumanDist();
-		if (!dist) return [];
+		if (!data.humanDistribution) return [];
 
-		const parsed = JSON.parse(dist.distribution) as Record<string, number>;
+		const parsed = JSON.parse(data.humanDistribution.distribution) as Record<string, number>;
 		const total = Object.values(parsed).reduce((a, b) => a + b, 0);
 
 		return Object.entries(parsed)
@@ -547,56 +528,7 @@
 		{#if data.benchmarkSource}
 			<!-- Comparison View: AI vs Human -->
 			<div class="bg-white rounded-lg shadow p-6 mb-8">
-				<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-					<h3 class="font-bold text-gray-900">AI vs Human Comparison</h3>
-					<div class="flex flex-wrap gap-2 items-center text-sm">
-						<span class="text-gray-500">Filter humans by:</span>
-						{#if data.continents.length > 0}
-							<select
-								bind:value={selectedContinent}
-								class="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-							>
-								<option value={null}>All Regions</option>
-								{#each data.continents as continent}
-									<option value={continent}>{continent}</option>
-								{/each}
-							</select>
-						{/if}
-						{#if data.educationLevels.length > 0}
-							<select
-								bind:value={selectedEducation}
-								class="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-							>
-								<option value={null}>All Education</option>
-								{#each data.educationLevels as level}
-									<option value={level}>{level}</option>
-								{/each}
-							</select>
-						{/if}
-						{#if data.ageGroups.length > 0}
-							<select
-								bind:value={selectedAgeGroup}
-								class="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-							>
-								<option value={null}>All Ages</option>
-								{#each data.ageGroups as age}
-									<option value={age}>{age}</option>
-								{/each}
-							</select>
-						{/if}
-						{#if data.genders.length > 0}
-							<select
-								bind:value={selectedGender}
-								class="px-3 py-1.5 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-							>
-								<option value={null}>All Genders</option>
-								{#each data.genders as g}
-									<option value={g}>{g}</option>
-								{/each}
-							</select>
-						{/if}
-					</div>
-				</div>
+				<h3 class="font-bold text-gray-900 mb-6">AI vs Human Comparison</h3>
 
 				{#if humanAggregateResults().length > 0 || data.totalResponses > 0}
 				{@const humanResults = humanAggregateResults()}
@@ -617,8 +549,8 @@
 						<div class="flex items-center gap-2">
 							<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
 							<span class="text-sm text-gray-700">Humans</span>
-							{#if selectedHumanDist()}
-								<span class="text-xs text-gray-500">({selectedHumanDist()?.sample_size.toLocaleString()} respondents)</span>
+							{#if data.humanDistribution}
+								<span class="text-xs text-gray-500">({data.humanDistribution.sample_size.toLocaleString()} respondents)</span>
 							{/if}
 						</div>
 					</div>
@@ -704,8 +636,8 @@
 							<div class="flex items-center gap-2 mb-4">
 								<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
 								<span class="font-medium text-gray-700">Humans</span>
-								{#if selectedHumanDist()}
-									<span class="text-xs text-gray-500">({selectedHumanDist()?.sample_size.toLocaleString()} respondents)</span>
+								{#if data.humanDistribution}
+									<span class="text-xs text-gray-500">({data.humanDistribution.sample_size.toLocaleString()} respondents)</span>
 								{/if}
 							</div>
 							{#if humanResults.length > 0}

@@ -225,7 +225,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 
 	// Fetch benchmark data if this is a benchmark question
 	let benchmarkSource: BenchmarkSource | null = null;
-	let humanDistributions: HumanDistribution[] = [];
+	let overallHumanDist: HumanDistribution | null = null;
 
 	if (question.benchmark_source_id) {
 		// Get benchmark source
@@ -234,41 +234,21 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 			.bind(question.benchmark_source_id)
 			.first<BenchmarkSource>();
 
-		// Get all human distributions for this question
-		const distResult = await db
+		// Get the overall human distribution (no demographic filters)
+		overallHumanDist = await db
 			.prepare(
-				'SELECT * FROM human_response_distributions WHERE question_id = ? ORDER BY continent, education_level'
+				`SELECT * FROM human_response_distributions
+				 WHERE question_id = ?
+				 AND continent IS NULL AND education_level IS NULL AND age_group IS NULL AND gender IS NULL`
 			)
 			.bind(params.id)
-			.all<HumanDistribution>();
-		humanDistributions = distResult.results;
+			.first<HumanDistribution>();
 	}
-
-	// Get unique filter values from distributions
-	const continents = [
-		...new Set(humanDistributions.filter((d) => d.continent).map((d) => d.continent as string))
-	].sort();
-	const educationLevels = [
-		...new Set(
-			humanDistributions.filter((d) => d.education_level).map((d) => d.education_level as string)
-		)
-	].sort();
-	const ageGroups = [
-		...new Set(humanDistributions.filter((d) => d.age_group).map((d) => d.age_group as string))
-	].sort();
-	const genders = [
-		...new Set(humanDistributions.filter((d) => d.gender).map((d) => d.gender as string))
-	].sort();
 
 	// Compute question-level scores
 	let humanAiScore: number | null = null;
 	let aiConsensusScore: number | null = null;
 	const modelSelfConsistency: Record<string, number> = {};
-
-	// Get the overall human distribution (no demographic filters)
-	const overallHumanDist = humanDistributions.find(
-		(d) => !d.continent && !d.education_level && !d.age_group && !d.gender
-	);
 
 	if (options && respondedModels.length > 0) {
 		// Get all aggregated answers for AI consensus
@@ -387,11 +367,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		aggregateResults: sortedAnswers,
 		totalResponses: respondedModels.length,
 		benchmarkSource,
-		humanDistributions,
-		continents,
-		educationLevels,
-		ageGroups,
-		genders,
+		humanDistribution: overallHumanDist,
 		humanAiScore,
 		aiConsensusScore,
 		modelSelfConsistency,
