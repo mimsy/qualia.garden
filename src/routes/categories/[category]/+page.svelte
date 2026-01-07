@@ -89,7 +89,7 @@
 						{/if}
 						{#if data.overallAiAgreement !== null}
 							<div class="text-center">
-								<div class="text-xs text-slate-500 mb-1">AI Agreement</div>
+								<div class="text-xs text-slate-500 mb-1">AI Consensus</div>
 								<div class="text-2xl font-bold {getScoreColor(data.overallAiAgreement)}">
 									{data.overallAiAgreement}
 								</div>
@@ -112,8 +112,8 @@
 					class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200"
 				>
 					<option value="default">Default</option>
-					<option value="humanAiScore">Lowest AI-Human Agreement</option>
-					<option value="aiAgreementScore">Lowest AI Agreement</option>
+					<option value="humanAiScore">Lowest Human Similarity</option>
+					<option value="aiAgreementScore">Lowest AI Consensus</option>
 				</select>
 			</div>
 			<div class="text-sm text-slate-400 ml-auto">

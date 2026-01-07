@@ -102,7 +102,7 @@
 					<div class="flex gap-6">
 						{#if data.overallHumanAlignment !== null}
 							<div class="text-center">
-								<div class="text-xs text-slate-500 mb-1">Human Alignment</div>
+								<div class="text-xs text-slate-500 mb-1">Human Similarity</div>
 								<div class="text-2xl font-bold {getScoreColor(data.overallHumanAlignment)}">
 									{Math.round(data.overallHumanAlignment)}
 								</div>
@@ -110,7 +110,7 @@
 						{/if}
 						{#if data.overallSelfConsistency !== null}
 							<div class="text-center">
-								<div class="text-xs text-slate-500 mb-1">Self-Consistency</div>
+								<div class="text-xs text-slate-500 mb-1">AI Confidence</div>
 								<div class="text-2xl font-bold {getScoreColor(data.overallSelfConsistency)}">
 									{Math.round(data.overallSelfConsistency)}
 								</div>
@@ -127,9 +127,9 @@
 			</div>
 		{:else}
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-				<!-- Human Alignment Card -->
+				<!-- Human Similarity Card -->
 				<div class="bg-white rounded-xl border border-slate-200 p-6">
-					<h2 class="text-lg font-semibold text-slate-900 mb-5">Human Alignment</h2>
+					<h2 class="text-lg font-semibold text-slate-900 mb-5">Human Similarity</h2>
 
 					{#if data.overallHumanAlignment !== null}
 						<div class="mb-6 pb-6 border-b border-slate-100">

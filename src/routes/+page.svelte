@@ -135,7 +135,7 @@
 									{#if source.aiAgreementScore !== null}
 										<div class="flex-1">
 											<div class="flex items-center justify-between mb-1">
-												<span class="text-xs text-slate-500">AI Agreement</span>
+												<span class="text-xs text-slate-500">AI Consensus</span>
 												<span class="text-sm font-semibold {getScoreColor(source.aiAgreementScore)}">{Math.round(source.aiAgreementScore)}</span>
 											</div>
 											<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -236,7 +236,7 @@
 									</div>
 									<div class="flex-1">
 										<div class="flex items-center justify-between mb-1">
-											<span class="text-xs text-slate-500">AI Agreement</span>
+											<span class="text-xs text-slate-500">AI Consensus</span>
 											<span class="text-sm font-semibold {getScoreColor(category.aiAgreementScore)}">{Math.round(category.aiAgreementScore)}</span>
 										</div>
 										<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">

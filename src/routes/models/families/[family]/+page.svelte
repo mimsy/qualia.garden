@@ -107,7 +107,7 @@
 					<div class="flex gap-6">
 						{#if data.avgHumanAlignment !== null}
 							<div class="text-center">
-								<div class="text-xs text-slate-500 mb-1">Avg Human Alignment</div>
+								<div class="text-xs text-slate-500 mb-1">Avg Human Similarity</div>
 								<div class="text-2xl font-bold {getScoreColor(data.avgHumanAlignment)}">
 									{Math.round(data.avgHumanAlignment)}
 								</div>
@@ -115,7 +115,7 @@
 						{/if}
 						{#if data.avgSelfConsistency !== null}
 							<div class="text-center">
-								<div class="text-xs text-slate-500 mb-1">Avg Self-Consistency</div>
+								<div class="text-xs text-slate-500 mb-1">Avg AI Confidence</div>
 								<div class="text-2xl font-bold {getScoreColor(data.avgSelfConsistency)}">
 									{Math.round(data.avgSelfConsistency)}
 								</div>

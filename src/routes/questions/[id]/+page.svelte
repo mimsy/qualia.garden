@@ -481,9 +481,9 @@
 			<div class="bg-white rounded-lg shadow p-6 mb-8">
 				<h3 class="font-bold text-gray-900 mb-4">Scores</h3>
 				<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-					<!-- AI-Human Agreement -->
+					<!-- Human Similarity -->
 					<div class="text-center">
-						<div class="text-sm text-gray-500 mb-2">AI-Human Agreement</div>
+						<div class="text-sm text-gray-500 mb-2">Human Similarity</div>
 						{#if data.humanAiScore !== null}
 							<div class="text-3xl font-bold {getScoreColor(data.humanAiScore)}">
 								{Math.round(data.humanAiScore)}
@@ -501,9 +501,9 @@
 						{/if}
 					</div>
 
-					<!-- AI Agreement -->
+					<!-- AI Consensus -->
 					<div class="text-center">
-						<div class="text-sm text-gray-500 mb-2">AI Agreement</div>
+						<div class="text-sm text-gray-500 mb-2">AI Consensus</div>
 						{#if data.aiConsensusScore !== null}
 							<div class="text-3xl font-bold {getScoreColor(data.aiConsensusScore)}">
 								{Math.round(data.aiConsensusScore)}
@@ -521,9 +521,9 @@
 						{/if}
 					</div>
 
-					<!-- Average Self-Consistency -->
+					<!-- AI Confidence -->
 					<div class="text-center">
-						<div class="text-sm text-gray-500 mb-2">Avg Self-Consistency</div>
+						<div class="text-sm text-gray-500 mb-2">AI Confidence</div>
 						{#if avgSelfConsistency !== null}
 							<div class="text-3xl font-bold {getScoreColor(avgSelfConsistency)}">
 								{Math.round(avgSelfConsistency)}
