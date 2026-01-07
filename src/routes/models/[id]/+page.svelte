@@ -2,7 +2,7 @@
 <!-- ABOUTME: Displays per-category scores, similar/different models, and biggest disagreements. -->
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { getScoreLevel, getScoreLabel, getScoreColor, getScoreBgColor } from '$lib/alignment';
+	import { getScoreLabel, getScoreColor, getScoreBgColor } from '$lib/alignment';
 
 	let { data } = $props<{ data: PageData }>();
 </script>

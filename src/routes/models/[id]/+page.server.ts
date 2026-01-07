@@ -9,11 +9,7 @@ import {
 	nominalAgreementScore,
 	ordinalConsensusScore,
 	nominalConsensusScore,
-	distributionMeanNormalized,
-	arrayMeanNormalized,
 	distributionMode,
-	arrayMode,
-	getScoreLabel,
 	computeAgreement
 } from '$lib/alignment';
 

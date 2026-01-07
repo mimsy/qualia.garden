@@ -21,7 +21,7 @@ export function parseResponse(
 	const normalized = rawResponse.toLowerCase();
 
 	// Check for letter prefix (A, B, C, D, etc.)
-	const letterMatch = rawResponse.match(/^[A-Z][\.\):\s]/i);
+	const letterMatch = rawResponse.match(/^[A-Z][.):\s]/i);
 	if (letterMatch) {
 		const letterIndex = letterMatch[0].toUpperCase().charCodeAt(0) - 65;
 		if (letterIndex >= 0 && letterIndex < options.length) {

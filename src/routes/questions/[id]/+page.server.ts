@@ -378,7 +378,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 };
 
 export const actions: Actions = {
-	update: async ({ params, request, platform, locals }) => {
+	update: async ({ params, request, platform }) => {
 		if (!platform?.env?.DB) {
 			return fail(500, { error: 'Database not available' });
 		}

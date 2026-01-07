@@ -9,8 +9,6 @@ import {
 	nominalAgreementScore,
 	ordinalInternalAgreement,
 	nominalInternalAgreement,
-	distributionMeanNormalized,
-	arrayMeanNormalized,
 	normalizeDistributionKeys
 } from '$lib/alignment';
 

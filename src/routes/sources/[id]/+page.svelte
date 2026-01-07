@@ -3,7 +3,7 @@
 	// ABOUTME: Displays AI vs Human distribution comparison for each question.
 
 	import type { PageData } from './$types';
-	import { getScoreLevel, getScoreLabel, getScoreColor } from '$lib/alignment';
+	import { getScoreLabel, getScoreColor } from '$lib/alignment';
 	import { marked } from 'marked';
 
 	let { data } = $props<{ data: PageData }>();

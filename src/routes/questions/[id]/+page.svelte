@@ -5,7 +5,7 @@
 	import type { PageData, ActionData } from './$types';
 	import { enhance } from '$app/forms';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { getScoreLevel, getScoreLabel, getScoreColor, getScoreBgColor } from '$lib/alignment';
+	import { getScoreLabel, getScoreColor, getScoreBgColor } from '$lib/alignment';
 
 	let { data, form } = $props<{ data: PageData; form: ActionData }>();
 
@@ -935,7 +935,7 @@
 
 					{#if showPollHistory}
 						<div class="mt-4 space-y-4">
-							{#each Object.entries(pollsByModel) as [modelId, polls]}
+							{#each Object.entries(pollsByModel) as [_modelId, polls]}
 								{@const model = polls[0]}
 								<div class="border rounded-lg overflow-hidden">
 									<div class="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">

@@ -8,9 +8,7 @@ import {
 	ordinalAgreementScore,
 	nominalAgreementScore,
 	ordinalConsensusScore,
-	nominalConsensusScore,
-	distributionMeanNormalized,
-	arrayMeanNormalized
+	nominalConsensusScore
 } from '$lib/alignment';
 
 interface ModelRow {

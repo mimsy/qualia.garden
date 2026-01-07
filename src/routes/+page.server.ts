@@ -10,12 +10,9 @@ import {
 	getCachedSourceStats,
 	setCachedSourceStats,
 	CACHE_VERSION,
-	distributionMeanNormalized,
-	arrayMeanNormalized,
 	ordinalAgreementScore,
 	nominalAgreementScore,
 	type QuestionMeta,
-	type SourceStats,
 	type QuestionStats
 } from '$lib/alignment';
 

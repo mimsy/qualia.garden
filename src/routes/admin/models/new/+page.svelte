@@ -3,9 +3,9 @@
 	// ABOUTME: Streamlined UI for selecting and adding OpenRouter models.
 
 	import { onMount } from 'svelte';
-	import type { PageData, ActionData } from './$types';
+	import type { ActionData } from './$types';
 
-	let { data, form } = $props<{ data: PageData; form: ActionData }>();
+	let { form } = $props<{ form: ActionData }>();
 
 	interface OpenRouterModel {
 		id: string;
