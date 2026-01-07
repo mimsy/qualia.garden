@@ -3,7 +3,7 @@
 	// ABOUTME: Displays AI vs Human distribution comparison for each question.
 
 	import type { PageData } from './$types';
-	import { getScoreLevel, getScoreLabel } from '$lib/alignment';
+	import { getScoreLevel, getScoreLabel, getScoreColor } from '$lib/alignment';
 	import { marked } from 'marked';
 
 	let { data } = $props<{ data: PageData }>();
@@ -12,7 +12,7 @@
 	let sortBy = $state<SortKey>('default');
 	let selectedCategory = $state('');
 
-	const filteredQuestions = $derived(() => {
+	const filteredQuestions = $derived.by(() => {
 		let qs = selectedCategory
 			? data.questions.filter((q: { category: string | null }) => q.category === selectedCategory)
 			: data.questions;
@@ -25,18 +25,6 @@
 
 		return qs;
 	});
-
-	function getScoreColor(score: number): string {
-		const level = getScoreLevel(score);
-		const colors = {
-			'very-high': 'text-emerald-600',
-			'high': 'text-emerald-500',
-			'moderate': 'text-amber-600',
-			'low': 'text-orange-500',
-			'very-low': 'text-rose-500'
-		};
-		return colors[level];
-	}
 </script>
 
 <svelte:head>
@@ -163,13 +151,13 @@
 				</div>
 			{/if}
 			<div class="text-sm text-slate-400 ml-auto">
-				{filteredQuestions().length} question{filteredQuestions().length === 1 ? '' : 's'}
+				{filteredQuestions.length} question{filteredQuestions.length === 1 ? '' : 's'}
 			</div>
 		</div>
 
 		<!-- Questions with Full Results -->
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-			{#each filteredQuestions() as question}
+			{#each filteredQuestions as question}
 				<div class="bg-white rounded-xl border border-slate-200 p-5">
 					<!-- Question Header -->
 					<div class="mb-4">
@@ -240,7 +228,7 @@
 				</div>
 			{/each}
 		</div>
-		{#if filteredQuestions().length === 0}
+		{#if filteredQuestions.length === 0}
 			<div class="text-center py-16">
 				<p class="text-slate-500">No questions in this source yet.</p>
 			</div>

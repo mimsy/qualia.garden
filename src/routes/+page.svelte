@@ -3,45 +3,9 @@
 	// ABOUTME: Shows benchmark sources with agreement scores and divergence highlights.
 
 	import type { PageData } from './$types';
-	import { getScoreLevel, getScoreLabel } from '$lib/alignment';
+	import { getScoreColor, getScoreBgColor, getDivergenceBg } from '$lib/alignment';
 
 	let { data } = $props<{ data: PageData }>();
-
-	function getScoreColor(score: number): string {
-		const level = getScoreLevel(score);
-		const colors = {
-			'very-high': 'text-emerald-600',
-			'high': 'text-emerald-500',
-			'moderate': 'text-amber-600',
-			'low': 'text-orange-500',
-			'very-low': 'text-rose-500'
-		};
-		return colors[level];
-	}
-
-	function getScoreBgColor(score: number): string {
-		const level = getScoreLevel(score);
-		const colors = {
-			'very-high': 'bg-emerald-500',
-			'high': 'bg-emerald-400',
-			'moderate': 'bg-amber-400',
-			'low': 'bg-orange-400',
-			'very-low': 'bg-rose-400'
-		};
-		return colors[level];
-	}
-
-	function getDivergenceBg(score: number): string {
-		const level = getScoreLevel(score);
-		const colors = {
-			'very-high': 'bg-emerald-50 border-emerald-200',
-			'high': 'bg-emerald-50 border-emerald-100',
-			'moderate': 'bg-amber-50 border-amber-100',
-			'low': 'bg-orange-50 border-orange-100',
-			'very-low': 'bg-rose-50 border-rose-100'
-		};
-		return colors[level];
-	}
 </script>
 
 <svelte:head>

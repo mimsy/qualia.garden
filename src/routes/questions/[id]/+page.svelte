@@ -4,31 +4,8 @@
 
 	import type { PageData, ActionData } from './$types';
 	import { enhance } from '$app/forms';
-	import { getScoreLevel, getScoreLabel } from '$lib/alignment';
-
-	function getScoreColor(score: number): string {
-		const level = getScoreLevel(score);
-		const colors = {
-			'very-high': 'text-emerald-600',
-			'high': 'text-emerald-500',
-			'moderate': 'text-amber-600',
-			'low': 'text-orange-500',
-			'very-low': 'text-rose-500'
-		};
-		return colors[level];
-	}
-
-	function getScoreBgColor(score: number): string {
-		const level = getScoreLevel(score);
-		const colors = {
-			'very-high': 'bg-emerald-500',
-			'high': 'bg-emerald-400',
-			'moderate': 'bg-amber-400',
-			'low': 'bg-orange-400',
-			'very-low': 'bg-rose-400'
-		};
-		return colors[level];
-	}
+	import { SvelteSet } from 'svelte/reactivity';
+	import { getScoreLevel, getScoreLabel, getScoreColor, getScoreBgColor } from '$lib/alignment';
 
 	let { data, form } = $props<{ data: PageData; form: ActionData }>();
 
@@ -39,7 +16,7 @@
 	let expandedModel = $state<string | null>(null);
 	let showPollHistory = $state(false);
 	let showPollTrigger = $state(false);
-	let selectedModels = $state<Set<string>>(new Set());
+	let selectedModels = new SvelteSet<string>();
 
 	// Edit form state
 	let editText = $state(data.question.text);
@@ -101,7 +78,7 @@
 	);
 
 	// Parse human distribution to aggregated format
-	const humanAggregateResults = $derived(() => {
+	const humanAggregateResults = $derived.by(() => {
 		if (!data.humanDistribution) return [];
 
 		const parsed = JSON.parse(data.humanDistribution.distribution) as Record<string, number>;
@@ -132,7 +109,7 @@
 	}
 
 	// Group polls by model for history view
-	const pollsByModel = $derived(() => {
+	const pollsByModel = $derived.by(() => {
 		const grouped: Record<string, PollType[]> = {};
 		for (const poll of data.allPolls) {
 			if (!grouped[poll.model_id]) grouped[poll.model_id] = [];
@@ -142,24 +119,23 @@
 	});
 
 	// Models that have already been polled
-	const polledModelIds = $derived(new Set(data.allPolls.map((p: PollType) => p.model_id)));
+	const polledModelIds = $derived(new SvelteSet(data.allPolls.map((p: PollType) => p.model_id)));
 
 	function toggleModelSelection(modelId: string) {
-		const newSet = new Set(selectedModels);
-		if (newSet.has(modelId)) {
-			newSet.delete(modelId);
+		if (selectedModels.has(modelId)) {
+			selectedModels.delete(modelId);
 		} else {
-			newSet.add(modelId);
+			selectedModels.add(modelId);
 		}
-		selectedModels = newSet;
 	}
 
 	type ModelType = (typeof data.availableModels)[number];
 
 	function selectAllUnpolled() {
-		selectedModels = new Set(
-			data.availableModels.filter((m: ModelType) => !polledModelIds.has(m.id)).map((m: ModelType) => m.id)
-		);
+		selectedModels.clear();
+		for (const m of data.availableModels.filter((m: ModelType) => !polledModelIds.has(m.id))) {
+			selectedModels.add(m.id);
+		}
 	}
 
 	function getStatusBadgeClass(status: string) {
@@ -530,8 +506,8 @@
 			<div class="bg-white rounded-lg shadow p-6 mb-8">
 				<h3 class="font-bold text-gray-900 mb-6">AI vs Human Comparison</h3>
 
-				{#if humanAggregateResults().length > 0 || data.totalResponses > 0}
-				{@const humanResults = humanAggregateResults()}
+				{#if humanAggregateResults.length > 0 || data.totalResponses > 0}
+				{@const humanResults = humanAggregateResults}
 				{@const maxPercentage = Math.max(
 					...data.aggregateResults.map((r: { percentage: number }) => r.percentage),
 					...humanResults.map((r: { percentage: number }) => r.percentage),
@@ -959,7 +935,7 @@
 
 					{#if showPollHistory}
 						<div class="mt-4 space-y-4">
-							{#each Object.entries(pollsByModel()) as [modelId, polls]}
+							{#each Object.entries(pollsByModel) as [modelId, polls]}
 								{@const model = polls[0]}
 								<div class="border rounded-lg overflow-hidden">
 									<div class="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">

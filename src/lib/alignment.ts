@@ -57,6 +57,43 @@ export function getScoreLevel(score: number): ScoreLevel {
 	return 'very-low';
 }
 
+// Tailwind color classes for score display
+const scoreTextColors: Record<ScoreLevel, string> = {
+	'very-high': 'text-emerald-600',
+	'high': 'text-emerald-500',
+	'moderate': 'text-amber-600',
+	'low': 'text-orange-500',
+	'very-low': 'text-rose-500'
+};
+
+const scoreBgColors: Record<ScoreLevel, string> = {
+	'very-high': 'bg-emerald-500',
+	'high': 'bg-emerald-400',
+	'moderate': 'bg-amber-400',
+	'low': 'bg-orange-400',
+	'very-low': 'bg-rose-400'
+};
+
+const scoreDivergenceBg: Record<ScoreLevel, string> = {
+	'very-high': 'bg-emerald-50 border-emerald-200',
+	'high': 'bg-emerald-50 border-emerald-100',
+	'moderate': 'bg-amber-50 border-amber-100',
+	'low': 'bg-orange-50 border-orange-100',
+	'very-low': 'bg-rose-50 border-rose-100'
+};
+
+export function getScoreColor(score: number): string {
+	return scoreTextColors[getScoreLevel(score)];
+}
+
+export function getScoreBgColor(score: number): string {
+	return scoreBgColors[getScoreLevel(score)];
+}
+
+export function getDivergenceBg(score: number): string {
+	return scoreDivergenceBg[getScoreLevel(score)];
+}
+
 // Convert a key to a 0-based index, handling both numeric ("1", "2") and string ("Yes", "No") keys
 function keyToIndex(key: string, options: string[]): number {
 	// First try parsing as 1-based numeric index
