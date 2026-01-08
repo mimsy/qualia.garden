@@ -11,6 +11,8 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "eslint src workers",
 		"lint:fix": "eslint src workers --fix",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
 		"test": "vitest",
 		"test:run": "vitest run",
 		"test:coverage": "vitest run --coverage",
@@ -19,7 +21,8 @@
 		"db:migrate:remote": "wrangler d1 migrations apply qualia-garden --remote",
 		"worker:dev": "wrangler dev --config workers/poll-processor/wrangler.toml",
 		"worker:deploy": "wrangler deploy --config workers/poll-processor/wrangler.toml",
-		"deploy": "vite build && wrangler pages deploy .svelte-kit/cloudflare"
+		"deploy": "vite build && wrangler pages deploy .svelte-kit/cloudflare",
+		"prepare": "husky"
 	},
 	"dependencies": {
 		"@openrouter/ai-sdk-provider": "^1.5.4",
@@ -38,6 +41,15 @@
 		"vite": "^7.3.0",
 		"zod": "^4.2.1"
 	},
+	"lint-staged": {
+		"*.{js,ts,svelte}": [
+			"eslint --fix",
+			"prettier --write"
+		],
+		"*.{json,css,md,yml,yaml}": [
+			"prettier --write"
+		]
+	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20251228.0",
 		"@eslint/js": "^9.39.2",
@@ -50,10 +62,15 @@
 		"@vitest/coverage-v8": "^4.0.16",
 		"autoprefixer": "^10.4.23",
 		"eslint": "^9.39.2",
+		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.13.1",
 		"globals": "^17.0.0",
+		"husky": "^9.1.7",
 		"jsdom": "^27.4.0",
+		"lint-staged": "^16.2.7",
 		"postcss": "^8.5.6",
+		"prettier": "^3.7.4",
+		"prettier-plugin-svelte": "^3.4.1",
 		"svelte-check": "^4.3.5",
 		"tailwindcss": "^4.1.18",
 		"vitest": "^4.0.16",

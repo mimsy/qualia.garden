@@ -20,12 +20,8 @@
 <div class="min-h-screen flex items-center justify-center bg-stone-50">
 	<div class="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-sm border border-stone-200">
 		<div>
-			<h2 class="text-center text-2xl font-semibold text-stone-900">
-				Sign in to Qualia Garden
-			</h2>
-			<p class="mt-2 text-center text-sm text-stone-600">
-				Admin access requires authentication
-			</p>
+			<h2 class="text-center text-2xl font-semibold text-stone-900">Sign in to Qualia Garden</h2>
+			<p class="mt-2 text-center text-sm text-stone-600">Admin access requires authentication</p>
 		</div>
 
 		<div class="space-y-4">
@@ -70,9 +66,7 @@
 		</div>
 
 		<div class="text-center">
-			<a href="/" class="text-sm text-stone-500 hover:text-stone-700">
-				Back to home
-			</a>
+			<a href="/" class="text-sm text-stone-500 hover:text-stone-700"> Back to home </a>
 		</div>
 	</div>
 </div>

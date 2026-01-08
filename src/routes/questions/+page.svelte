@@ -49,14 +49,12 @@
 	});
 
 	const totalPages = $derived(Math.ceil(sortedQuestions.length / perPage));
-	const paginatedQuestions = $derived(
-		sortedQuestions.slice((currentPage - 1) * perPage, currentPage * perPage)
-	);
+	const paginatedQuestions = $derived(sortedQuestions.slice((currentPage - 1) * perPage, currentPage * perPage));
 
 	// Reset to page 1 when sort changes
 	$effect(() => {
-		sortBy;
-		sortAsc;
+		void sortBy;
+		void sortAsc;
 		currentPage = 1;
 	});
 </script>
@@ -74,8 +72,13 @@
 					<span class="font-semibold text-slate-800 text-lg tracking-tight">Qualia Garden</span>
 				</a>
 				<nav class="flex items-center gap-1">
-					<a href="/questions" class="px-3 py-2 text-sm text-slate-900 font-medium bg-slate-100 rounded-lg">Questions</a>
-					<a href="/models" class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">Models</a>
+					<a href="/questions" class="px-3 py-2 text-sm text-slate-900 font-medium bg-slate-100 rounded-lg">Questions</a
+					>
+					<a
+						href="/models"
+						class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+						>Models</a
+					>
 					{#if data.isAdmin}
 						<a
 							href="/questions/new"
@@ -211,7 +214,9 @@
 				{#if sortedQuestions.length === 0}
 					<div class="text-center py-16">
 						{#if data.isAdmin && data.selectedStatus === 'draft'}
-							<p class="text-slate-500">No draft questions. <a href="/questions/new" class="text-blue-600 hover:underline">Create one</a></p>
+							<p class="text-slate-500">
+								No draft questions. <a href="/questions/new" class="text-blue-600 hover:underline">Create one</a>
+							</p>
 						{:else}
 							<p class="text-slate-500">No questions found.</p>
 						{/if}

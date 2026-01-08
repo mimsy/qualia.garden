@@ -1,0 +1,20 @@
+# Dependencies
+node_modules
+
+# Build outputs
+.svelte-kit
+build
+dist
+
+# Package files
+package-lock.json
+pnpm-lock.yaml
+
+# Wrangler
+.wrangler
+
+# Coverage
+coverage
+
+# Generated types
+.svelte-kit/types

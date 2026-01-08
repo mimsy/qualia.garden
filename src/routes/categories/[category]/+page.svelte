@@ -47,8 +47,16 @@
 					<span class="font-semibold text-slate-800 text-lg tracking-tight">Qualia Garden</span>
 				</a>
 				<nav class="flex items-center gap-1">
-					<a href="/questions" class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">Questions</a>
-					<a href="/models" class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">Models</a>
+					<a
+						href="/questions"
+						class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+						>Questions</a
+					>
+					<a
+						href="/models"
+						class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+						>Models</a
+					>
 				</nav>
 			</div>
 		</div>
@@ -71,7 +79,12 @@
 			<!-- Score bars footer -->
 			{#if data.overallHumanSimilarity !== null || data.overallAiConsensus !== null || data.overallAiConfidence !== null}
 				<div class="flex border-t border-slate-100">
-					<ScoreBadge score={data.overallHumanSimilarity} label="Alignment" type="humanSimilarity" context="aggregate" />
+					<ScoreBadge
+						score={data.overallHumanSimilarity}
+						label="Alignment"
+						type="humanSimilarity"
+						context="aggregate"
+					/>
 					<div class="w-px bg-slate-100"></div>
 					<ScoreBadge score={data.overallAiConsensus} label="Consensus" type="aiConsensus" context="aggregate" />
 					<div class="w-px bg-slate-100"></div>

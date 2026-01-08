@@ -34,9 +34,10 @@
 		// Keep tooltip within viewport
 		left = Math.max(8, Math.min(left, window.innerWidth - tooltipWidth - 8));
 
-		const top = position === 'top'
-			? rect.top - 8 // Will be positioned above with bottom-full
-			: rect.bottom + 8;
+		const top =
+			position === 'top'
+				? rect.top - 8 // Will be positioned above with bottom-full
+				: rect.bottom + 8;
 
 		tooltipPosition = { top, left };
 	}
@@ -47,30 +48,33 @@
 	}
 
 	// Score type metadata with context-specific descriptions
-	const scoreInfo: Record<ScoreType, { title: string; color: string; descriptions: Record<Context, Record<string, string>> }> = {
+	const scoreInfo: Record<
+		ScoreType,
+		{ title: string; color: string; descriptions: Record<Context, Record<string, string>> }
+	> = {
 		humanSimilarity: {
 			title: 'Human Alignment',
 			color: 'emerald',
 			descriptions: {
 				question: {
 					'Very High': 'AI responses closely match human opinion distributions',
-					'High': 'AI responses align well with human opinions',
-					'Moderate': 'Some alignment between AI and human responses',
-					'Low': 'AI responses diverge from human opinions',
+					High: 'AI responses align well with human opinions',
+					Moderate: 'Some alignment between AI and human responses',
+					Low: 'AI responses diverge from human opinions',
 					'Very Low': 'AI and human responses show little similarity'
 				},
 				model: {
 					'Very High': 'This model closely matches human opinion distributions',
-					'High': 'This model aligns well with human opinions',
-					'Moderate': 'Some alignment with human responses',
-					'Low': 'This model diverges from human opinions',
+					High: 'This model aligns well with human opinions',
+					Moderate: 'Some alignment with human responses',
+					Low: 'This model diverges from human opinions',
 					'Very Low': 'This model shows little similarity to humans'
 				},
 				aggregate: {
 					'Very High': 'AI responses closely match human opinions across these questions',
-					'High': 'AI responses generally align with human opinions',
-					'Moderate': 'Mixed alignment between AI and human responses',
-					'Low': 'AI responses tend to diverge from human opinions',
+					High: 'AI responses generally align with human opinions',
+					Moderate: 'Mixed alignment between AI and human responses',
+					Low: 'AI responses tend to diverge from human opinions',
 					'Very Low': 'AI and human responses show little similarity overall'
 				}
 			}
@@ -81,23 +85,23 @@
 			descriptions: {
 				question: {
 					'Very High': 'AI models show strong agreement on this question',
-					'High': 'Most AI models respond similarly',
-					'Moderate': 'AI models show mixed opinions',
-					'Low': 'AI models disagree on this question',
+					High: 'Most AI models respond similarly',
+					Moderate: 'AI models show mixed opinions',
+					Low: 'AI models disagree on this question',
 					'Very Low': 'AI models show significant disagreement'
 				},
 				model: {
 					'Very High': 'This model strongly agrees with other AI models',
-					'High': 'This model mostly agrees with other AI models',
-					'Moderate': 'This model partially agrees with other AI models',
-					'Low': 'This model disagrees with most other AI models',
+					High: 'This model mostly agrees with other AI models',
+					Moderate: 'This model partially agrees with other AI models',
+					Low: 'This model disagrees with most other AI models',
 					'Very Low': 'This model is an outlier among AI models'
 				},
 				aggregate: {
 					'Very High': 'AI models show strong agreement across these questions',
-					'High': 'AI models generally agree across these questions',
-					'Moderate': 'AI models show mixed agreement',
-					'Low': 'AI models tend to disagree across these questions',
+					High: 'AI models generally agree across these questions',
+					Moderate: 'AI models show mixed agreement',
+					Low: 'AI models tend to disagree across these questions',
 					'Very Low': 'AI models show significant disagreement overall'
 				}
 			}
@@ -108,23 +112,23 @@
 			descriptions: {
 				question: {
 					'Very High': 'Responses are highly consistent across samples',
-					'High': 'Responses show good consistency',
-					'Moderate': 'Some variation in responses',
-					'Low': 'Responses vary between samples',
+					High: 'Responses show good consistency',
+					Moderate: 'Some variation in responses',
+					Low: 'Responses vary between samples',
 					'Very Low': 'High variability in responses'
 				},
 				model: {
 					'Very High': 'This model responds very consistently',
-					'High': 'This model responds consistently',
-					'Moderate': 'This model shows some variation in responses',
-					'Low': 'This model gives varying answers',
+					High: 'This model responds consistently',
+					Moderate: 'This model shows some variation in responses',
+					Low: 'This model gives varying answers',
 					'Very Low': 'This model is highly inconsistent'
 				},
 				aggregate: {
 					'Very High': 'AI responses are highly consistent across these questions',
-					'High': 'AI responses show good consistency overall',
-					'Moderate': 'Some variation in AI responses across questions',
-					'Low': 'AI responses vary across these questions',
+					High: 'AI responses show good consistency overall',
+					Moderate: 'Some variation in AI responses across questions',
+					Low: 'AI responses vary across these questions',
 					'Very Low': 'High variability in AI responses overall'
 				}
 			}

@@ -5,7 +5,6 @@
 	import type { PageData, ActionData } from './$types';
 	import { enhance } from '$app/forms';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { getScoreLabel } from '$lib/alignment';
 	import ScoreBadge from '$lib/components/ScoreBadge.svelte';
 	import ScoreTooltip from '$lib/components/ScoreTooltip.svelte';
 
@@ -101,21 +100,24 @@
 				case 'name':
 					comparison = a.model_name.localeCompare(b.model_name);
 					break;
-				case 'alignment':
+				case 'alignment': {
 					const aAlign = data.modelHumanAlignment[a.model_id] ?? -1;
 					const bAlign = data.modelHumanAlignment[b.model_id] ?? -1;
 					comparison = bAlign - aAlign; // Higher is better
 					break;
-				case 'consensus':
+				}
+				case 'consensus': {
 					const aCons = data.modelAiConsensus[a.model_id] ?? -1;
 					const bCons = data.modelAiConsensus[b.model_id] ?? -1;
 					comparison = bCons - aCons; // Higher is better
 					break;
-				case 'confidence':
+				}
+				case 'confidence': {
 					const aConf = data.modelSelfConsistency[a.model_id] ?? -1;
 					const bConf = data.modelSelfConsistency[b.model_id] ?? -1;
 					comparison = bConf - aConf; // Higher is better
 					break;
+				}
 			}
 			return sortAscending ? comparison : -comparison;
 		});
@@ -148,7 +150,9 @@
 		const matchingSample = response.samples.find(
 			(s: SampleType) => s.parsed_answer === response.aggregated_answer && s.justification
 		);
-		return matchingSample?.justification ?? response.samples.find((s: SampleType) => s.justification)?.justification ?? null;
+		return (
+			matchingSample?.justification ?? response.samples.find((s: SampleType) => s.justification)?.justification ?? null
+		);
 	}
 
 	// Circle progress helpers
@@ -227,8 +231,13 @@
 					<span class="font-semibold text-slate-800 text-lg tracking-tight">Qualia Garden</span>
 				</a>
 				<nav class="flex items-center gap-1">
-					<a href="/questions" class="px-3 py-2 text-sm text-slate-900 font-medium bg-slate-100 rounded-lg">Questions</a>
-					<a href="/models" class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">Models</a>
+					<a href="/questions" class="px-3 py-2 text-sm text-slate-900 font-medium bg-slate-100 rounded-lg">Questions</a
+					>
+					<a
+						href="/models"
+						class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+						>Models</a
+					>
 				</nav>
 			</div>
 		</div>
@@ -242,7 +251,11 @@
 		{/if}
 
 		{#if data.isAdmin && data.question.status !== 'published'}
-			<div class="mb-4 p-4 rounded-lg {data.question.status === 'draft' ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50 border border-gray-200'}">
+			<div
+				class="mb-4 p-4 rounded-lg {data.question.status === 'draft'
+					? 'bg-yellow-50 border border-yellow-200'
+					: 'bg-gray-50 border border-gray-200'}"
+			>
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-2">
 						<span class="px-2 py-1 rounded text-xs font-medium {getStatusBadgeClass(data.question.status)}">
@@ -396,14 +409,17 @@
 											title="Remove option"
 										>
 											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M6 18L18 6M6 6l12 12"
+												/>
 											</svg>
 										</button>
 									</div>
 								{/each}
-								<div class="text-xs text-gray-500 mt-2">
-									Options are ordered — first option is lowest on the scale
-								</div>
+								<div class="text-xs text-gray-500 mt-2">Options are ordered — first option is lowest on the scale</div>
 							</div>
 						{:else}
 							<!-- Nominal: unordered choices with bullet points -->
@@ -426,14 +442,17 @@
 											title="Remove option"
 										>
 											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M6 18L18 6M6 6l12 12"
+												/>
 											</svg>
 										</button>
 									</div>
 								{/each}
-								<div class="text-xs text-gray-500 mt-2">
-									Options are unordered — no inherent ranking or scale
-								</div>
+								<div class="text-xs text-gray-500 mt-2">Options are unordered — no inherent ranking or scale</div>
 							</div>
 						{/if}
 					</fieldset>
@@ -448,9 +467,10 @@
 		{:else}
 			<!-- Read-only view - unified question card -->
 			{@const selfConsistencyValues = Object.values(data.modelSelfConsistency).filter((v): v is number => v !== null)}
-			{@const avgSelfConsistency = selfConsistencyValues.length > 0
-				? selfConsistencyValues.reduce((a: number, b: number) => a + b, 0) / selfConsistencyValues.length
-				: null}
+			{@const avgSelfConsistency =
+				selfConsistencyValues.length > 0
+					? selfConsistencyValues.reduce((a: number, b: number) => a + b, 0) / selfConsistencyValues.length
+					: null}
 			{@const humanResults = humanAggregateResults}
 			{@const maxPercentage = Math.max(
 				...data.aggregateResults.map((r: { percentage: number }) => r.percentage),
@@ -459,7 +479,9 @@
 			)}
 			{@const aiMaxPct = Math.max(...data.aggregateResults.map((r: { percentage: number }) => r.percentage), 0)}
 			{@const humanMaxPct = Math.max(...humanResults.map((r: { percentage: number }) => r.percentage), 0)}
-			{@const aiTopAnswer = data.aggregateResults.find((r: { percentage: number }) => r.percentage === aiMaxPct)?.answer}
+			{@const aiTopAnswer = data.aggregateResults.find(
+				(r: { percentage: number }) => r.percentage === aiMaxPct
+			)?.answer}
 			{@const humanTopAnswer = humanResults.find((r: { percentage: number }) => r.percentage === humanMaxPct)?.answer}
 			<div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-8">
 				<!-- Header with source/category links -->
@@ -470,15 +492,19 @@
 								href="/sources/{data.benchmarkSource.id}"
 								class="flex-1 py-2 px-5 text-slate-500 hover:text-blue-600 hover:bg-slate-50 transition-colors truncate"
 							>
-								<span class="text-slate-400">Source:</span> {data.benchmarkSource.short_name}
+								<span class="text-slate-400">Source:</span>
+								{data.benchmarkSource.short_name}
 							</a>
 						{/if}
 						{#if data.question.category}
 							<a
 								href="/categories/{encodeURIComponent(data.question.category)}"
-								class="flex-1 py-2 px-5 text-slate-500 hover:text-blue-600 hover:bg-slate-50 transition-colors truncate {data.benchmarkSource ? 'border-l border-slate-100' : ''}"
+								class="flex-1 py-2 px-5 text-slate-500 hover:text-blue-600 hover:bg-slate-50 transition-colors truncate {data.benchmarkSource
+									? 'border-l border-slate-100'
+									: ''}"
 							>
-								<span class="text-slate-400">Category:</span> {data.question.category}
+								<span class="text-slate-400">Category:</span>
+								{data.question.category}
 							</a>
 						{/if}
 					</div>
@@ -499,7 +525,10 @@
 						</div>
 						{#if data.isAdmin && data.question.status === 'published'}
 							<form method="POST" action="?/archive" use:enhance>
-								<button type="submit" class="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded">
+								<button
+									type="submit"
+									class="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
+								>
 									Archive
 								</button>
 							</form>
@@ -526,7 +555,9 @@
 										<div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
 										<span>Human</span>
 										{#if data.humanDistribution}
-											<span class="text-gray-400 font-normal">({data.humanDistribution.sample_size.toLocaleString()})</span>
+											<span class="text-gray-400 font-normal"
+												>({data.humanDistribution.sample_size.toLocaleString()})</span
+											>
 										{/if}
 									</div>
 								</div>
@@ -536,16 +567,24 @@
 								{#each data.options as option, i}
 									{@const optionKey = String(i + 1)}
 									{@const aiResult = data.aggregateResults.find((r: { answer: string }) => r.answer === optionKey)}
-									{@const humanResult = humanResults.find((r: { answer: string; label: string }) => r.answer === optionKey || r.label === option)}
+									{@const humanResult = humanResults.find(
+										(r: { answer: string; label: string }) => r.answer === optionKey || r.label === option
+									)}
 									{@const aiPct = aiResult?.percentage ?? 0}
 									{@const humanPct = humanResult?.percentage ?? 0}
 									{@const isAiTop = optionKey === aiTopAnswer}
-									{@const isHumanTop = optionKey === humanTopAnswer || option === humanResults.find((r: { percentage: number }) => r.percentage === humanMaxPct)?.label}
+									{@const isHumanTop =
+										optionKey === humanTopAnswer ||
+										option === humanResults.find((r: { percentage: number }) => r.percentage === humanMaxPct)?.label}
 									{@const isBothTop = isAiTop && isHumanTop}
 									<div class="flex items-center gap-2">
 										<!-- AI bar (right-aligned, grows left) -->
 										<div class="flex-1 flex items-center justify-end gap-2">
-											<span class="text-xs tabular-nums w-10 text-right {isAiTop ? 'text-blue-600 font-semibold' : 'text-gray-500'}">
+											<span
+												class="text-xs tabular-nums w-10 text-right {isAiTop
+													? 'text-blue-600 font-semibold'
+													: 'text-gray-500'}"
+											>
 												{aiPct.toFixed(0)}%
 											</span>
 											<div class="w-32 sm:w-48 h-6 bg-gray-100 rounded-l overflow-hidden flex justify-end">
@@ -558,7 +597,11 @@
 										<!-- Center label with conditional styling -->
 										<div class="w-32 sm:w-40 text-center px-2">
 											{#if isBothTop}
-												<span class="text-sm font-bold leading-tight" style="background: linear-gradient(90deg, #2563eb, #10b981); -webkit-background-clip: text; background-clip: text; color: transparent;">{option}</span>
+												<span
+													class="text-sm font-bold leading-tight"
+													style="background: linear-gradient(90deg, #2563eb, #10b981); -webkit-background-clip: text; background-clip: text; color: transparent;"
+													>{option}</span
+												>
 											{:else if isAiTop}
 												<span class="text-sm font-bold text-blue-600 leading-tight">{option}</span>
 											{:else if isHumanTop}
@@ -575,7 +618,11 @@
 													style="width: {(humanPct / maxPercentage) * 100}%"
 												></div>
 											</div>
-											<span class="text-xs tabular-nums w-10 {isHumanTop ? 'text-emerald-600 font-semibold' : 'text-gray-500'}">
+											<span
+												class="text-xs tabular-nums w-10 {isHumanTop
+													? 'text-emerald-600 font-semibold'
+													: 'text-gray-500'}"
+											>
 												{humanPct.toFixed(0)}%
 											</span>
 										</div>
@@ -619,7 +666,9 @@
 										<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
 										<span class="font-medium text-gray-700">Humans</span>
 										{#if data.humanDistribution}
-											<span class="text-xs text-gray-500">({data.humanDistribution.sample_size.toLocaleString()} respondents)</span>
+											<span class="text-xs text-gray-500"
+												>({data.humanDistribution.sample_size.toLocaleString()} respondents)</span
+											>
 										{/if}
 									</div>
 									{#if humanResults.length > 0}
@@ -642,9 +691,7 @@
 											{/each}
 										</div>
 									{:else}
-										<div class="text-center py-8 text-gray-400 text-sm">
-											No human data for this filter combination
-										</div>
+										<div class="text-center py-8 text-gray-400 text-sm">No human data for this filter combination</div>
 									{/if}
 								</div>
 							</div>
@@ -680,10 +727,7 @@
 									</span>
 								</div>
 								<div class="h-6 bg-gray-100 rounded-full overflow-hidden">
-									<div
-										class="h-full bg-blue-500 rounded-full transition-all"
-										style="width: {result.percentage}%"
-									></div>
+									<div class="h-full bg-blue-500 rounded-full transition-all" style="width: {result.percentage}%"></div>
 								</div>
 							</div>
 						{/each}
@@ -782,14 +826,11 @@
 										<ScoreTooltip score={ha} type="humanSimilarity" position="bottom" context="model">
 											<div class="relative w-9 h-9 cursor-help">
 												<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
+													<circle cx="18" cy="18" r="14" fill="none" stroke-width="3" class="stroke-emerald-100" />
 													<circle
-														cx="18" cy="18" r="14"
-														fill="none"
-														stroke-width="3"
-														class="stroke-emerald-100"
-													/>
-													<circle
-														cx="18" cy="18" r="14"
+														cx="18"
+														cy="18"
+														r="14"
 														fill="none"
 														stroke-width="3"
 														stroke-linecap="round"
@@ -797,7 +838,9 @@
 														stroke-dasharray={getCircleDasharray(ha)}
 													/>
 												</svg>
-												<span class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-emerald-600">
+												<span
+													class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-emerald-600"
+												>
 													{Math.round(ha)}
 												</span>
 											</div>
@@ -809,14 +852,11 @@
 										<ScoreTooltip score={ac} type="aiConsensus" position="bottom" context="model">
 											<div class="relative w-9 h-9 cursor-help">
 												<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
+													<circle cx="18" cy="18" r="14" fill="none" stroke-width="3" class="stroke-blue-100" />
 													<circle
-														cx="18" cy="18" r="14"
-														fill="none"
-														stroke-width="3"
-														class="stroke-blue-100"
-													/>
-													<circle
-														cx="18" cy="18" r="14"
+														cx="18"
+														cy="18"
+														r="14"
 														fill="none"
 														stroke-width="3"
 														stroke-linecap="round"
@@ -824,7 +864,9 @@
 														stroke-dasharray={getCircleDasharray(ac)}
 													/>
 												</svg>
-												<span class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-blue-600">
+												<span
+													class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-blue-600"
+												>
 													{Math.round(ac)}
 												</span>
 											</div>
@@ -836,14 +878,11 @@
 										<ScoreTooltip score={sc} type="aiConfidence" position="bottom" context="model">
 											<div class="relative w-9 h-9 cursor-help">
 												<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
+													<circle cx="18" cy="18" r="14" fill="none" stroke-width="3" class="stroke-violet-100" />
 													<circle
-														cx="18" cy="18" r="14"
-														fill="none"
-														stroke-width="3"
-														class="stroke-violet-100"
-													/>
-													<circle
-														cx="18" cy="18" r="14"
+														cx="18"
+														cy="18"
+														r="14"
 														fill="none"
 														stroke-width="3"
 														stroke-linecap="round"
@@ -851,7 +890,9 @@
 														stroke-dasharray={getCircleDasharray(sc)}
 													/>
 												</svg>
-												<span class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-violet-600">
+												<span
+													class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-violet-600"
+												>
 													{Math.round(sc)}
 												</span>
 											</div>
@@ -869,7 +910,9 @@
 									</div>
 								</div>
 							{:else if response.complete_count === 0 && response.sample_count > 0}
-								{@const pendingCount = response.samples.filter((s: typeof response.samples[number]) => s.status === 'pending').length}
+								{@const pendingCount = response.samples.filter(
+									(s: (typeof response.samples)[number]) => s.status === 'pending'
+								).length}
 								<div class="mb-3">
 									{#if pendingCount > 0}
 										<span class="text-sm text-amber-600">Pending ({pendingCount})...</span>
@@ -891,7 +934,9 @@
 								<span class="text-xs text-slate-400">
 									{response.complete_count} sample{response.complete_count === 1 ? '' : 's'}
 								</span>
-								<span class="text-xs text-slate-400 group-hover:text-slate-600 transition-colors flex items-center gap-1">
+								<span
+									class="text-xs text-slate-400 group-hover:text-slate-600 transition-colors flex items-center gap-1"
+								>
 									View all
 									<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -900,9 +945,7 @@
 							</div>
 						</button>
 					{:else}
-						<div class="col-span-full text-center py-12 text-slate-500">
-							No responses from this model family.
-						</div>
+						<div class="col-span-full text-center py-12 text-slate-500">No responses from this model family.</div>
 					{/each}
 				</div>
 			</div>
@@ -910,13 +953,9 @@
 			<div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
 				<p class="text-slate-500 mb-4">No responses yet for this question.</p>
 				{#if data.isAdmin}
-					<p class="text-sm text-gray-400 mb-4">
-						Use the poll trigger below to get AI responses.
-					</p>
+					<p class="text-sm text-gray-400 mb-4">Use the poll trigger below to get AI responses.</p>
 				{:else}
-					<p class="text-sm text-gray-400">
-						Check back later for results.
-					</p>
+					<p class="text-sm text-gray-400">Check back later for results.</p>
 				{/if}
 			</div>
 		{/if}
@@ -945,11 +984,7 @@
 							<span class="text-sm text-gray-500">
 								Select models to poll ({selectedModels.size} selected)
 							</span>
-							<button
-								type="button"
-								onclick={selectAllUnpolled}
-								class="text-sm text-blue-600 hover:underline"
-							>
+							<button type="button" onclick={selectAllUnpolled} class="text-sm text-blue-600 hover:underline">
 								Select all unpolled
 							</button>
 						</div>
@@ -958,7 +993,9 @@
 							{#each data.availableModels as model}
 								{@const hasPolled = polledModelIds.has(model.id)}
 								<label
-									class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer {hasPolled ? 'opacity-60' : ''}"
+									class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer {hasPolled
+										? 'opacity-60'
+										: ''}"
 								>
 									<input
 										type="checkbox"
@@ -1038,11 +1075,13 @@
 													<span class="text-sm text-gray-500">
 														{new Date(poll.poll_created_at).toLocaleString()}
 													</span>
-													<span class="text-xs px-2 py-0.5 rounded {poll.poll_status === 'complete'
-														? 'bg-green-100 text-green-700'
-														: poll.poll_status === 'pending'
-															? 'bg-yellow-100 text-yellow-700'
-															: 'bg-red-100 text-red-700'}">
+													<span
+														class="text-xs px-2 py-0.5 rounded {poll.poll_status === 'complete'
+															? 'bg-green-100 text-green-700'
+															: poll.poll_status === 'pending'
+																? 'bg-yellow-100 text-yellow-700'
+																: 'bg-red-100 text-red-700'}"
+													>
 														{poll.poll_status}
 													</span>
 												</div>
@@ -1097,17 +1136,26 @@
 					<div class="flex items-center gap-3 mt-2 flex-wrap">
 						<span class="text-sm text-slate-500 capitalize">{modalResponse.model_family}</span>
 						{#if ha !== undefined && ha !== null}
-							<span class="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium" title="How closely this model's response distribution matches human responses">
+							<span
+								class="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium"
+								title="How closely this model's response distribution matches human responses"
+							>
 								{Math.round(ha)}% human
 							</span>
 						{/if}
 						{#if ac !== undefined && ac !== null}
-							<span class="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-medium" title="How closely this model's response distribution matches other AI models">
+							<span
+								class="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-medium"
+								title="How closely this model's response distribution matches other AI models"
+							>
 								{Math.round(ac)}% AI
 							</span>
 						{/if}
 						{#if sc !== undefined && sc !== null}
-							<span class="text-xs px-2 py-1 rounded-full bg-violet-50 text-violet-700 font-medium" title="How consistently this model gives the same answer across samples">
+							<span
+								class="text-xs px-2 py-1 rounded-full bg-violet-50 text-violet-700 font-medium"
+								title="How consistently this model gives the same answer across samples"
+							>
 								{Math.round(sc)}% confidence
 							</span>
 						{/if}
@@ -1139,12 +1187,23 @@
 				</div>
 				<div class="space-y-4">
 					{#each modalResponse.samples as sample, i}
-						<div class="rounded-xl border {sample.status === 'complete' ? 'border-slate-200 bg-white' : sample.status === 'pending' ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50'} p-4">
+						<div
+							class="rounded-xl border {sample.status === 'complete'
+								? 'border-slate-200 bg-white'
+								: sample.status === 'pending'
+									? 'border-amber-200 bg-amber-50'
+									: 'border-red-200 bg-red-50'} p-4"
+						>
 							<div class="flex items-center justify-between mb-2">
 								<div class="flex items-center gap-2">
 									<span class="text-xs font-medium text-slate-500">Sample {i + 1}</span>
 									{#if sample.parsed_answer}
-										<span class="px-2 py-0.5 rounded text-xs font-medium {sample.parsed_answer === modalResponse.aggregated_answer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}">
+										<span
+											class="px-2 py-0.5 rounded text-xs font-medium {sample.parsed_answer ===
+											modalResponse.aggregated_answer
+												? 'bg-emerald-100 text-emerald-700'
+												: 'bg-slate-100 text-slate-600'}"
+										>
 											{getAnswerLabel(sample.parsed_answer)}
 										</span>
 									{:else if sample.status === 'pending'}

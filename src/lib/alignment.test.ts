@@ -1,7 +1,7 @@
 // ABOUTME: Tests for alignment score calculations.
 // ABOUTME: Covers ordinal/nominal agreement, internal agreement, and distribution utilities.
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
 	getScoreLabel,
 	getScoreLevel,
@@ -575,9 +575,7 @@ describe('computeOverallScores', () => {
 
 describe('computeQuestionStats', () => {
 	it('computes stats for ordinal questions with human data', () => {
-		const questions = [
-			{ id: 'q1', options: ['A', 'B', 'C', 'D', 'E'], responseType: 'ordinal' }
-		];
+		const questions = [{ id: 'q1', options: ['A', 'B', 'C', 'D', 'E'], responseType: 'ordinal' }];
 		const modelResponses = new Map([
 			['m1', { name: 'Model 1', responses: { q1: '3' } }],
 			['m2', { name: 'Model 2', responses: { q1: '3' } }],
@@ -597,9 +595,7 @@ describe('computeQuestionStats', () => {
 	});
 
 	it('computes stats for nominal questions with human data', () => {
-		const questions = [
-			{ id: 'q1', options: ['Yes', 'No', 'Maybe'], responseType: 'nominal' }
-		];
+		const questions = [{ id: 'q1', options: ['Yes', 'No', 'Maybe'], responseType: 'nominal' }];
 		const modelResponses = new Map([
 			['m1', { name: 'Model 1', responses: { q1: '1' } }],
 			['m2', { name: 'Model 2', responses: { q1: '1' } }],
@@ -618,12 +614,8 @@ describe('computeQuestionStats', () => {
 	});
 
 	it('handles questions without human distributions', () => {
-		const questions = [
-			{ id: 'q1', options: ['A', 'B', 'C'], responseType: 'ordinal' }
-		];
-		const modelResponses = new Map([
-			['m1', { name: 'Model 1', responses: { q1: '2' } }]
-		]);
+		const questions = [{ id: 'q1', options: ['A', 'B', 'C'], responseType: 'ordinal' }];
+		const modelResponses = new Map([['m1', { name: 'Model 1', responses: { q1: '2' } }]]);
 		const humanDistributions = new Map<string, Record<string, number>>();
 
 		const stats = computeQuestionStats(questions, modelResponses, humanDistributions);
@@ -634,12 +626,8 @@ describe('computeQuestionStats', () => {
 	});
 
 	it('handles questions without AI responses', () => {
-		const questions = [
-			{ id: 'q1', options: ['A', 'B', 'C'], responseType: 'ordinal' }
-		];
-		const modelResponses = new Map([
-			['m1', { name: 'Model 1', responses: { q1: null } }]
-		]);
+		const questions = [{ id: 'q1', options: ['A', 'B', 'C'], responseType: 'ordinal' }];
+		const modelResponses = new Map([['m1', { name: 'Model 1', responses: { q1: null } }]]);
 		const humanDistributions = new Map([['q1', { '2': 100 }]]);
 
 		const stats = computeQuestionStats(questions, modelResponses, humanDistributions);
@@ -661,9 +649,7 @@ describe('computeQuestionStats', () => {
 			{ id: 'q1', options: ['A', 'B', 'C'], responseType: 'ordinal' },
 			{ id: 'q2', options: ['Yes', 'No'], responseType: 'nominal' }
 		];
-		const modelResponses = new Map([
-			['m1', { name: 'Model 1', responses: { q1: '2', q2: '1' } }]
-		]);
+		const modelResponses = new Map([['m1', { name: 'Model 1', responses: { q1: '2', q2: '1' } }]]);
 		const humanDistributions = new Map<string, Record<string, number>>([
 			['q1', { '2': 100 }],
 			['q2', { '1': 80, '2': 20 }]
@@ -679,10 +665,7 @@ describe('computeQuestionStats', () => {
 
 describe('computeOverallScore', () => {
 	it('computes average of humanAiScores', () => {
-		const stats = [
-			{ humanAiScore: 80 },
-			{ humanAiScore: 60 }
-		] as Parameters<typeof computeOverallScore>[0];
+		const stats = [{ humanAiScore: 80 }, { humanAiScore: 60 }] as Parameters<typeof computeOverallScore>[0];
 
 		const result = computeOverallScore(stats);
 		expect(result).toBe(70);
@@ -694,11 +677,9 @@ describe('computeOverallScore', () => {
 	});
 
 	it('rounds to nearest integer', () => {
-		const stats = [
-			{ humanAiScore: 80 },
-			{ humanAiScore: 60 },
-			{ humanAiScore: 70 }
-		] as Parameters<typeof computeOverallScore>[0];
+		const stats = [{ humanAiScore: 80 }, { humanAiScore: 60 }, { humanAiScore: 70 }] as Parameters<
+			typeof computeOverallScore
+		>[0];
 
 		const result = computeOverallScore(stats);
 		expect(result).toBe(70);

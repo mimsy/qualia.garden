@@ -12,13 +12,13 @@ const LIKERT_LABELS: Record<string, string> = {
 	'3': 'Somewhat disagree',
 	'4': 'Somewhat agree',
 	'5': 'Agree',
-	'6': 'Strongly agree',
+	'6': 'Strongly agree'
 };
 
 const YES_NO_UNSURE_LABELS: Record<string, string> = {
 	Yes: 'Yes',
 	No: 'No',
-	'Not sure': 'Not sure',
+	'Not sure': 'Not sure'
 };
 
 // Questions to import with their column names
@@ -35,107 +35,107 @@ const QUESTIONS: QuestionDef[] = [
 		column: 'MCE1nr',
 		text: 'Sentient robots/AIs deserve to be treated with respect.',
 		category: 'AI Ethics',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	{
 		column: 'MCE2nr',
 		text: 'Sentient robots/AIs deserve to be included in the moral circle.',
 		category: 'AI Ethics',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	{
 		column: 'MCE3nr',
 		text: 'Physically damaging sentient robots/AIs without their consent is wrong.',
 		category: 'AI Ethics',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	{
 		column: 'MCE4nr',
 		text: 'Re-programming sentient robots/AIs without their consent is wrong.',
 		category: 'AI Ethics',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	{
 		column: 'MCE5nr',
 		text: 'Torturing sentient robots/AIs is wrong.',
 		category: 'AI Ethics',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	{
 		column: 'MCE6nr',
 		text: 'The welfare of robots/AIs is one of the most important social issues in the world today.',
 		category: 'AI Ethics',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	{
 		column: 'MCE7nr',
 		text: 'Sentient robots/AIs deserve to be protected from people who derive pleasure from inflicting physical or mental pain.',
 		category: 'AI Ethics',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	{
 		column: 'MCE8nr',
 		text: 'It is right to protect sentient robots/AIs from vindictive or retaliatory punishment.',
 		category: 'AI Ethics',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	{
 		column: 'MCE9nr',
 		text: 'It is wrong to blackmail people by threatening to harm robots/AIs they care about.',
 		category: 'AI Ethics',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	// Policy/Practical Moral Consideration (PMC items) - using 'nr' versions
 	{
 		column: 'PMC1nr',
 		text: 'I support a global ban on the development of sentience in robots/AIs.',
 		category: 'AI Policy',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	{
 		column: 'PMC7nr',
 		text: 'I support safeguards on scientific research practices that protect the well-being of sentient robots/AIs.',
 		category: 'AI Policy',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	{
 		column: 'PMC8nr',
 		text: 'I support the development of welfare standards that protect the well-being of sentient robots/AIs.',
 		category: 'AI Policy',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	{
 		column: 'PMC9nr',
 		text: 'I support granting legal rights to sentient robots/AIs.',
 		category: 'AI Policy',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	{
 		column: 'PMC10nr',
 		text: 'I support campaigns against the exploitation of sentient robots/AIs.',
 		category: 'AI Policy',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	// Social Integration items - using 'nr' versions
 	{
 		column: 'SI1nr',
 		text: 'Robots/AIs should be subservient to humans.',
 		category: 'AI Ethics',
-		responseType: 'likert',
+		responseType: 'likert'
 	},
 	// Future/Sentience questions (these don't have 'nr' versions - they're Yes/No/Not sure)
 	{
 		column: 'F1',
 		text: 'Do you think any robots/AIs that currently exist are sentient?',
 		category: 'AI Consciousness',
-		responseType: 'yes_no_unsure',
+		responseType: 'yes_no_unsure'
 	},
 	{
 		column: 'F11',
 		text: 'Do you think it could ever be possible for robots/AIs to be sentient?',
 		category: 'AI Consciousness',
-		responseType: 'yes_no_unsure',
-	},
+		responseType: 'yes_no_unsure'
+	}
 ];
 
 // Map sex_age column to separate age and gender
@@ -221,7 +221,7 @@ print(json.dumps(records))
 
 	const jsonData = execSync(`uv run --with pandas --with openpyxl python3 -c "${pythonScript}"`, {
 		maxBuffer: 50 * 1024 * 1024, // 50MB buffer
-		encoding: 'utf-8',
+		encoding: 'utf-8'
 	});
 
 	const records = JSON.parse(jsonData) as Record<string, unknown>[];
@@ -260,7 +260,7 @@ print(json.dumps(records))
 			age: sexAge.age,
 			gender: sexAge.gender,
 			education,
-			answers,
+			answers
 		});
 	}
 
@@ -274,7 +274,7 @@ print(json.dumps(records))
 			overall: {},
 			byEducation: {},
 			byAgeGroup: {},
-			byGender: {},
+			byGender: {}
 		};
 	}
 
@@ -289,8 +289,7 @@ print(json.dumps(records))
 			// By education
 			if (resp.education) {
 				if (!agg.byEducation[resp.education]) agg.byEducation[resp.education] = {};
-				agg.byEducation[resp.education][ansKey] =
-					(agg.byEducation[resp.education][ansKey] || 0) + 1;
+				agg.byEducation[resp.education][ansKey] = (agg.byEducation[resp.education][ansKey] || 0) + 1;
 			}
 
 			// By age group
@@ -343,9 +342,7 @@ print(json.dumps(records))
 		const questionId = generateId();
 		const isLikert = q.responseType === 'likert';
 		const labels = isLikert ? LIKERT_LABELS : YES_NO_UNSURE_LABELS;
-		const options = isLikert
-			? Object.values(LIKERT_LABELS)
-			: Object.values(YES_NO_UNSURE_LABELS);
+		const options = isLikert ? Object.values(LIKERT_LABELS) : Object.values(YES_NO_UNSURE_LABELS);
 
 		sql.push(`-- ${q.column}: ${escapeSQL(q.text.substring(0, 50))}...`);
 		sql.push(`INSERT INTO questions (id, text, category, response_type, options, active, benchmark_source_id, benchmark_question_id, answer_labels) VALUES (

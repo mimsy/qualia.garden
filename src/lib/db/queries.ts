@@ -18,10 +18,7 @@ export async function getModel(db: D1Database, id: string): Promise<Model | null
 	return result;
 }
 
-export async function createModel(
-	db: D1Database,
-	data: Omit<Model, 'id' | 'created_at' | 'active'>
-): Promise<Model> {
+export async function createModel(db: D1Database, data: Omit<Model, 'id' | 'created_at' | 'active'>): Promise<Model> {
 	const id = nanoid(12);
 	await db
 		.prepare('INSERT INTO models (id, name, family, openrouter_id, supports_reasoning) VALUES (?, ?, ?, ?, ?)')
@@ -75,9 +72,7 @@ export async function deleteModel(db: D1Database, id: string): Promise<boolean> 
 }
 
 export async function getFamilies(db: D1Database): Promise<string[]> {
-	const result = await db
-		.prepare('SELECT DISTINCT family FROM models ORDER BY family')
-		.all<{ family: string }>();
+	const result = await db.prepare('SELECT DISTINCT family FROM models ORDER BY family').all<{ family: string }>();
 	return result.results.map((r) => r.family);
 }
 
@@ -110,17 +105,11 @@ export async function getQuestions(
 }
 
 export async function getQuestion(db: D1Database, id: string): Promise<Question | null> {
-	const result = await db
-		.prepare('SELECT * FROM questions WHERE id = ?')
-		.bind(id)
-		.first<Question>();
+	const result = await db.prepare('SELECT * FROM questions WHERE id = ?').bind(id).first<Question>();
 	return result;
 }
 
-export async function getQuestionsByCategory(
-	db: D1Database,
-	category: string
-): Promise<Question[]> {
+export async function getQuestionsByCategory(db: D1Database, category: string): Promise<Question[]> {
 	const result = await db
 		.prepare('SELECT * FROM questions WHERE category = ? AND active = 1 ORDER BY created_at')
 		.bind(category)
@@ -241,40 +230,24 @@ export async function createPollBatch(
 	return polls;
 }
 
-export async function updatePollStatus(
-	db: D1Database,
-	id: string,
-	status: PollStatus
-): Promise<Poll | null> {
+export async function updatePollStatus(db: D1Database, id: string, status: PollStatus): Promise<Poll | null> {
 	const completedAt = status === 'complete' || status === 'failed' ? "datetime('now')" : 'NULL';
-	await db
-		.prepare(`UPDATE polls SET status = ?, completed_at = ${completedAt} WHERE id = ?`)
-		.bind(status, id)
-		.run();
+	await db.prepare(`UPDATE polls SET status = ?, completed_at = ${completedAt} WHERE id = ?`).bind(status, id).run();
 	return getPoll(db, id);
 }
 
 // Responses
 export async function getResponse(db: D1Database, id: string): Promise<Response | null> {
-	const result = await db
-		.prepare('SELECT * FROM responses WHERE id = ?')
-		.bind(id)
-		.first<Response>();
+	const result = await db.prepare('SELECT * FROM responses WHERE id = ?').bind(id).first<Response>();
 	return result;
 }
 
 export async function getResponseForPoll(db: D1Database, pollId: string): Promise<Response | null> {
-	const result = await db
-		.prepare('SELECT * FROM responses WHERE poll_id = ?')
-		.bind(pollId)
-		.first<Response>();
+	const result = await db.prepare('SELECT * FROM responses WHERE poll_id = ?').bind(pollId).first<Response>();
 	return result;
 }
 
-export async function createResponse(
-	db: D1Database,
-	data: Omit<Response, 'id' | 'created_at'>
-): Promise<Response> {
+export async function createResponse(db: D1Database, data: Omit<Response, 'id' | 'created_at'>): Promise<Response> {
 	const id = nanoid(12);
 	await db
 		.prepare(
@@ -304,10 +277,7 @@ export interface QuestionResults {
 	}>;
 }
 
-export async function getQuestionResults(
-	db: D1Database,
-	questionId: string
-): Promise<QuestionResults | null> {
+export async function getQuestionResults(db: D1Database, questionId: string): Promise<QuestionResults | null> {
 	const question = await getQuestion(db, questionId);
 	if (!question) return null;
 
@@ -358,20 +328,14 @@ export async function isFirstUser(db: D1Database): Promise<boolean> {
 	return count === 0;
 }
 
-export async function setUserAdmin(
-	db: D1Database,
-	userId: string,
-	isAdmin: boolean
-): Promise<void> {
+export async function setUserAdmin(db: D1Database, userId: string, isAdmin: boolean): Promise<void> {
 	await db
 		.prepare('UPDATE user SET isAdmin = ? WHERE id = ?')
 		.bind(isAdmin ? 1 : 0, userId)
 		.run();
 }
 
-export async function getAdminUsers(
-	db: D1Database
-): Promise<Array<{ id: string; email: string; name: string }>> {
+export async function getAdminUsers(db: D1Database): Promise<Array<{ id: string; email: string; name: string }>> {
 	const result = await db
 		.prepare('SELECT id, email, name FROM user WHERE isAdmin = 1')
 		.all<{ id: string; email: string; name: string }>();

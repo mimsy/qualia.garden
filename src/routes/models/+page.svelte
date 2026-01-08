@@ -7,7 +7,7 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	type Model = typeof data.models[number];
+	type Model = (typeof data.models)[number];
 
 	let selectedFamily = $state<string | null>(null);
 	let sortBy = $state<'name' | 'alignment' | 'consensus' | 'confidence'>('name');
@@ -24,9 +24,7 @@
 
 	// Filter and sort models
 	const filteredModels = $derived.by(() => {
-		let models = selectedFamily
-			? data.models.filter((m: Model) => m.family === selectedFamily)
-			: [...data.models];
+		let models = selectedFamily ? data.models.filter((m: Model) => m.family === selectedFamily) : [...data.models];
 
 		models.sort((a: Model, b: Model) => {
 			let comparison = 0;
@@ -34,21 +32,24 @@
 				case 'name':
 					comparison = a.name.localeCompare(b.name);
 					break;
-				case 'alignment':
+				case 'alignment': {
 					const aAlign = a.humanAlignmentScore ?? -1;
 					const bAlign = b.humanAlignmentScore ?? -1;
 					comparison = bAlign - aAlign;
 					break;
-				case 'consensus':
+				}
+				case 'consensus': {
 					const aCons = a.aiConsensusScore ?? -1;
 					const bCons = b.aiConsensusScore ?? -1;
 					comparison = bCons - aCons;
 					break;
-				case 'confidence':
+				}
+				case 'confidence': {
 					const aConf = a.selfConsistencyScore ?? -1;
 					const bConf = b.selfConsistencyScore ?? -1;
 					comparison = bConf - aConf;
 					break;
+				}
 			}
 			return sortAscending ? comparison : -comparison;
 		});
@@ -71,7 +72,11 @@
 					<span class="font-semibold text-slate-800 text-lg tracking-tight">Qualia Garden</span>
 				</a>
 				<nav class="flex items-center gap-1">
-					<a href="/questions" class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">Questions</a>
+					<a
+						href="/questions"
+						class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+						>Questions</a
+					>
 					<a href="/models" class="px-3 py-2 text-sm text-slate-900 font-medium bg-slate-100 rounded-lg">Models</a>
 				</nav>
 			</div>
@@ -134,27 +139,34 @@
 			{#each filteredModels as model (model.id)}
 				<a
 					href="/models/{model.id}"
-					class="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-200 {!model.active ? 'opacity-50' : ''}"
+					class="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-200 {!model.active
+						? 'opacity-50'
+						: ''}"
 				>
 					<div class="p-5">
 						<div class="flex items-start justify-between gap-3">
 							<div class="flex-1 min-w-0">
 								<div class="flex items-center gap-2 flex-wrap mb-1">
-									<span class="font-medium text-slate-900 group-hover:text-slate-700 transition-colors">{model.name}</span>
+									<span class="font-medium text-slate-900 group-hover:text-slate-700 transition-colors"
+										>{model.name}</span
+									>
 									{#if model.supports_reasoning}
 										<span class="text-xs text-violet-600 bg-violet-50 px-2 py-0.5 rounded-md font-medium">
 											reasoning
 										</span>
 									{/if}
 									{#if !model.active}
-										<span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
-											inactive
-										</span>
+										<span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md"> inactive </span>
 									{/if}
 								</div>
 								<div class="text-xs text-slate-400 capitalize">{model.family}</div>
 							</div>
-							<svg class="w-5 h-5 text-slate-300 group-hover:text-slate-400 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg
+								class="w-5 h-5 text-slate-300 group-hover:text-slate-400 transition-colors shrink-0"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 							</svg>
 						</div>
@@ -170,9 +182,7 @@
 					{/if}
 				</a>
 			{:else}
-				<div class="col-span-full text-center py-12 text-slate-500">
-					No models match the selected filter.
-				</div>
+				<div class="col-span-full text-center py-12 text-slate-500">No models match the selected filter.</div>
 			{/each}
 		</div>
 	</main>

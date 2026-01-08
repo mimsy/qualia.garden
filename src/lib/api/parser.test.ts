@@ -83,11 +83,7 @@ describe('parseResponse', () => {
 		});
 
 		it('matches strongly disagree with keywords', () => {
-			const result = parseResponse(
-				'I strongly and completely disagree with everything',
-				'ordinal',
-				SCALE_OPTIONS
-			);
+			const result = parseResponse('I strongly and completely disagree with everything', 'ordinal', SCALE_OPTIONS);
 			expect(result.parsed).toBe('1');
 			expect(result.confidence).toBe('low');
 		});

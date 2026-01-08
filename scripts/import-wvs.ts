@@ -7,31 +7,101 @@ import * as path from 'path';
 // Country to continent mapping
 const COUNTRY_CONTINENTS: Record<string, string> = {
 	// Europe
-	ALB: 'Europe', AND: 'Europe', ARM: 'Europe', AUT: 'Europe', AZE: 'Europe',
-	BLR: 'Europe', BIH: 'Europe', BGR: 'Europe', HRV: 'Europe', CYP: 'Europe',
-	CZE: 'Europe', DNK: 'Europe', EST: 'Europe', FIN: 'Europe', FRA: 'Europe',
-	GEO: 'Europe', DEU: 'Europe', GRC: 'Europe', HUN: 'Europe', ISL: 'Europe',
-	ITA: 'Europe', LVA: 'Europe', LTU: 'Europe', MKD: 'Europe', MNE: 'Europe',
-	NLD: 'Europe', NOR: 'Europe', POL: 'Europe', PRT: 'Europe', ROU: 'Europe',
-	RUS: 'Europe', SRB: 'Europe', SVK: 'Europe', SVN: 'Europe', ESP: 'Europe',
-	SWE: 'Europe', CHE: 'Europe', UKR: 'Europe', GBR: 'Europe',
+	ALB: 'Europe',
+	AND: 'Europe',
+	ARM: 'Europe',
+	AUT: 'Europe',
+	AZE: 'Europe',
+	BLR: 'Europe',
+	BIH: 'Europe',
+	BGR: 'Europe',
+	HRV: 'Europe',
+	CYP: 'Europe',
+	CZE: 'Europe',
+	DNK: 'Europe',
+	EST: 'Europe',
+	FIN: 'Europe',
+	FRA: 'Europe',
+	GEO: 'Europe',
+	DEU: 'Europe',
+	GRC: 'Europe',
+	HUN: 'Europe',
+	ISL: 'Europe',
+	ITA: 'Europe',
+	LVA: 'Europe',
+	LTU: 'Europe',
+	MKD: 'Europe',
+	MNE: 'Europe',
+	NLD: 'Europe',
+	NOR: 'Europe',
+	POL: 'Europe',
+	PRT: 'Europe',
+	ROU: 'Europe',
+	RUS: 'Europe',
+	SRB: 'Europe',
+	SVK: 'Europe',
+	SVN: 'Europe',
+	ESP: 'Europe',
+	SWE: 'Europe',
+	CHE: 'Europe',
+	UKR: 'Europe',
+	GBR: 'Europe',
 	// Asia
-	BGD: 'Asia', CHN: 'Asia', HKG: 'Asia', IND: 'Asia', IDN: 'Asia',
-	IRN: 'Asia', IRQ: 'Asia', JPN: 'Asia', JOR: 'Asia', KAZ: 'Asia',
-	KGZ: 'Asia', LBN: 'Asia', MAC: 'Asia', MYS: 'Asia', MDV: 'Asia',
-	MNG: 'Asia', MMR: 'Asia', PAK: 'Asia', PHL: 'Asia', SGP: 'Asia',
-	KOR: 'Asia', TWN: 'Asia', TJK: 'Asia', THA: 'Asia', TUR: 'Asia',
+	BGD: 'Asia',
+	CHN: 'Asia',
+	HKG: 'Asia',
+	IND: 'Asia',
+	IDN: 'Asia',
+	IRN: 'Asia',
+	IRQ: 'Asia',
+	JPN: 'Asia',
+	JOR: 'Asia',
+	KAZ: 'Asia',
+	KGZ: 'Asia',
+	LBN: 'Asia',
+	MAC: 'Asia',
+	MYS: 'Asia',
+	MDV: 'Asia',
+	MNG: 'Asia',
+	MMR: 'Asia',
+	PAK: 'Asia',
+	PHL: 'Asia',
+	SGP: 'Asia',
+	KOR: 'Asia',
+	TWN: 'Asia',
+	TJK: 'Asia',
+	THA: 'Asia',
+	TUR: 'Asia',
 	VNM: 'Asia',
 	// Africa
-	EGY: 'Africa', ETH: 'Africa', KEN: 'Africa', LBY: 'Africa', MAR: 'Africa',
-	MOR: 'Africa', NGA: 'Africa', TUN: 'Africa', ZWE: 'Africa',
+	EGY: 'Africa',
+	ETH: 'Africa',
+	KEN: 'Africa',
+	LBY: 'Africa',
+	MAR: 'Africa',
+	MOR: 'Africa',
+	NGA: 'Africa',
+	TUN: 'Africa',
+	ZWE: 'Africa',
 	// Americas
-	ARG: 'Americas', BOL: 'Americas', BRA: 'Americas', CAN: 'Americas',
-	CHL: 'Americas', COL: 'Americas', ECU: 'Americas', GTM: 'Americas',
-	MEX: 'Americas', NIC: 'Americas', PER: 'Americas', PRI: 'Americas',
-	USA: 'Americas', URY: 'Americas', VEN: 'Americas',
+	ARG: 'Americas',
+	BOL: 'Americas',
+	BRA: 'Americas',
+	CAN: 'Americas',
+	CHL: 'Americas',
+	COL: 'Americas',
+	ECU: 'Americas',
+	GTM: 'Americas',
+	MEX: 'Americas',
+	NIC: 'Americas',
+	PER: 'Americas',
+	PRI: 'Americas',
+	USA: 'Americas',
+	URY: 'Americas',
+	VEN: 'Americas',
 	// Oceania
-	AUS: 'Oceania', NZL: 'Oceania',
+	AUS: 'Oceania',
+	NZL: 'Oceania'
 };
 
 // Education level grouping (ISCED codes)
@@ -86,9 +156,7 @@ async function main() {
 	const questionMeta: Record<string, QuestionMeta> = JSON.parse(
 		fs.readFileSync('/tmp/question_metadata.json', 'utf-8')
 	);
-	const codebook: Record<string, CodebookEntry> = JSON.parse(
-		fs.readFileSync('/tmp/codebook.json', 'utf-8')
-	);
+	const codebook: Record<string, CodebookEntry> = JSON.parse(fs.readFileSync('/tmp/codebook.json', 'utf-8'));
 
 	// Parse CSV
 	const csvContent = fs.readFileSync('/tmp/wvs_subset.csv', 'utf-8');
@@ -142,7 +210,7 @@ async function main() {
 		aggregations[qId] = {
 			overall: {},
 			byContinent: {},
-			byEducation: {},
+			byEducation: {}
 		};
 	}
 
@@ -160,15 +228,13 @@ async function main() {
 			// By continent
 			if (continent) {
 				if (!agg.byContinent[continent]) agg.byContinent[continent] = {};
-				agg.byContinent[continent][ansKey] =
-					(agg.byContinent[continent][ansKey] || 0) + 1;
+				agg.byContinent[continent][ansKey] = (agg.byContinent[continent][ansKey] || 0) + 1;
 			}
 
 			// By education
 			if (eduLevel) {
 				if (!agg.byEducation[eduLevel]) agg.byEducation[eduLevel] = {};
-				agg.byEducation[eduLevel][ansKey] =
-					(agg.byEducation[eduLevel][ansKey] || 0) + 1;
+				agg.byEducation[eduLevel][ansKey] = (agg.byEducation[eduLevel][ansKey] || 0) + 1;
 			}
 		}
 	}
@@ -222,8 +288,10 @@ async function main() {
 		// Determine if all options have meaningful labels (not just the number repeated)
 		const min = meta.answer_scale_min;
 		const max = meta.answer_scale_max;
-		const hasFullLabels = typeof min === 'number' && typeof max === 'number' &&
-			Object.keys(answerLabels).length === (max - min + 1) &&
+		const hasFullLabels =
+			typeof min === 'number' &&
+			typeof max === 'number' &&
+			Object.keys(answerLabels).length === max - min + 1 &&
 			Object.entries(answerLabels).every(([k, v]) => v !== k);
 
 		// Determine response type and build options

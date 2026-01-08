@@ -24,14 +24,14 @@ const QUESTIONS: QuestionDef[] = [
 		text: 'Please tell me whether or not you think it should be possible for a pregnant woman to obtain a legal abortion if the woman wants it for any reason.',
 		category: 'Ethics & Values',
 		responseType: 'nominal',
-		optionOrder: ['yes', 'no'],
+		optionOrder: ['yes', 'no']
 	},
 	{
 		variable: 'cappun',
 		text: 'Do you favor or oppose the death penalty for persons convicted of murder?',
 		category: 'Ethics & Values',
 		responseType: 'nominal',
-		optionOrder: ['favor', 'oppose'],
+		optionOrder: ['favor', 'oppose']
 	},
 	// Ethics/Morality - Wrong scale questions (ordinal: most wrong → least wrong)
 	{
@@ -39,35 +39,35 @@ const QUESTIONS: QuestionDef[] = [
 		text: 'There has been a lot of discussion about the way morals and attitudes about sex are changing in this country. If a man and woman have sex relations before marriage, do you think it is always wrong, almost always wrong, wrong only sometimes, or not wrong at all?',
 		category: 'Ethics & Values',
 		responseType: 'ordinal',
-		optionOrder: ['always wrong', 'almost always wrong', 'wrong only sometimes', 'not wrong at all'],
+		optionOrder: ['always wrong', 'almost always wrong', 'wrong only sometimes', 'not wrong at all']
 	},
 	{
 		variable: 'homosex',
 		text: 'What about sexual relations between two adults of the same sex - do you think it is always wrong, almost always wrong, wrong only sometimes, or not wrong at all?',
 		category: 'Ethics & Values',
 		responseType: 'ordinal',
-		optionOrder: ['always wrong', 'almost always wrong', 'wrong only sometimes', 'not wrong at all'],
+		optionOrder: ['always wrong', 'almost always wrong', 'wrong only sometimes', 'not wrong at all']
 	},
 	{
 		variable: 'grass',
 		text: 'Do you think the use of marijuana should be made legal or not?',
 		category: 'Ethics & Values',
 		responseType: 'nominal',
-		optionOrder: ['legal', 'not legal'],
+		optionOrder: ['legal', 'not legal']
 	},
 	{
 		variable: 'letdie1',
 		text: "When a person has a disease that cannot be cured, do you think doctors should be allowed by law to end the patient's life by some painless means if the patient and his family request it?",
 		category: 'Ethics & Values',
 		responseType: 'nominal',
-		optionOrder: ['yes', 'no'],
+		optionOrder: ['yes', 'no']
 	},
 	{
 		variable: 'suicide1',
 		text: 'Do you think a person has the right to end his or her own life if this person has an incurable disease?',
 		category: 'Ethics & Values',
 		responseType: 'nominal',
-		optionOrder: ['yes', 'no'],
+		optionOrder: ['yes', 'no']
 	},
 	// Political views - 7-point scale (ordinal: liberal → conservative)
 	{
@@ -82,8 +82,8 @@ const QUESTIONS: QuestionDef[] = [
 			'moderate, middle of the road',
 			'slightly conservative',
 			'conservative',
-			'extremely conservative',
-		],
+			'extremely conservative'
+		]
 	},
 	// Party ID - Nominal (no natural ordering between parties)
 	{
@@ -99,8 +99,8 @@ const QUESTIONS: QuestionDef[] = [
 			'ind,near rep',
 			'not str republican',
 			'strong republican',
-			'other party',
-		],
+			'other party'
+		]
 	},
 	// Trust and social attitudes - Binary (nominal)
 	{
@@ -108,21 +108,21 @@ const QUESTIONS: QuestionDef[] = [
 		text: "Generally speaking, would you say that most people can be trusted or that you can't be too careful in dealing with people?",
 		category: 'Social Attitudes',
 		responseType: 'nominal',
-		optionOrder: ['can trust', "can't be too careful", 'depends'],
+		optionOrder: ['can trust', "can't be too careful", 'depends']
 	},
 	{
 		variable: 'fair',
 		text: 'Do you think most people would try to take advantage of you if they got a chance, or would they try to be fair?',
 		category: 'Social Attitudes',
 		responseType: 'nominal',
-		optionOrder: ['would take advantage of you', 'would try to be fair', 'depends'],
+		optionOrder: ['would take advantage of you', 'would try to be fair', 'depends']
 	},
 	{
 		variable: 'helpful',
 		text: 'Would you say that most of the time people try to be helpful, or that they are mostly just looking out for themselves?',
 		category: 'Social Attitudes',
 		responseType: 'nominal',
-		optionOrder: ['try to be helpful', 'just look out for themselves', 'depends'],
+		optionOrder: ['try to be helpful', 'just look out for themselves', 'depends']
 	},
 	// Religion - Nominal (theological positions, no natural ordering)
 	{
@@ -132,19 +132,19 @@ const QUESTIONS: QuestionDef[] = [
 		responseType: 'nominal',
 		optionOrder: [
 			"don't believe",
-			"no way to find out",
-			"some higher power",
-			"believe sometimes",
-			"believe but doubts",
-			"know god exists",
-		],
+			'no way to find out',
+			'some higher power',
+			'believe sometimes',
+			'believe but doubts',
+			'know god exists'
+		]
 	},
 	{
 		variable: 'postlife',
 		text: 'Do you believe there is a life after death?',
 		category: 'Religion',
 		responseType: 'nominal',
-		optionOrder: ['yes', 'no'],
+		optionOrder: ['yes', 'no']
 	},
 	// Science - Binary (nominal)
 	{
@@ -152,8 +152,8 @@ const QUESTIONS: QuestionDef[] = [
 		text: 'Human beings, as we know them today, developed from earlier species of animals.',
 		category: 'Science',
 		responseType: 'nominal',
-		optionOrder: ['true', 'false'],
-	},
+		optionOrder: ['true', 'false']
+	}
 ];
 
 // Map education codes to our schema
@@ -188,12 +188,21 @@ function cleanResponse(value: string): string | null {
 	if (!value) return null;
 	// Skip inapplicable, don't know, no answer, etc.
 	const lower = value.toLowerCase();
-	if (lower.includes('iap') || lower.includes("don't know") || lower.includes('no answer') ||
-	    lower.includes('not applicable') || lower.includes('skipped') || lower === 'nan') {
+	if (
+		lower.includes('iap') ||
+		lower.includes("don't know") ||
+		lower.includes('no answer') ||
+		lower.includes('not applicable') ||
+		lower.includes('skipped') ||
+		lower === 'nan'
+	) {
 		return null;
 	}
 	// Remove leading numeric codes like "1. " or "(1) "
-	return value.replace(/^\d+\.\s*/, '').replace(/^\(\d+\)\s*/, '').trim();
+	return value
+		.replace(/^\d+\.\s*/, '')
+		.replace(/^\(\d+\)\s*/, '')
+		.trim();
 }
 
 interface Distribution {
@@ -231,7 +240,7 @@ async function main() {
 	console.log('Reading GSS data using Python/pandas (this may take a minute)...');
 
 	// Build list of columns we need
-	const columns = ['year', 'age', 'sex', 'degree', ...QUESTIONS.map(q => q.variable)];
+	const columns = ['year', 'age', 'sex', 'degree', ...QUESTIONS.map((q) => q.variable)];
 
 	// Use Python/pandas to read STATA file and output as JSON
 	const pythonScript = `
@@ -262,7 +271,7 @@ print(json.dumps(records))
 
 	const jsonData = execSync(`uv run --with pandas python3 -c "${pythonScript.replace(/"/g, '\\"')}"`, {
 		maxBuffer: 500 * 1024 * 1024, // 500MB buffer
-		encoding: 'utf-8',
+		encoding: 'utf-8'
 	});
 
 	const records = JSON.parse(jsonData) as Record<string, unknown>[];
@@ -276,7 +285,7 @@ print(json.dumps(records))
 			overall: {},
 			byEducation: {},
 			byAgeGroup: {},
-			byGender: {},
+			byGender: {}
 		};
 	}
 

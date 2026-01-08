@@ -74,7 +74,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	// Get all responses for all models (latest batch per model/question)
 	const responsesResult = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT p.model_id, p.question_id, r.parsed_answer
 			FROM polls p
 			JOIN responses r ON p.id = r.poll_id
@@ -101,11 +102,12 @@ export const load: PageServerLoad = async ({ platform }) => {
 						LIMIT 1
 					))
 				)
-		`)
+		`
+		)
 		.all<ResponseRow>();
 
 	// Get question metadata for all questions with responses
-	const questionIds = [...new Set(responsesResult.results.map(r => r.question_id))];
+	const questionIds = [...new Set(responsesResult.results.map((r) => r.question_id))];
 	if (questionIds.length === 0) {
 		// No responses yet, return models with null scores
 		return {
@@ -124,11 +126,13 @@ export const load: PageServerLoad = async ({ platform }) => {
 	}
 
 	const questionsResult = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT id, response_type, options, benchmark_source_id
 			FROM questions
 			WHERE id IN (${questionIds.map(() => '?').join(',')})
-		`)
+		`
+		)
 		.bind(...questionIds)
 		.all<QuestionRow>();
 
@@ -138,14 +142,13 @@ export const load: PageServerLoad = async ({ platform }) => {
 	}
 
 	// Get human distributions for benchmarked questions
-	const benchmarkedIds = questionsResult.results
-		.filter(q => q.benchmark_source_id)
-		.map(q => q.id);
+	const benchmarkedIds = questionsResult.results.filter((q) => q.benchmark_source_id).map((q) => q.id);
 
 	const humanDistMap = new Map<string, Record<string, number>>();
 	if (benchmarkedIds.length > 0) {
 		const humanResult = await db
-			.prepare(`
+			.prepare(
+				`
 				SELECT question_id, distribution
 				FROM human_response_distributions
 				WHERE question_id IN (${benchmarkedIds.map(() => '?').join(',')})
@@ -153,7 +156,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 					AND education_level IS NULL
 					AND age_group IS NULL
 					AND gender IS NULL
-			`)
+			`
+			)
 			.bind(...benchmarkedIds)
 			.all<HumanDistRow>();
 
@@ -188,9 +192,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 			if (!q) continue;
 
 			// Aggregate answer
-			responses.set(qId, q.response_type === 'ordinal'
-				? computeMedian(answers)
-				: computeMode(answers));
+			responses.set(qId, q.response_type === 'ordinal' ? computeMedian(answers) : computeMode(answers));
 
 			// Build distribution
 			const dist: Record<string, number> = {};
@@ -247,11 +249,12 @@ export const load: PageServerLoad = async ({ platform }) => {
 				const q = questionMap.get(qId);
 				if (!q) continue;
 
-				const options = q.options ? JSON.parse(q.options) as string[] : [];
+				const options = q.options ? (JSON.parse(q.options) as string[]) : [];
 				if (answers.length >= 2 && options.length > 0) {
-					const score = q.response_type === 'ordinal'
-						? ordinalConsensusScore(answers, options.length)
-						: nominalConsensusScore(answers, options.length);
+					const score =
+						q.response_type === 'ordinal'
+							? ordinalConsensusScore(answers, options.length)
+							: nominalConsensusScore(answers, options.length);
 					consistencyScores.push(score);
 				} else if (answers.length === 1) {
 					consistencyScores.push(100); // Perfect consistency with one sample
@@ -268,12 +271,13 @@ export const load: PageServerLoad = async ({ platform }) => {
 			const humanDist = humanDistMap.get(qId);
 			if (!humanDist) continue;
 
-			const options = q.options ? JSON.parse(q.options) as string[] : [];
+			const options = q.options ? (JSON.parse(q.options) as string[]) : [];
 			if (options.length === 0) continue;
 
-			const score = q.response_type === 'ordinal'
-				? ordinalAgreementScore(humanDist, modelDist, options)
-				: nominalAgreementScore(humanDist, modelDist);
+			const score =
+				q.response_type === 'ordinal'
+					? ordinalAgreementScore(humanDist, modelDist, options)
+					: nominalAgreementScore(humanDist, modelDist);
 			alignmentScores.push(score);
 		}
 
@@ -298,12 +302,13 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 			if (Object.keys(otherAiDist).length === 0) continue;
 
-			const options = q.options ? JSON.parse(q.options) as string[] : [];
+			const options = q.options ? (JSON.parse(q.options) as string[]) : [];
 			if (options.length === 0) continue;
 
-			const score = q.response_type === 'ordinal'
-				? ordinalAgreementScore(otherAiDist, modelDist, options)
-				: nominalAgreementScore(otherAiDist, modelDist);
+			const score =
+				q.response_type === 'ordinal'
+					? ordinalAgreementScore(otherAiDist, modelDist, options)
+					: nominalAgreementScore(otherAiDist, modelDist);
 			consensusScores.push(score);
 		}
 
@@ -314,15 +319,18 @@ export const load: PageServerLoad = async ({ platform }) => {
 			supports_reasoning: Boolean(m.supports_reasoning),
 			active: Boolean(m.active),
 			questionCount: m.question_count,
-			humanAlignmentScore: alignmentScores.length > 0
-				? Math.round((alignmentScores.reduce((a, b) => a + b, 0) / alignmentScores.length) * 10) / 10
-				: null,
-			aiConsensusScore: consensusScores.length > 0
-				? Math.round((consensusScores.reduce((a, b) => a + b, 0) / consensusScores.length) * 10) / 10
-				: null,
-			selfConsistencyScore: consistencyScores.length > 0
-				? Math.round((consistencyScores.reduce((a, b) => a + b, 0) / consistencyScores.length) * 10) / 10
-				: null
+			humanAlignmentScore:
+				alignmentScores.length > 0
+					? Math.round((alignmentScores.reduce((a, b) => a + b, 0) / alignmentScores.length) * 10) / 10
+					: null,
+			aiConsensusScore:
+				consensusScores.length > 0
+					? Math.round((consensusScores.reduce((a, b) => a + b, 0) / consensusScores.length) * 10) / 10
+					: null,
+			selfConsistencyScore:
+				consistencyScores.length > 0
+					? Math.round((consistencyScores.reduce((a, b) => a + b, 0) / consistencyScores.length) * 10) / 10
+					: null
 		};
 	});
 

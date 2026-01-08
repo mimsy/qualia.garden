@@ -70,10 +70,7 @@ describe('computeOverallStats', () => {
 
 	describe('with partial data', () => {
 		it('excludes questions without human data from human similarity', () => {
-			const questions = [
-				createMockQuestion({ humanSimilarity: 80 }),
-				createMockQuestion({ humanSimilarity: null })
-			];
+			const questions = [createMockQuestion({ humanSimilarity: 80 }), createMockQuestion({ humanSimilarity: null })];
 
 			const result = computeOverallStats(questions);
 
@@ -346,12 +343,8 @@ describe('loadQuestionsWithStats', () => {
 						created_at: '2024-01-01'
 					}
 				],
-				responses: [
-					{ model_id: 'm-1', question_id: 'q-1', response_type: 'ordinal', parsed_answer: '3' }
-				],
-				humanDistributions: [
-					{ question_id: 'q-1', distribution: '{"3": 80, "4": 20}', sample_size: 1000 }
-				]
+				responses: [{ model_id: 'm-1', question_id: 'q-1', response_type: 'ordinal', parsed_answer: '3' }],
+				humanDistributions: [{ question_id: 'q-1', distribution: '{"3": 80, "4": 20}', sample_size: 1000 }]
 			});
 
 			const result = await loadQuestionsWithStats(db, {});
@@ -383,9 +376,7 @@ describe('loadQuestionsWithStats', () => {
 
 			await loadQuestionsWithStats(db, { sourceId: 'wvs-7' });
 
-			expect(db.prepare).toHaveBeenCalledWith(
-				expect.stringContaining('q.benchmark_source_id = ?')
-			);
+			expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('q.benchmark_source_id = ?'));
 		});
 
 		it('filters by null sourceId', async () => {
@@ -393,9 +384,7 @@ describe('loadQuestionsWithStats', () => {
 
 			await loadQuestionsWithStats(db, { sourceId: null });
 
-			expect(db.prepare).toHaveBeenCalledWith(
-				expect.stringContaining('q.benchmark_source_id IS NULL')
-			);
+			expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('q.benchmark_source_id IS NULL'));
 		});
 
 		it('filters by questionIds', async () => {

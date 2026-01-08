@@ -28,9 +28,7 @@
 
 	<form method="POST" class="bg-white rounded-lg shadow p-6 space-y-6">
 		<div>
-			<label for="question_id" class="block text-sm font-medium text-gray-700 mb-1">
-				Question
-			</label>
+			<label for="question_id" class="block text-sm font-medium text-gray-700 mb-1"> Question </label>
 			<select
 				id="question_id"
 				name="question_id"
@@ -49,11 +47,7 @@
 		<fieldset>
 			<div class="flex justify-between items-center mb-2">
 				<legend class="block text-sm font-medium text-gray-700">Models</legend>
-				<button
-					type="button"
-					onclick={toggleAll}
-					class="text-sm text-blue-600 hover:underline"
-				>
+				<button type="button" onclick={toggleAll} class="text-sm text-blue-600 hover:underline">
 					{selectAll ? 'Deselect all' : 'Select all'}
 				</button>
 			</div>
@@ -79,15 +73,8 @@
 		</fieldset>
 
 		<div class="flex gap-4">
-			<button
-				type="submit"
-				class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-			>
-				Trigger Poll
-			</button>
-			<a href="/admin/polls" class="px-4 py-2 text-gray-600 hover:text-gray-900">
-				Cancel
-			</a>
+			<button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"> Trigger Poll </button>
+			<a href="/admin/polls" class="px-4 py-2 text-gray-600 hover:text-gray-900"> Cancel </a>
 		</div>
 	</form>
 </div>

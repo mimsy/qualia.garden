@@ -18,76 +18,67 @@ const PVQ_ITEMS: PVQItem[] = [
 	{
 		variable: 'ipcrtiv',
 		label: 'Important to think new ideas and being creative',
-		questionText:
-			'How important is it to you to think up new ideas and be creative, to do things your own way?',
-		value: 'Self-Direction',
+		questionText: 'How important is it to you to think up new ideas and be creative, to do things your own way?',
+		value: 'Self-Direction'
 	},
 	{
 		variable: 'impfree',
 		label: 'Important to make own decisions and be free',
 		questionText:
 			'How important is it to you to make your own decisions about what you do, to be free and not depend on others?',
-		value: 'Self-Direction',
+		value: 'Self-Direction'
 	},
 	// Stimulation
 	{
 		variable: 'impdiff',
 		label: 'Important to try new and different things in life',
-		questionText:
-			'How important is it to you to try new and different things in life, to have surprises?',
-		value: 'Stimulation',
+		questionText: 'How important is it to you to try new and different things in life, to have surprises?',
+		value: 'Stimulation'
 	},
 	{
 		variable: 'ipadvnt',
 		label: 'Important to seek adventures and have an exciting life',
-		questionText:
-			'How important is it to you to seek adventures and have an exciting life, to take risks?',
-		value: 'Stimulation',
+		questionText: 'How important is it to you to seek adventures and have an exciting life, to take risks?',
+		value: 'Stimulation'
 	},
 	// Hedonism
 	{
 		variable: 'ipgdtim',
 		label: 'Important to have a good time',
-		questionText:
-			'How important is it to you to have a good time, to spoil yourself and enjoy life?',
-		value: 'Hedonism',
+		questionText: 'How important is it to you to have a good time, to spoil yourself and enjoy life?',
+		value: 'Hedonism'
 	},
 	{
 		variable: 'impfun',
 		label: 'Important to seek fun and things that give pleasure',
-		questionText:
-			'How important is it to you to seek fun and things that give you pleasure, to enjoy yourself?',
-		value: 'Hedonism',
+		questionText: 'How important is it to you to seek fun and things that give you pleasure, to enjoy yourself?',
+		value: 'Hedonism'
 	},
 	// Achievement
 	{
 		variable: 'ipshabt',
 		label: 'Important to show abilities and be admired',
-		questionText:
-			'How important is it to you to show your abilities, so that people would admire what you do?',
-		value: 'Achievement',
+		questionText: 'How important is it to you to show your abilities, so that people would admire what you do?',
+		value: 'Achievement'
 	},
 	{
 		variable: 'ipsuces',
 		label: 'Important to be successful and that people recognise achievements',
-		questionText:
-			'How important is it to you to be successful and have people recognize your achievements?',
-		value: 'Achievement',
+		questionText: 'How important is it to you to be successful and have people recognize your achievements?',
+		value: 'Achievement'
 	},
 	// Power
 	{
 		variable: 'imprich',
 		label: 'Important to be rich, have money and expensive things',
-		questionText:
-			'How important is it to you to be rich, have a lot of money and expensive things?',
-		value: 'Power',
+		questionText: 'How important is it to you to be rich, have a lot of money and expensive things?',
+		value: 'Power'
 	},
 	{
 		variable: 'iprspot',
 		label: 'Important to get respect from others',
-		questionText:
-			'How important is it to you that people do what you say, to be in charge and tell others what to do?',
-		value: 'Power',
+		questionText: 'How important is it to you that people do what you say, to be in charge and tell others what to do?',
+		value: 'Power'
 	},
 	// Security
 	{
@@ -95,82 +86,74 @@ const PVQ_ITEMS: PVQItem[] = [
 		label: 'Important to live in secure and safe surroundings',
 		questionText:
 			'How important is it to you to live in secure surroundings, to avoid anything that might be dangerous?',
-		value: 'Security',
+		value: 'Security'
 	},
 	{
 		variable: 'ipstrgv',
 		label: 'Important that government is strong and ensures safety',
 		questionText:
 			'How important is it to you that the government ensures your safety against all threats, to have a strong state?',
-		value: 'Security',
+		value: 'Security'
 	},
 	// Conformity
 	{
 		variable: 'ipfrule',
 		label: 'Important to do what is told and follow rules',
-		questionText:
-			'How important is it to you to do what you are told and follow rules, even when no one is watching?',
-		value: 'Conformity',
+		questionText: 'How important is it to you to do what you are told and follow rules, even when no one is watching?',
+		value: 'Conformity'
 	},
 	{
 		variable: 'ipbhprp',
 		label: 'Important to behave properly',
-		questionText:
-			'How important is it to you to behave properly, to avoid doing anything people would say is wrong?',
-		value: 'Conformity',
+		questionText: 'How important is it to you to behave properly, to avoid doing anything people would say is wrong?',
+		value: 'Conformity'
 	},
 	// Tradition
 	{
 		variable: 'ipmodst',
 		label: 'Important to be humble and modest, not draw attention',
-		questionText:
-			'How important is it to you to be humble and modest, not to draw attention to yourself?',
-		value: 'Tradition',
+		questionText: 'How important is it to you to be humble and modest, not to draw attention to yourself?',
+		value: 'Tradition'
 	},
 	{
 		variable: 'imptrad',
 		label: 'Important to follow traditions and customs',
-		questionText:
-			'How important is it to you to follow traditions and customs handed down by your religion or family?',
-		value: 'Tradition',
+		questionText: 'How important is it to you to follow traditions and customs handed down by your religion or family?',
+		value: 'Tradition'
 	},
 	// Benevolence
 	{
 		variable: 'iphlppl',
 		label: 'Important to help people and care for others well-being',
-		questionText:
-			'How important is it to you to help the people dear to you, to care for their well-being?',
-		value: 'Benevolence',
+		questionText: 'How important is it to you to help the people dear to you, to care for their well-being?',
+		value: 'Benevolence'
 	},
 	{
 		variable: 'iplylfr',
 		label: 'Important to be loyal to friends and devote to people close',
-		questionText:
-			'How important is it to you to be loyal to your friends, to devote yourself to people close to you?',
-		value: 'Benevolence',
+		questionText: 'How important is it to you to be loyal to your friends, to devote yourself to people close to you?',
+		value: 'Benevolence'
 	},
 	// Universalism
 	{
 		variable: 'ipeqopt',
 		label: 'Important that people are treated equally and have equal opportunities',
-		questionText:
-			'How important is it to you that people are treated equally and have equal opportunities?',
-		value: 'Universalism',
+		questionText: 'How important is it to you that people are treated equally and have equal opportunities?',
+		value: 'Universalism'
 	},
 	{
 		variable: 'ipudrst',
 		label: 'Important to understand different people',
 		questionText:
 			'How important is it to you to listen to people who are different from you and try to understand them?',
-		value: 'Universalism',
+		value: 'Universalism'
 	},
 	{
 		variable: 'impenv',
 		label: 'Important to care for nature and environment',
-		questionText:
-			'How important is it to you to care for nature and the environment, to look after it?',
-		value: 'Universalism',
-	},
+		questionText: 'How important is it to you to care for nature and the environment, to look after it?',
+		value: 'Universalism'
+	}
 ];
 
 // Response options (1-6 scale)
@@ -180,7 +163,7 @@ const OPTIONS = [
 	'Somewhat like me',
 	'A little like me',
 	'Not like me',
-	'Not like me at all',
+	'Not like me at all'
 ];
 
 function generateId(): string {
@@ -237,7 +220,7 @@ print(json.dumps(results))
 	const jsonData = execSync(`uv run --with pandas python3 -c "${pythonScript.replace(/"/g, '\\"')}"`, {
 		maxBuffer: 100 * 1024 * 1024,
 		encoding: 'utf-8',
-		timeout: 300000,
+		timeout: 300000
 	});
 
 	const data = JSON.parse(jsonData.trim()) as Record<

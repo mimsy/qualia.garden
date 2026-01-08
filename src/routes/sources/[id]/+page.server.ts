@@ -52,13 +52,10 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	}
 
 	// Get unique categories
-	const categories = [
-		...new Set(questions.filter((q) => q.category).map((q) => q.category as string))
-	].sort();
+	const categories = [...new Set(questions.filter((q) => q.category).map((q) => q.category as string))].sort();
 
 	// Compute overall scores
-	const { overallHumanSimilarity, overallAiConsensus, overallAiConfidence } =
-		computeOverallStats(questions);
+	const { overallHumanSimilarity, overallAiConsensus, overallAiConfidence } = computeOverallStats(questions);
 
 	return {
 		source: sourceResult,

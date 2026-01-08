@@ -19,36 +19,36 @@ const FOUNDATIONS: FoundationData[] = [
 		questionText:
 			'When you decide whether something is right or wrong, how relevant is whether or not someone suffered emotionally?',
 		means: { liberal: 3.62, moderate: 3.31, conservative: 2.98, libertarian: 2.8 },
-		sds: { liberal: 0.74, moderate: 0.81, conservative: 0.84, libertarian: 0.94 },
+		sds: { liberal: 0.74, moderate: 0.81, conservative: 0.84, libertarian: 0.94 }
 	},
 	{
 		name: 'Fairness/Reciprocity',
 		questionText:
 			'When you decide whether something is right or wrong, how relevant is whether or not someone acted unfairly?',
 		means: { liberal: 3.74, moderate: 3.39, conservative: 3.02, libertarian: 3.19 },
-		sds: { liberal: 0.63, moderate: 0.68, conservative: 0.73, libertarian: 0.79 },
+		sds: { liberal: 0.63, moderate: 0.68, conservative: 0.73, libertarian: 0.79 }
 	},
 	{
 		name: 'Ingroup/Loyalty',
 		questionText:
 			'When you decide whether something is right or wrong, how relevant is whether or not someone showed a lack of loyalty?',
 		means: { liberal: 2.07, moderate: 2.58, conservative: 3.08, libertarian: 2.19 },
-		sds: { liberal: 0.77, moderate: 0.79, conservative: 0.79, libertarian: 0.89 },
+		sds: { liberal: 0.77, moderate: 0.79, conservative: 0.79, libertarian: 0.89 }
 	},
 	{
 		name: 'Authority/Respect',
 		questionText:
 			'When you decide whether something is right or wrong, how relevant is whether or not someone showed a lack of respect for authority?',
 		means: { liberal: 2.06, moderate: 2.67, conservative: 3.28, libertarian: 2.13 },
-		sds: { liberal: 0.79, moderate: 0.77, conservative: 0.71, libertarian: 0.9 },
+		sds: { liberal: 0.79, moderate: 0.77, conservative: 0.71, libertarian: 0.9 }
 	},
 	{
 		name: 'Purity/Sanctity',
 		questionText:
 			'When you decide whether something is right or wrong, how relevant is whether or not someone violated standards of purity and decency?',
 		means: { liberal: 1.27, moderate: 1.99, conservative: 2.89, libertarian: 1.23 },
-		sds: { liberal: 0.86, moderate: 1.03, conservative: 1.07, libertarian: 0.98 },
-	},
+		sds: { liberal: 0.86, moderate: 1.03, conservative: 1.07, libertarian: 0.98 }
+	}
 ];
 
 // Sample sizes from Graham et al. (2011)
@@ -57,7 +57,7 @@ const SAMPLE_SIZES = {
 	moderate: 3203,
 	conservative: 4128,
 	libertarian: 2999,
-	total: 34476,
+	total: 34476
 };
 
 // Response options (0-5 scale)
@@ -67,7 +67,7 @@ const OPTIONS = [
 	'Slightly relevant',
 	'Somewhat relevant',
 	'Very relevant',
-	'Extremely relevant',
+	'Extremely relevant'
 ];
 
 // Convert mean and SD to discrete distribution using normal CDF

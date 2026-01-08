@@ -66,8 +66,8 @@ export const GET: RequestHandler = async ({ platform }) => {
 			prompt: m.pricing?.prompt || '0',
 			completion: m.pricing?.completion || '0'
 		},
-		supports_reasoning: m.supported_parameters?.includes('reasoning') ||
-			m.supported_parameters?.includes('include_reasoning') || false
+		supports_reasoning:
+			m.supported_parameters?.includes('reasoning') || m.supported_parameters?.includes('include_reasoning') || false
 	}));
 
 	// Sort by name for easier browsing

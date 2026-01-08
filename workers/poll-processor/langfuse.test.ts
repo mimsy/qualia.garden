@@ -122,10 +122,7 @@ describe('LangfuseClient', () => {
 			client.trace({ id: 'trace-1', name: 'test' });
 			await client.flush();
 
-			expect(mockFetch).toHaveBeenCalledWith(
-				'https://custom.langfuse.com/api/public/ingestion',
-				expect.anything()
-			);
+			expect(mockFetch).toHaveBeenCalledWith('https://custom.langfuse.com/api/public/ingestion', expect.anything());
 		});
 
 		it('clears queue after successful flush', async () => {
@@ -153,9 +150,7 @@ describe('LangfuseClient', () => {
 			client.trace({ id: 'trace-1', name: 'test' });
 			await client.flush();
 
-			expect(mockConsoleError).toHaveBeenCalledWith(
-				expect.stringContaining('[langfuse] Ingestion failed: 500')
-			);
+			expect(mockConsoleError).toHaveBeenCalledWith(expect.stringContaining('[langfuse] Ingestion failed: 500'));
 		});
 
 		it('logs error on network failure', async () => {

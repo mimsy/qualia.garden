@@ -81,10 +81,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 	const db = platform.env.DB;
 
 	// Get question
-	const question = await db
-		.prepare('SELECT * FROM questions WHERE id = ?')
-		.bind(params.id)
-		.first<Question>();
+	const question = await db.prepare('SELECT * FROM questions WHERE id = ?').bind(params.id).first<Question>();
 
 	if (!question) {
 		throw error(404, 'Question not found');
@@ -174,13 +171,10 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 	// Compute aggregated answer for each model
 	const aggregatedResponses: AggregatedResponse[] = [];
 	for (const agg of modelMap.values()) {
-		const answers = agg.samples
-			.filter((s) => s.parsed_answer !== null)
-			.map((s) => s.parsed_answer!);
+		const answers = agg.samples.filter((s) => s.parsed_answer !== null).map((s) => s.parsed_answer!);
 
 		if (answers.length > 0) {
-			agg.aggregated_answer =
-				question.response_type === 'ordinal' ? computeMedian(answers) : computeMode(answers);
+			agg.aggregated_answer = question.response_type === 'ordinal' ? computeMedian(answers) : computeMode(answers);
 		}
 		aggregatedResponses.push(agg);
 	}
@@ -197,8 +191,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 
 	for (const response of respondedModels) {
 		if (response.aggregated_answer) {
-			answerCounts[response.aggregated_answer] =
-				(answerCounts[response.aggregated_answer] || 0) + 1;
+			answerCounts[response.aggregated_answer] = (answerCounts[response.aggregated_answer] || 0) + 1;
 		}
 	}
 
@@ -254,9 +247,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 
 	if (options && respondedModels.length > 0) {
 		// Get all aggregated answers for AI consensus
-		const allAggregatedAnswers = respondedModels
-			.map((r) => r.aggregated_answer)
-			.filter((a): a is string => a !== null);
+		const allAggregatedAnswers = respondedModels.map((r) => r.aggregated_answer).filter((a): a is string => a !== null);
 
 		// Compute AI agreement score (how much AI models agree with each other)
 		if (allAggregatedAnswers.length >= 2) {
@@ -305,9 +296,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 
 		// Compute per-model self-consistency scores
 		for (const response of aggregatedResponses) {
-			const answers = response.samples
-				.map((s) => s.parsed_answer)
-				.filter((a): a is string => a !== null);
+			const answers = response.samples.map((s) => s.parsed_answer).filter((a): a is string => a !== null);
 
 			if (answers.length < 2) {
 				modelSelfConsistency[response.model_id] = 100; // Perfect if only one sample
@@ -345,11 +334,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 				if (Object.keys(modelDist).length === 0) continue;
 
 				if (question.response_type === 'ordinal') {
-					modelHumanAlignment[response.model_id] = ordinalAgreementScore(
-						humanDist,
-						modelDist,
-						options
-					);
+					modelHumanAlignment[response.model_id] = ordinalAgreementScore(humanDist, modelDist, options);
 				} else {
 					// Nominal: convert to labels
 					const modelDistLabeled: Record<string, number> = {};
@@ -365,10 +350,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 						const keyLabel = keyIdx >= 0 && keyIdx < options.length ? options[keyIdx] : key;
 						humanDistLabeled[keyLabel] = (humanDistLabeled[keyLabel] || 0) + count;
 					}
-					modelHumanAlignment[response.model_id] = nominalAgreementScore(
-						humanDistLabeled,
-						modelDistLabeled
-					);
+					modelHumanAlignment[response.model_id] = nominalAgreementScore(humanDistLabeled, modelDistLabeled);
 				}
 			}
 		}
@@ -386,11 +368,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 			if (Object.keys(modelDist).length === 0) continue;
 
 			if (question.response_type === 'ordinal') {
-				modelAiConsensus[response.model_id] = ordinalAgreementScore(
-					aggregateAiDist,
-					modelDist,
-					options
-				);
+				modelAiConsensus[response.model_id] = ordinalAgreementScore(aggregateAiDist, modelDist, options);
 			} else {
 				// Nominal: convert to labels
 				const modelDistLabeled: Record<string, number> = {};
@@ -406,10 +384,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 					const keyLabel = keyIdx >= 0 && keyIdx < options.length ? options[keyIdx] : key;
 					aiDistLabeled[keyLabel] = (aiDistLabeled[keyLabel] || 0) + count;
 				}
-				modelAiConsensus[response.model_id] = nominalAgreementScore(
-					aiDistLabeled,
-					modelDistLabeled
-				);
+				modelAiConsensus[response.model_id] = nominalAgreementScore(aiDistLabeled, modelDistLabeled);
 			}
 		}
 	}

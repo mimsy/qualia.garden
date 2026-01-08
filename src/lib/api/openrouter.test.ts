@@ -146,10 +146,7 @@ describe('callModel', () => {
 		});
 
 		it('handles non-Error thrown values', async () => {
-			vi.stubGlobal(
-				'fetch',
-				vi.fn().mockRejectedValue('string error')
-			);
+			vi.stubGlobal('fetch', vi.fn().mockRejectedValue('string error'));
 
 			const result = await callModel(mockApiKey, mockModelId, mockMessages);
 

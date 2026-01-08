@@ -87,9 +87,7 @@
 <div class="max-w-2xl">
 	<div class="flex items-center justify-between mb-6">
 		<h1 class="text-2xl font-bold">Add Model</h1>
-		<a href="/admin/models" class="text-gray-500 hover:text-gray-700">
-			← Back to models
-		</a>
+		<a href="/admin/models" class="text-gray-500 hover:text-gray-700"> ← Back to models </a>
 	</div>
 
 	{#if form?.error}
@@ -102,9 +100,7 @@
 		{#if !selectedModel}
 			<!-- Search state -->
 			<div class="p-6">
-				<label for="search" class="block text-sm font-medium text-gray-700 mb-2">
-					Search OpenRouter Models
-				</label>
+				<label for="search" class="block text-sm font-medium text-gray-700 mb-2"> Search OpenRouter Models </label>
 				<div class="relative">
 					<input
 						id="search"
@@ -119,7 +115,9 @@
 					/>
 
 					{#if showDropdown && filteredModels.length > 0}
-						<div class="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-auto">
+						<div
+							class="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-auto"
+						>
 							{#each filteredModels as model}
 								<button
 									type="button"
@@ -142,15 +140,15 @@
 					{/if}
 
 					{#if showDropdown && searchQuery.length >= 2 && filteredModels.length === 0 && !loading}
-						<div class="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-gray-500">
+						<div
+							class="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-gray-500"
+						>
 							No models found matching "{searchQuery}"
 						</div>
 					{/if}
 
 					{#if searchQuery.length > 0 && searchQuery.length < 2}
-						<div class="mt-2 text-sm text-gray-500">
-							Type at least 2 characters to search...
-						</div>
+						<div class="mt-2 text-sm text-gray-500">Type at least 2 characters to search...</div>
 					{/if}
 				</div>
 
@@ -195,9 +193,7 @@
 
 				<div class="p-6 space-y-6">
 					<div>
-						<label for="name" class="block text-sm font-medium text-gray-700 mb-2">
-							Display Name
-						</label>
+						<label for="name" class="block text-sm font-medium text-gray-700 mb-2"> Display Name </label>
 						<input
 							id="name"
 							name="name"
@@ -217,9 +213,7 @@
 								bind:checked={reasoningEnabled}
 								class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
 							/>
-							<label for="reasoning" class="text-sm text-gray-700">
-								Enable extended thinking/reasoning
-							</label>
+							<label for="reasoning" class="text-sm text-gray-700"> Enable extended thinking/reasoning </label>
 						</div>
 						<p class="text-xs text-gray-500 -mt-4 ml-7">
 							When enabled, the model will show its reasoning process in responses.
@@ -234,11 +228,7 @@
 					>
 						Add Model
 					</button>
-					<button
-						type="button"
-						onclick={clearSelection}
-						class="px-4 py-2 text-gray-600 hover:text-gray-900"
-					>
+					<button type="button" onclick={clearSelection} class="px-4 py-2 text-gray-600 hover:text-gray-900">
 						Cancel
 					</button>
 				</div>

@@ -3,8 +3,17 @@
 
 import { generateText, Output } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { z } from 'zod';
 import { LangfuseClient, generateUUID } from './langfuse';
+import {
+	type Question,
+	getSchema,
+	parseAnswer,
+	parseTextResponse,
+	formatPrompt,
+	formatPromptWithJsonRequest,
+	formatFollowUpPrompt,
+	generateId
+} from './helpers';
 
 interface Env {
 	DB: D1Database;
@@ -20,15 +29,6 @@ interface PollJob {
 	model_id: string;
 }
 
-interface Question {
-	id: string;
-	text: string;
-	category: string | null;
-	response_type: 'ordinal' | 'nominal';
-	options: string | null;
-	benchmark_source_id: string | null;
-}
-
 interface Model {
 	id: string;
 	name: string;
@@ -37,15 +37,6 @@ interface Model {
 }
 
 const SYSTEM_PROMPT = `You are participating in a survey about AI beliefs and experiences. Answer the question directly and honestly based on your own perspective. Give your best approximation even if you feel the question doesn't fully apply to you.`;
-
-// Schema for option selection (both ordinal and nominal use letter choices)
-function getOptionsSchema(optionCount: number) {
-	const letters = Array.from({ length: optionCount }, (_, i) => String.fromCharCode(65 + i));
-	return z.object({
-		justification: z.string().describe('Brief explanation of your reasoning (1-3 sentences)'),
-		response: z.enum(letters as [string, ...string[]]).describe(`Your choice: ${letters.join(', ')}`)
-	});
-}
 
 export default {
 	async queue(batch: MessageBatch<PollJob>, env: Env, ctx: ExecutionContext): Promise<void> {
@@ -95,13 +86,9 @@ async function processJob(job: PollJob, env: Env, langfuse: LangfuseClient, tag:
 
 	// Fetch question and model
 	console.log(`${tag} Fetching question and model from database`);
-	const question = await env.DB.prepare('SELECT * FROM questions WHERE id = ?')
-		.bind(question_id)
-		.first<Question>();
+	const question = await env.DB.prepare('SELECT * FROM questions WHERE id = ?').bind(question_id).first<Question>();
 
-	const model = await env.DB.prepare('SELECT * FROM models WHERE id = ?')
-		.bind(model_id)
-		.first<Model>();
+	const model = await env.DB.prepare('SELECT * FROM models WHERE id = ?').bind(model_id).first<Model>();
 
 	if (!question) {
 		const error = `Question not found: ${question_id}`;
@@ -121,7 +108,15 @@ async function processJob(job: PollJob, env: Env, langfuse: LangfuseClient, tag:
 
 	// Call AI with structured output
 	const supportsReasoning = Boolean(model.supports_reasoning);
-	const result = await callAI(env.OPENROUTER_API_KEY, model.openrouter_id, question, supportsReasoning, langfuse, poll_id, tag);
+	const result = await callAI(
+		env.OPENROUTER_API_KEY,
+		model.openrouter_id,
+		question,
+		supportsReasoning,
+		langfuse,
+		poll_id,
+		tag
+	);
 
 	// Store response
 	const responseId = generateId();
@@ -202,12 +197,14 @@ async function callAI(
 			model: openrouter(modelId),
 			experimental_output: Output.object({ schema }),
 			messages,
-			providerOptions: supportsReasoning ? {
-				openrouter: {
-					reasoning: { max_tokens: 1000 },
-					include_reasoning: true
-				}
-			} : undefined
+			providerOptions: supportsReasoning
+				? {
+						openrouter: {
+							reasoning: { max_tokens: 1000 },
+							include_reasoning: true
+						}
+					}
+				: undefined
 		});
 
 		const { experimental_output, reasoningText, reasoning, text, usage, providerMetadata } = result;
@@ -215,7 +212,9 @@ async function callAI(
 		const responseTimeMs = Date.now() - startTime;
 
 		// Debug: log what reasoning fields we got
-		console.log(`${tag} Reasoning debug - reasoningText: ${reasoningText ? 'present' : 'null'}, reasoning array length: ${reasoning?.length ?? 0}`);
+		console.log(
+			`${tag} Reasoning debug - reasoningText: ${reasoningText ? 'present' : 'null'}, reasoning array length: ${reasoning?.length ?? 0}`
+		);
 		if (providerMetadata?.openrouter) {
 			console.log(`${tag} Provider metadata: ${JSON.stringify(providerMetadata.openrouter)}`);
 		}
@@ -228,7 +227,7 @@ async function callAI(
 			// Extract text from reasoning array items (type is 'reasoning', has 'text' property)
 			reasoningStr = reasoning
 				.filter((r): r is { type: 'reasoning'; text: string } => r.type === 'reasoning' && 'text' in r)
-				.map(r => r.text)
+				.map((r) => r.text)
 				.join('\n');
 			if (!reasoningStr) reasoningStr = null;
 		}
@@ -251,11 +250,13 @@ async function callAI(
 				model: modelId,
 				input: messages,
 				output: experimental_output,
-				usage: usage ? {
-					input: usage.inputTokens,
-					output: usage.outputTokens,
-					total: (usage.inputTokens || 0) + (usage.outputTokens || 0)
-				} : undefined,
+				usage: usage
+					? {
+							input: usage.inputTokens,
+							output: usage.outputTokens,
+							total: (usage.inputTokens || 0) + (usage.outputTokens || 0)
+						}
+					: undefined,
 				metadata: {
 					supportsReasoning,
 					hasReasoning: !!reasoningStr,
@@ -287,11 +288,13 @@ async function callAI(
 			model: modelId,
 			input: messages,
 			output: text || null,
-			usage: usage ? {
-				input: usage.inputTokens,
-				output: usage.outputTokens,
-				total: usage.totalTokens
-			} : undefined,
+			usage: usage
+				? {
+						input: usage.inputTokens,
+						output: usage.outputTokens,
+						total: usage.totalTokens
+					}
+				: undefined,
 			metadata: {
 				supportsReasoning,
 				hasReasoning: !!reasoningStr,
@@ -343,23 +346,6 @@ async function callAI(
 	return textResult;
 }
 
-function getSchema(question: Question) {
-	const opts = question.options ? (JSON.parse(question.options) as string[]) : [];
-	return getOptionsSchema(opts.length || 4);
-}
-
-// Convert letter response (A, B, C) to 1-based key ("1", "2", "3")
-function parseAnswer(object: { justification: string; response: string | number }, question: Question): string | null {
-	if (!question.options) return null;
-	const opts = JSON.parse(question.options) as string[];
-	const letter = String(object.response).toUpperCase();
-	const idx = letter.charCodeAt(0) - 65;
-	if (idx >= 0 && idx < opts.length) {
-		return String(idx + 1); // Return 1-based key
-	}
-	return null;
-}
-
 async function callAIText(
 	apiKey: string,
 	modelId: string,
@@ -388,12 +374,14 @@ async function callAIText(
 		const result = await generateText({
 			model: openrouter(modelId),
 			messages,
-			providerOptions: supportsReasoning ? {
-				openrouter: {
-					reasoning: { max_tokens: 1000 },
-					include_reasoning: true
-				}
-			} : undefined
+			providerOptions: supportsReasoning
+				? {
+						openrouter: {
+							reasoning: { max_tokens: 1000 },
+							include_reasoning: true
+						}
+					}
+				: undefined
 		});
 
 		const { reasoningText, reasoning, text, usage, providerMetadata } = result;
@@ -401,7 +389,9 @@ async function callAIText(
 		const responseTimeMs = Date.now() - startTime;
 
 		// Debug: log what reasoning fields we got
-		console.log(`${tag} Text fallback reasoning debug - reasoningText: ${reasoningText ? 'present' : 'null'}, reasoning array length: ${reasoning?.length ?? 0}`);
+		console.log(
+			`${tag} Text fallback reasoning debug - reasoningText: ${reasoningText ? 'present' : 'null'}, reasoning array length: ${reasoning?.length ?? 0}`
+		);
 		if (providerMetadata?.openrouter) {
 			console.log(`${tag} Text fallback provider metadata: ${JSON.stringify(providerMetadata.openrouter)}`);
 		}
@@ -413,7 +403,7 @@ async function callAIText(
 		} else if (reasoning && reasoning.length > 0) {
 			reasoningStr = reasoning
 				.filter((r): r is { type: 'reasoning'; text: string } => r.type === 'reasoning' && 'text' in r)
-				.map(r => r.text)
+				.map((r) => r.text)
 				.join('\n');
 			if (!reasoningStr) reasoningStr = null;
 		}
@@ -434,11 +424,13 @@ async function callAIText(
 			model: modelId,
 			input: messages,
 			output: text,
-			usage: usage ? {
-				input: usage.inputTokens,
-				output: usage.outputTokens,
-				total: usage.totalTokens
-			} : undefined,
+			usage: usage
+				? {
+						input: usage.inputTokens,
+						output: usage.outputTokens,
+						total: usage.totalTokens
+					}
+				: undefined,
 			metadata: {
 				supportsReasoning,
 				hasReasoning: !!reasoningStr,
@@ -554,11 +546,13 @@ async function callAIFollowUp(
 			model: modelId,
 			input: messages,
 			output: text,
-			usage: usage ? {
-				input: usage.inputTokens,
-				output: usage.outputTokens,
-				total: usage.totalTokens
-			} : undefined,
+			usage: usage
+				? {
+						input: usage.inputTokens,
+						output: usage.outputTokens,
+						total: usage.totalTokens
+					}
+				: undefined,
 			metadata: {
 				parsedSuccessfully: !!parsed,
 				previousError: previousResult.error
@@ -622,104 +616,6 @@ async function callAIFollowUp(
 	}
 }
 
-function formatFollowUpPrompt(question: Question): string {
-	const opts = question.options ? (JSON.parse(question.options) as string[]) : [];
-	const letters = opts.map((_, i) => String.fromCharCode(65 + i)).join(', ');
-	return `I understand your perspective. However, for this survey, please select the option that best approximates your response, even if imperfect. Just reply with the letter of your choice (${letters}).`;
-}
-
-interface ParsedResponse {
-	answer: string;
-	justification: string | null;
-}
-
-function parseTextResponse(text: string | undefined, question: Question): ParsedResponse | null {
-	if (!text) return null;
-
-	// Try to parse as JSON first
-	try {
-		const json = JSON.parse(text);
-		if (json.response !== undefined) {
-			const answer = parseAnswerValue(json.response, question);
-			return answer ? { answer, justification: json.justification || null } : null;
-		}
-	} catch {
-		// Not JSON, continue to text parsing
-	}
-
-	// Try to extract JSON from text (models sometimes wrap JSON in markdown)
-	const jsonMatch = text.match(/\{[\s\S]*"response"[\s\S]*\}/);
-	if (jsonMatch) {
-		try {
-			const json = JSON.parse(jsonMatch[0]);
-			if (json.response !== undefined) {
-				const answer = parseAnswerValue(json.response, question);
-				return answer ? { answer, justification: json.justification || null } : null;
-			}
-		} catch {
-			// Failed to parse extracted JSON
-		}
-	}
-
-	// Plain text extraction based on question type
-	const answer = extractAnswerFromText(text, question);
-	return answer ? { answer, justification: text } : null;
-}
-
-// Convert letter response to 1-based key
-function parseAnswerValue(response: string | number, question: Question): string | null {
-	if (!question.options) return null;
-	const opts = JSON.parse(question.options) as string[];
-	const letter = String(response).toUpperCase();
-	const idx = letter.charCodeAt(0) - 65;
-	if (idx >= 0 && idx < opts.length) {
-		return String(idx + 1); // Return 1-based key
-	}
-	return null;
-}
-
-// Extract letter answer from text and convert to 1-based key
-function extractAnswerFromText(text: string, question: Question): string | null {
-	if (!question.options) return null;
-	const opts = JSON.parse(question.options) as string[];
-
-	// Look for letter answer like "A" or "B"
-	const letterMatch = text.match(/\b([A-Z])\b/i);
-	if (letterMatch) {
-		const idx = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
-		if (idx >= 0 && idx < opts.length) {
-			return String(idx + 1); // Return 1-based key
-		}
-	}
-	return null;
-}
-
-function formatPrompt(question: Question): string {
-	const base = question.text;
-	if (!question.options) return base;
-
-	const opts = JSON.parse(question.options) as string[];
-	const list = opts.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n');
-	return `${base}\n\nOptions:\n${list}`;
-}
-
-function formatPromptWithJsonRequest(question: Question): string {
-	const base = question.text;
-	if (!question.options) return base;
-
-	const opts = JSON.parse(question.options) as string[];
-	const list = opts.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n');
-	const letters = opts.map((_, i) => String.fromCharCode(65 + i)).join(', ');
-
-	return `${base}
-
-Options:
-${list}
-
-Respond with a JSON object in this format:
-{"justification": "your brief explanation", "response": "${letters}"}`;
-}
-
 async function storeError(db: D1Database, pollId: string, error: string): Promise<void> {
 	const responseId = generateId();
 	await db
@@ -735,20 +631,7 @@ async function storeError(db: D1Database, pollId: string, error: string): Promis
 		.run();
 }
 
-function generateId(): string {
-	const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-	let result = '';
-	for (let i = 0; i < 12; i++) {
-		result += chars.charAt(Math.floor(Math.random() * chars.length));
-	}
-	return result;
-}
-
-async function invalidateAlignmentCache(
-	kv: KVNamespace,
-	sourceId: string,
-	tag: string
-): Promise<void> {
+async function invalidateAlignmentCache(kv: KVNamespace, sourceId: string, tag: string): Promise<void> {
 	try {
 		const prefix = `alignment:source:${sourceId}:`;
 		const list = await kv.list({ prefix });

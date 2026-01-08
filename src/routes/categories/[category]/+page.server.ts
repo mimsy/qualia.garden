@@ -28,8 +28,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	const description = await getCategoryDescription(db, category);
 
 	// Compute overall scores
-	const { overallHumanSimilarity, overallAiConsensus, overallAiConfidence } =
-		computeOverallStats(questions);
+	const { overallHumanSimilarity, overallAiConsensus, overallAiConfidence } = computeOverallStats(questions);
 
 	return {
 		category,

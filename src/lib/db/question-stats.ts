@@ -170,10 +170,7 @@ export async function loadQuestionsWithStats(
 		.all<ModelResponseRow>();
 
 	// Group responses by question, then by model (keeping all samples per model)
-	const responsesByQuestion = new Map<
-		string,
-		Map<string, { answers: string[]; responseType: string }>
-	>();
+	const responsesByQuestion = new Map<string, Map<string, { answers: string[]; responseType: string }>>();
 	for (const r of responsesResult.results) {
 		if (!responsesByQuestion.has(r.question_id)) {
 			responsesByQuestion.set(r.question_id, new Map());
@@ -202,10 +199,7 @@ export async function loadQuestionsWithStats(
 		.bind(...params)
 		.all<HumanDistributionRow>();
 
-	const humanDistributions = new Map<
-		string,
-		{ distribution: Record<string, number>; sampleSize: number }
-	>();
+	const humanDistributions = new Map<string, { distribution: Record<string, number>; sampleSize: number }>();
 	for (const d of humanResult.results) {
 		humanDistributions.set(d.question_id, {
 			distribution: JSON.parse(d.distribution),
@@ -226,10 +220,7 @@ export async function loadQuestionsWithStats(
 		if (questionResponses) {
 			for (const [, data] of questionResponses) {
 				// Compute aggregated answer for this model
-				const aggregated =
-					data.responseType === 'ordinal'
-						? computeMedian(data.answers)
-						: computeMode(data.answers);
+				const aggregated = data.responseType === 'ordinal' ? computeMedian(data.answers) : computeMode(data.answers);
 
 				if (aggregated) {
 					aggregatedAnswers.push(aggregated);
@@ -315,9 +306,7 @@ export async function loadQuestionsWithStats(
 
 		// AI Confidence (average self-consistency across models)
 		if (modelSelfConsistencies.length > 0) {
-			aiConfidence = Math.round(
-				modelSelfConsistencies.reduce((a, b) => a + b, 0) / modelSelfConsistencies.length
-			);
+			aiConfidence = Math.round(modelSelfConsistencies.reduce((a, b) => a + b, 0) / modelSelfConsistencies.length);
 		}
 
 		return {
@@ -355,24 +344,19 @@ export function computeOverallStats(questions: QuestionWithStats[]): {
 	const overallHumanSimilarity =
 		questionsWithHumanData.length > 0
 			? Math.round(
-					questionsWithHumanData.reduce((sum, q) => sum + q.humanSimilarity!, 0) /
-						questionsWithHumanData.length
+					questionsWithHumanData.reduce((sum, q) => sum + q.humanSimilarity!, 0) / questionsWithHumanData.length
 				)
 			: null;
 
 	const overallAiConsensus =
 		questionsWithAiData.length > 0
-			? Math.round(
-					questionsWithAiData.reduce((sum, q) => sum + q.aiConsensus!, 0) /
-						questionsWithAiData.length
-				)
+			? Math.round(questionsWithAiData.reduce((sum, q) => sum + q.aiConsensus!, 0) / questionsWithAiData.length)
 			: null;
 
 	const overallAiConfidence =
 		questionsWithConfidence.length > 0
 			? Math.round(
-					questionsWithConfidence.reduce((sum, q) => sum + q.aiConfidence!, 0) /
-						questionsWithConfidence.length
+					questionsWithConfidence.reduce((sum, q) => sum + q.aiConfidence!, 0) / questionsWithConfidence.length
 				)
 			: null;
 

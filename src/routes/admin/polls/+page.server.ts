@@ -24,7 +24,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 		return { polls: [] };
 	}
 
-	const result = await platform.env.DB.prepare(`
+	const result = await platform.env.DB.prepare(
+		`
 		SELECT
 			p.id,
 			q.text as question_text,
@@ -45,7 +46,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 		LEFT JOIN responses r ON r.poll_id = p.id
 		ORDER BY p.created_at DESC
 		LIMIT 100
-	`).all<PollWithDetails>();
+	`
+	).all<PollWithDetails>();
 
 	return { polls: result.results };
 };

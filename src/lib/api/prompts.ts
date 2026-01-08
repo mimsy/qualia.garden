@@ -25,9 +25,7 @@ function formatUserPrompt(question: Question, options: QuestionOptions | null): 
 		return baseQuestion;
 	}
 
-	const optionsList = options
-		.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`)
-		.join('\n');
+	const optionsList = options.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join('\n');
 
 	return `${baseQuestion}\n\nOptions:\n${optionsList}\n\nPlease respond with the letter of your choice (A, B, C, etc.) first, then explain briefly.`;
 }

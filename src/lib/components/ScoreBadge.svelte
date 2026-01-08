@@ -18,15 +18,10 @@
 
 	// Get intensity level based on score (low/med/high)
 	type Intensity = 'low' | 'med' | 'high';
-	const intensity = $derived<Intensity>(
-		score === null ? 'med' : score < 40 ? 'low' : score < 70 ? 'med' : 'high'
-	);
+	const intensity = $derived<Intensity>(score === null ? 'med' : score < 40 ? 'low' : score < 70 ? 'med' : 'high');
 
 	// Color schemes per type with intensity variations
-	const colorSchemes: Record<
-		ScoreType,
-		Record<Intensity, { bar: string; text: string; bg: string }>
-	> = {
+	const colorSchemes: Record<ScoreType, Record<Intensity, { bar: string; text: string; bg: string }>> = {
 		humanSimilarity: {
 			low: { bar: 'bg-emerald-300', text: 'text-emerald-600', bg: 'bg-emerald-100' },
 			med: { bar: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-100' },

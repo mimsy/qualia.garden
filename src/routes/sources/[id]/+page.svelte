@@ -48,8 +48,16 @@
 					<span class="font-semibold text-slate-800 text-lg tracking-tight">Qualia Garden</span>
 				</a>
 				<nav class="flex items-center gap-1">
-					<a href="/questions" class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">Questions</a>
-					<a href="/models" class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">Models</a>
+					<a
+						href="/questions"
+						class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+						>Questions</a
+					>
+					<a
+						href="/models"
+						class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+						>Models</a
+					>
 				</nav>
 			</div>
 		</div>
@@ -62,7 +70,9 @@
 			<div class="px-6 pt-5 pb-4">
 				<div class="flex items-center gap-3 flex-wrap mb-3">
 					<h1 class="text-2xl font-bold text-slate-900 tracking-tight">{data.source.name}</h1>
-					<span class="px-2.5 py-1 bg-slate-100 text-slate-600 text-sm rounded-lg font-medium">{data.source.short_name}</span>
+					<span class="px-2.5 py-1 bg-slate-100 text-slate-600 text-sm rounded-lg font-medium"
+						>{data.source.short_name}</span
+					>
 				</div>
 				<p class="text-slate-500 flex items-center gap-2 flex-wrap">
 					{#if data.source.sample_size}
@@ -74,7 +84,12 @@
 					{/if}
 					{#if data.source.url}
 						<span class="text-slate-300">·</span>
-						<a href={data.source.url} target="_blank" rel="noopener" class="text-slate-600 hover:text-slate-900 underline underline-offset-2 transition-colors">View source</a>
+						<a
+							href={data.source.url}
+							target="_blank"
+							rel="noopener"
+							class="text-slate-600 hover:text-slate-900 underline underline-offset-2 transition-colors">View source</a
+						>
 					{/if}
 					<span class="text-slate-300">·</span>
 					<span>{data.questionCount} question{data.questionCount === 1 ? '' : 's'}</span>
@@ -93,7 +108,12 @@
 			<!-- Score bars footer -->
 			{#if data.overallHumanSimilarity !== null || data.overallAiConsensus !== null || data.overallAiConfidence !== null}
 				<div class="flex border-t border-slate-100">
-					<ScoreBadge score={data.overallHumanSimilarity} label="Alignment" type="humanSimilarity" context="aggregate" />
+					<ScoreBadge
+						score={data.overallHumanSimilarity}
+						label="Alignment"
+						type="humanSimilarity"
+						context="aggregate"
+					/>
 					<div class="w-px bg-slate-100"></div>
 					<ScoreBadge score={data.overallAiConsensus} label="Consensus" type="aiConsensus" context="aggregate" />
 					<div class="w-px bg-slate-100"></div>

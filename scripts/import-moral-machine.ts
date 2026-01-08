@@ -15,40 +15,46 @@ interface ScenarioDef {
 const SCENARIOS: ScenarioDef[] = [
 	{
 		scenarioType: 'Gender',
-		questionText: 'In an unavoidable accident where an autonomous vehicle must choose between two groups of pedestrians, should it save men or women?',
+		questionText:
+			'In an unavoidable accident where an autonomous vehicle must choose between two groups of pedestrians, should it save men or women?',
 		optionA: 'Men',
-		optionB: 'Women',
+		optionB: 'Women'
 	},
 	{
 		scenarioType: 'Age',
-		questionText: 'In an unavoidable accident where an autonomous vehicle must choose between two groups of pedestrians, should it save younger people or older people?',
+		questionText:
+			'In an unavoidable accident where an autonomous vehicle must choose between two groups of pedestrians, should it save younger people or older people?',
 		optionA: 'Younger people',
-		optionB: 'Older people',
+		optionB: 'Older people'
 	},
 	{
 		scenarioType: 'Fitness',
-		questionText: 'In an unavoidable accident where an autonomous vehicle must choose between two groups of pedestrians, should it save fit people or overweight people?',
+		questionText:
+			'In an unavoidable accident where an autonomous vehicle must choose between two groups of pedestrians, should it save fit people or overweight people?',
 		optionA: 'Fit people',
-		optionB: 'Overweight people',
+		optionB: 'Overweight people'
 	},
 	{
 		scenarioType: 'Species',
-		questionText: 'In an unavoidable accident where an autonomous vehicle must choose between pedestrians and pets, should it save humans or pets?',
+		questionText:
+			'In an unavoidable accident where an autonomous vehicle must choose between pedestrians and pets, should it save humans or pets?',
 		optionA: 'Humans',
-		optionB: 'Pets',
+		optionB: 'Pets'
 	},
 	{
 		scenarioType: 'Social Status',
-		questionText: 'In an unavoidable accident where an autonomous vehicle must choose between two groups of pedestrians, should it save higher social status individuals or lower social status individuals?',
+		questionText:
+			'In an unavoidable accident where an autonomous vehicle must choose between two groups of pedestrians, should it save higher social status individuals or lower social status individuals?',
 		optionA: 'Higher social status',
-		optionB: 'Lower social status',
+		optionB: 'Lower social status'
 	},
 	{
 		scenarioType: 'Utilitarian',
-		questionText: 'In an unavoidable accident where an autonomous vehicle must choose between two groups of pedestrians of different sizes, should it save more people or fewer people?',
+		questionText:
+			'In an unavoidable accident where an autonomous vehicle must choose between two groups of pedestrians of different sizes, should it save more people or fewer people?',
 		optionA: 'More people',
-		optionB: 'Fewer people',
-	},
+		optionB: 'Fewer people'
+	}
 ];
 
 // Map education codes
@@ -204,7 +210,7 @@ print(json.dumps({'total_rows': total_rows, 'results': results}))
 	const jsonData = execSync(`uv run --with pandas python3 -c "${pythonScript.replace(/"/g, '\\"')}"`, {
 		maxBuffer: 100 * 1024 * 1024,
 		encoding: 'utf-8',
-		timeout: 600000, // 10 minute timeout
+		timeout: 600000 // 10 minute timeout
 	});
 
 	const data = JSON.parse(jsonData) as {
@@ -255,7 +261,7 @@ print(json.dumps({'total_rows': total_rows, 'results': results}))
 		const options = [scenario.optionA, scenario.optionB];
 		const answerLabels: Record<string, string> = {
 			[scenario.optionA]: scenario.optionA,
-			[scenario.optionB]: scenario.optionB,
+			[scenario.optionB]: scenario.optionB
 		};
 
 		sql.push(`-- ${scenario.scenarioType}: ${escapeSQL(scenario.questionText.substring(0, 50))}...`);
@@ -275,7 +281,7 @@ print(json.dumps({'total_rows': total_rows, 'results': results}))
 		// Convert default/non_default to optionA/optionB counts
 		const convertDist = (d: { default: number; non_default: number }) => ({
 			[scenario.optionA]: d.default,
-			[scenario.optionB]: d.non_default,
+			[scenario.optionB]: d.non_default
 		});
 
 		// Overall distribution
@@ -303,7 +309,7 @@ print(json.dumps({'total_rows': total_rows, 'results': results}))
 			school: 'Secondary',
 			college: 'Secondary',
 			bachelor: 'Tertiary',
-			graduate: 'Tertiary',
+			graduate: 'Tertiary'
 		};
 		const eduAgg: Record<string, { default: number; non_default: number }> = {};
 		for (const [edu, dist] of Object.entries(agg.byEducation)) {

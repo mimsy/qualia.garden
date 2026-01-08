@@ -43,7 +43,9 @@ async function main() {
 	console.log('   FROM questions q');
 	console.log('   JOIN benchmark_sources bs ON q.benchmark_source_id = bs.id;');
 	console.log('');
-	console.log("   SELECT json_group_array(json_object('id', id, 'question_id', question_id, 'distribution', distribution))");
+	console.log(
+		"   SELECT json_group_array(json_object('id', id, 'question_id', question_id, 'distribution', distribution))"
+	);
 	console.log('   FROM human_response_distributions;');
 	console.log('');
 	console.log('2. Save the output to /tmp/questions.json and /tmp/distributions.json');
@@ -75,7 +77,7 @@ async function main() {
 	// Build question map
 	const questionMap = new Map<string, { options: string[]; source: string }>();
 	for (const q of questions) {
-		const options = q.options ? JSON.parse(q.options) as string[] : [];
+		const options = q.options ? (JSON.parse(q.options) as string[]) : [];
 		questionMap.set(q.id, { options, source: q.short_name });
 	}
 
@@ -131,14 +133,23 @@ async function main() {
 				// Normalize option too (remove hyphens, convert to spaces)
 				const optNormalized = optLower.replace(/-/g, ' ');
 				// Exact match
-				if (keyLower === optLower || keyWithSpaces === optLower || keyWithHyphens === optLower ||
-				    keyWithApostrophe === optLower || keyWithSpaces === optNormalized) {
+				if (
+					keyLower === optLower ||
+					keyWithSpaces === optLower ||
+					keyWithHyphens === optLower ||
+					keyWithApostrophe === optLower ||
+					keyWithSpaces === optNormalized
+				) {
 					foundIndex = i;
 					break;
 				}
 				// StartsWith match for options with extra text in parentheses
-				if (optLower.startsWith(keyWithSpaces + ' ') || optLower.startsWith(keyWithHyphens + ' ') ||
-				    optLower.startsWith(keyWithSpaces + '(') || optNormalized.startsWith(keyWithSpaces + ' ')) {
+				if (
+					optLower.startsWith(keyWithSpaces + ' ') ||
+					optLower.startsWith(keyWithHyphens + ' ') ||
+					optLower.startsWith(keyWithSpaces + '(') ||
+					optNormalized.startsWith(keyWithSpaces + ' ')
+				) {
 					foundIndex = i;
 					break;
 				}
@@ -173,7 +184,9 @@ async function main() {
 
 		if (needsUpdate) {
 			const newDistJson = JSON.stringify(newDist);
-			sql.push(`UPDATE human_response_distributions SET distribution = '${escapeSQL(newDistJson)}' WHERE id = '${dist.id}';`);
+			sql.push(
+				`UPDATE human_response_distributions SET distribution = '${escapeSQL(newDistJson)}' WHERE id = '${dist.id}';`
+			);
 			updateCount++;
 		}
 	}

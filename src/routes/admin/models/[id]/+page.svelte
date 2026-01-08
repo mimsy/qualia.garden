@@ -57,9 +57,7 @@
 			: []
 	);
 
-	const selectedModelDetails = $derived(
-		availableModels.find((m) => m.id === selectedOpenRouterId)
-	);
+	const selectedModelDetails = $derived(availableModels.find((m) => m.id === selectedOpenRouterId));
 
 	onMount(async () => {
 		try {
@@ -104,9 +102,7 @@
 <div class="max-w-2xl">
 	<div class="flex items-center justify-between mb-6">
 		<h1 class="text-2xl font-bold">Edit Model</h1>
-		<a href="/admin/models" class="text-gray-500 hover:text-gray-700">
-			← Back to models
-		</a>
+		<a href="/admin/models" class="text-gray-500 hover:text-gray-700"> ← Back to models </a>
 	</div>
 
 	{#if form?.error}
@@ -116,9 +112,7 @@
 	{/if}
 
 	{#if form?.success}
-		<div class="bg-green-50 text-green-700 px-4 py-3 rounded-lg mb-6">
-			Model updated successfully.
-		</div>
+		<div class="bg-green-50 text-green-700 px-4 py-3 rounded-lg mb-6">Model updated successfully.</div>
 	{/if}
 
 	<form method="POST" action="?/update" class="bg-white rounded-lg shadow">
@@ -143,7 +137,9 @@
 						/>
 
 						{#if showDropdown && filteredModels.length > 0}
-							<div class="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-auto">
+							<div
+								class="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-auto"
+							>
 								{#each filteredModels as model}
 									<button
 										type="button"
@@ -203,9 +199,7 @@
 
 		<div class="p-6 space-y-6">
 			<div>
-				<label for="name" class="block text-sm font-medium text-gray-700 mb-2">
-					Display Name
-				</label>
+				<label for="name" class="block text-sm font-medium text-gray-700 mb-2"> Display Name </label>
 				<input
 					id="name"
 					name="name"
@@ -224,9 +218,7 @@
 						bind:checked={reasoningEnabled}
 						class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
 					/>
-					<label for="reasoning" class="text-sm text-gray-700">
-						Enable extended thinking/reasoning
-					</label>
+					<label for="reasoning" class="text-sm text-gray-700"> Enable extended thinking/reasoning </label>
 				</div>
 				<p class="text-xs text-gray-500 -mt-4 ml-7">
 					When enabled, the model will show its reasoning process in responses.
@@ -241,12 +233,7 @@
 			>
 				Save Changes
 			</button>
-			<a
-				href="/admin/models"
-				class="px-4 py-2 text-gray-600 hover:text-gray-900"
-			>
-				Cancel
-			</a>
+			<a href="/admin/models" class="px-4 py-2 text-gray-600 hover:text-gray-900"> Cancel </a>
 		</div>
 	</form>
 
@@ -261,10 +248,7 @@
 					</p>
 					<div class="flex gap-3">
 						<form method="POST" action="?/delete">
-							<button
-								type="submit"
-								class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
-							>
+							<button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">
 								Yes, Delete
 							</button>
 						</form>
@@ -290,6 +274,7 @@
 	</div>
 
 	<div class="mt-6 text-sm text-gray-500">
-		<strong>Internal ID:</strong> {data.model.id}
+		<strong>Internal ID:</strong>
+		{data.model.id}
 	</div>
 </div>

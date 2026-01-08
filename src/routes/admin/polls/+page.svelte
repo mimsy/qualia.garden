@@ -42,12 +42,7 @@
 
 <div class="flex justify-between items-center mb-6">
 	<h1 class="text-2xl font-bold">Polls</h1>
-	<a
-		href="/admin/polls/trigger"
-		class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-	>
-		Trigger Poll
-	</a>
+	<a href="/admin/polls/trigger" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"> Trigger Poll </a>
 </div>
 
 <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -82,7 +77,12 @@
 						</span>
 						{#if poll.error}
 							<svg class="inline-block w-4 h-4 ml-1 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+								/>
 							</svg>
 						{/if}
 					</td>
@@ -131,10 +131,14 @@
 								{/if}
 								{#if poll.raw_response}
 									<details class="bg-gray-100 border border-gray-200 rounded-lg">
-										<summary class="px-3 py-2 text-xs font-medium text-gray-600 uppercase cursor-pointer hover:bg-gray-200">
+										<summary
+											class="px-3 py-2 text-xs font-medium text-gray-600 uppercase cursor-pointer hover:bg-gray-200"
+										>
 											Raw Response
 										</summary>
-										<div class="px-3 py-2 text-sm font-mono text-gray-700 whitespace-pre-wrap break-all border-t border-gray-200">
+										<div
+											class="px-3 py-2 text-sm font-mono text-gray-700 whitespace-pre-wrap break-all border-t border-gray-200"
+										>
 											{poll.raw_response}
 										</div>
 									</details>

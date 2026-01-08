@@ -64,9 +64,7 @@
 
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<label for="category" class="block text-sm font-medium text-gray-700 mb-1">
-							Category
-						</label>
+						<label for="category" class="block text-sm font-medium text-gray-700 mb-1"> Category </label>
 						<input
 							type="text"
 							id="category"
@@ -120,10 +118,7 @@
 					<p class="text-sm text-gray-500">
 						Questions are created as drafts. You'll need to poll at least one model before publishing.
 					</p>
-					<button
-						type="submit"
-						class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-					>
+					<button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
 						Create Draft
 					</button>
 				</div>

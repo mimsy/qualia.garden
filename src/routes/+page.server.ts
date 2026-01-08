@@ -113,7 +113,7 @@ function computeQuestionConfidence(
 	rawResponses: Map<string, { name: string; byQuestion: Map<string, { answers: string[]; responseType: string }> }>,
 	questions: Array<{ id: string; options: string[] }>
 ): Map<string, number> {
-	const questionOptionsMap = new Map(questions.map(q => [q.id, q.options.length]));
+	const questionOptionsMap = new Map(questions.map((q) => [q.id, q.options.length]));
 	const questionConfidences = new Map<string, { total: number; count: number }>();
 
 	for (const [, data] of rawResponses) {
@@ -123,9 +123,10 @@ function computeQuestionConfidence(
 				sc = 100; // Perfect consistency with 1 sample
 			} else {
 				const optionCount = questionOptionsMap.get(questionId) ?? 5;
-				sc = responseType === 'ordinal'
-					? ordinalConsensusScore(answers, optionCount)
-					: nominalConsensusScore(answers, optionCount);
+				sc =
+					responseType === 'ordinal'
+						? ordinalConsensusScore(answers, optionCount)
+						: nominalConsensusScore(answers, optionCount);
 			}
 
 			if (!questionConfidences.has(questionId)) {
@@ -192,8 +193,11 @@ function findMostInteresting(
 		if (q.humanAiScore > 0 && alignmentRange > 0) {
 			const dist = Math.abs(q.humanAiScore - alignmentMid);
 			const normalizedDist = dist / (alignmentRange / 2); // 1.0 = at global min or max
-			if (!best || normalizedDist > best.normalizedDist ||
-				(normalizedDist === best.normalizedDist && best.metric !== 'alignment')) {
+			if (
+				!best ||
+				normalizedDist > best.normalizedDist ||
+				(normalizedDist === best.normalizedDist && best.metric !== 'alignment')
+			) {
 				best = { stat: q, metric: 'alignment', normalizedDist, score: q.humanAiScore };
 			}
 		}
@@ -202,8 +206,11 @@ function findMostInteresting(
 		if (q.aiAgreementScore > 0 && consensusRange > 0) {
 			const dist = Math.abs(q.aiAgreementScore - consensusMid);
 			const normalizedDist = dist / (consensusRange / 2);
-			if (!best || normalizedDist > best.normalizedDist ||
-				(normalizedDist === best.normalizedDist && best.metric === 'confidence')) {
+			if (
+				!best ||
+				normalizedDist > best.normalizedDist ||
+				(normalizedDist === best.normalizedDist && best.metric === 'confidence')
+			) {
 				best = { stat: q, metric: 'consensus', normalizedDist, score: q.aiAgreementScore };
 			}
 		}
@@ -275,7 +282,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	// Get all benchmark sources with question counts
 	const sourcesResult = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT
 				bs.*,
 				COUNT(DISTINCT CASE WHEN q.status = 'published' THEN q.id END) as question_count
@@ -283,16 +291,19 @@ export const load: PageServerLoad = async ({ platform }) => {
 			LEFT JOIN questions q ON q.benchmark_source_id = bs.id
 			GROUP BY bs.id
 			ORDER BY bs.name
-		`)
+		`
+		)
 		.all<BenchmarkSourceRow>();
 
 	// Get all published questions with their source assignments
 	const questionsResult = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT id, text, category, response_type, options, benchmark_source_id
 			FROM questions
 			WHERE status = 'published'
-		`)
+		`
+		)
 		.all<QuestionRow>();
 
 	const questionsBySource = new Map<string, Array<QuestionMeta & { text: string }>>();
@@ -303,7 +314,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	for (const q of questionsResult.results) {
 		questionTextMap.set(q.id, q.text);
-		const options = q.options ? JSON.parse(q.options) as string[] : [];
+		const options = q.options ? (JSON.parse(q.options) as string[]) : [];
 		questionOptionsMap.set(q.id, options);
 		if (q.category) {
 			questionCategoryMap.set(q.id, q.category);
@@ -327,7 +338,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	// Get AI responses for all benchmarked questions
 	const responsesResult = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT
 				m.id as model_id,
 				m.name as model_name,
@@ -362,26 +374,35 @@ export const load: PageServerLoad = async ({ platform }) => {
 						LIMIT 1
 					))
 				)
-		`)
+		`
+		)
 		.all<ModelResponseRow>();
 
 	// Get human distributions (overall only)
 	const humanResult = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT question_id, benchmark_source_id, distribution
 			FROM human_response_distributions
 			WHERE continent IS NULL
 				AND education_level IS NULL
 				AND age_group IS NULL
 				AND gender IS NULL
-		`)
+		`
+		)
 		.all<HumanDistributionRow>();
 
 	// Group responses by source
-	const responsesBySource = new Map<string, Map<string, {
-		name: string;
-		byQuestion: Map<string, { answers: string[]; responseType: string }>
-	}>>();
+	const responsesBySource = new Map<
+		string,
+		Map<
+			string,
+			{
+				name: string;
+				byQuestion: Map<string, { answers: string[]; responseType: string }>;
+			}
+		>
+	>();
 
 	for (const r of responsesResult.results) {
 		if (!r.benchmark_source_id) continue;
@@ -432,9 +453,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 				for (const [modelId, data] of rawResponses) {
 					const responses: Record<string, string | null> = {};
 					for (const [questionId, { answers, responseType }] of data.byQuestion) {
-						responses[questionId] = responseType === 'ordinal'
-							? computeMedian(answers)
-							: computeMode(answers);
+						responses[questionId] = responseType === 'ordinal' ? computeMedian(answers) : computeMode(answers);
 					}
 					modelResponses.set(modelId, { name: data.name, responses });
 				}
@@ -484,9 +503,12 @@ export const load: PageServerLoad = async ({ platform }) => {
 	}
 
 	// Calculate global bounds across ALL questions (including confidence)
-	let globalAlignmentMin = 100, globalAlignmentMax = 0;
-	let globalConsensusMin = 100, globalConsensusMax = 0;
-	let globalConfidenceMin = 100, globalConfidenceMax = 0;
+	let globalAlignmentMin = 100,
+		globalAlignmentMax = 0;
+	let globalConsensusMin = 100,
+		globalConsensusMax = 0;
+	let globalConfidenceMin = 100,
+		globalConfidenceMax = 0;
 	for (const stat of allQuestionStats.values()) {
 		if (stat.humanAiScore > 0) {
 			globalAlignmentMin = Math.min(globalAlignmentMin, stat.humanAiScore);
@@ -519,13 +541,18 @@ export const load: PageServerLoad = async ({ platform }) => {
 		// Get pre-computed confidence data
 		const rawResponses = responsesBySource.get(source.id);
 		const questionConfidence = sourceQuestionConfidence.get(source.id);
-		const aiConfidenceScore = rawResponses && questions.length > 0
-			? computeSourceConfidence(rawResponses, questions)
-			: null;
+		const aiConfidenceScore =
+			rawResponses && questions.length > 0 ? computeSourceConfidence(rawResponses, questions) : null;
 
 		// Find the most interesting question using GLOBAL bounds (including confidence)
 		const extremeQuestion = sourceStats
-			? findMostInteresting(sourceStats.questionStats, questionTextMap, questionOptionsMap, globalBounds, questionConfidence)
+			? findMostInteresting(
+					sourceStats.questionStats,
+					questionTextMap,
+					questionOptionsMap,
+					globalBounds,
+					questionConfidence
+				)
 			: null;
 
 		sources.push({
@@ -545,13 +572,16 @@ export const load: PageServerLoad = async ({ platform }) => {
 	}
 
 	// Group stats by category
-	const categoryAggregates = new Map<string, {
-		totalHumanAiScore: number;
-		totalAiAgreementScore: number;
-		count: number;
-		modelIds: Set<string>;
-		stats: QuestionStats[];
-	}>();
+	const categoryAggregates = new Map<
+		string,
+		{
+			totalHumanAiScore: number;
+			totalAiAgreementScore: number;
+			count: number;
+			modelIds: Set<string>;
+			stats: QuestionStats[];
+		}
+	>();
 
 	for (const [questionId, stat] of allQuestionStats) {
 		const category = questionCategoryMap.get(questionId);
@@ -575,7 +605,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	// Get model counts per category
 	const categoryModelCounts = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT
 				q.category,
 				COUNT(DISTINCT m.id) as model_count
@@ -587,7 +618,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 				AND q.category IS NOT NULL
 				AND p.status = 'complete'
 			GROUP BY q.category
-		`)
+		`
+		)
 		.all<{ category: string; model_count: number }>();
 
 	const modelCountByCategory = new Map<string, number>();
@@ -598,7 +630,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 	// Compute confidence per category from raw responses
 	const categoryConfidence = new Map<string, number>();
 	for (const [category, agg] of categoryAggregates) {
-		const questionIds = new Set(agg.stats.map(s => s.questionId));
+		const questionIds = new Set(agg.stats.map((s) => s.questionId));
 		const consistencies: number[] = [];
 
 		// Get responses for questions in this category
@@ -610,11 +642,12 @@ export const load: PageServerLoad = async ({ platform }) => {
 						consistencies.push(100);
 						continue;
 					}
-					const q = allBenchmarkedQuestions.find(x => x.id === questionId);
+					const q = allBenchmarkedQuestions.find((x) => x.id === questionId);
 					const optionCount = q?.options.length ?? 5;
-					const sc = responseType === 'ordinal'
-						? ordinalConsensusScore(answers, optionCount)
-						: nominalConsensusScore(answers, optionCount);
+					const sc =
+						responseType === 'ordinal'
+							? ordinalConsensusScore(answers, optionCount)
+							: nominalConsensusScore(answers, optionCount);
 					consistencies.push(sc);
 				}
 			}
@@ -638,7 +671,13 @@ export const load: PageServerLoad = async ({ platform }) => {
 			aiConfidenceScore: categoryConfidence.get(category) ?? null,
 			questionCount: agg.count,
 			modelCount: modelCountByCategory.get(category) ?? 0,
-			extremeQuestion: findMostInteresting(agg.stats, questionTextMap, questionOptionsMap, globalBounds, allQuestionConfidence)
+			extremeQuestion: findMostInteresting(
+				agg.stats,
+				questionTextMap,
+				questionOptionsMap,
+				globalBounds,
+				allQuestionConfidence
+			)
 		});
 	}
 	// Sort by display_order from categories table, fallback to alphabetical
@@ -651,12 +690,15 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	// Compute model rankings
 	// Group all responses by model and compute per-model alignment scores
-	const modelAlignmentData = new Map<string, {
-		name: string;
-		family: string;
-		totalScore: number;
-		questionCount: number;
-	}>();
+	const modelAlignmentData = new Map<
+		string,
+		{
+			name: string;
+			family: string;
+			totalScore: number;
+			questionCount: number;
+		}
+	>();
 
 	// Get model family info
 	const modelsResult = await db
@@ -684,9 +726,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 			// Aggregate this model's responses to single answers per question
 			const aggregatedResponses: Record<string, string | null> = {};
 			for (const [questionId, { answers, responseType }] of modelData.byQuestion) {
-				aggregatedResponses[questionId] = responseType === 'ordinal'
-					? computeMedian(answers)
-					: computeMode(answers);
+				aggregatedResponses[questionId] = responseType === 'ordinal' ? computeMedian(answers) : computeMode(answers);
 			}
 
 			// Compute alignment score for this model
@@ -695,7 +735,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 				const humanDist = allHumanDist.get(questionId);
 				if (!humanDist) continue;
 
-				const q = allBenchmarkedQuestions.find(x => x.id === questionId);
+				const q = allBenchmarkedQuestions.find((x) => x.id === questionId);
 				if (!q) continue;
 
 				let score: number;
@@ -706,14 +746,14 @@ export const load: PageServerLoad = async ({ platform }) => {
 				} else {
 					// Nominal: convert AI answer to label and compute overlap
 					const idx = parseInt(answer, 10) - 1;
-					const label = (idx >= 0 && idx < q.options.length) ? q.options[idx] : answer;
+					const label = idx >= 0 && idx < q.options.length ? q.options[idx] : answer;
 					const aiDist: Record<string, number> = { [label]: 1 };
 
 					// Convert human distribution keys to labels
 					const humanDistLabeled: Record<string, number> = {};
 					for (const [key, count] of Object.entries(humanDist)) {
 						const keyIdx = parseInt(key, 10) - 1;
-						const keyLabel = (keyIdx >= 0 && keyIdx < q.options.length) ? q.options[keyIdx] : key;
+						const keyLabel = keyIdx >= 0 && keyIdx < q.options.length ? q.options[keyIdx] : key;
 						humanDistLabeled[keyLabel] = (humanDistLabeled[keyLabel] || 0) + count;
 					}
 					score = nominalAgreementScore(humanDistLabeled, aiDist);
@@ -753,7 +793,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	// Get unbenchmarked questions (questions without a benchmark source)
 	const unbenchmarkedResult = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT
 				q.id,
 				q.text,
@@ -766,7 +807,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 			GROUP BY q.id
 			ORDER BY response_count DESC, q.created_at DESC
 			LIMIT 10
-		`)
+		`
+		)
 		.all<{ id: string; text: string; category: string | null; response_count: number }>();
 
 	return {

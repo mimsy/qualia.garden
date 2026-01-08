@@ -63,14 +63,16 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	// Get human overall distributions first - these define our question set
 	const humanResult = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT h.question_id, h.distribution, h.sample_size
 			FROM human_response_distributions h
 			JOIN questions q ON h.question_id = q.id
 			WHERE q.status = 'published'
 				AND h.continent IS NULL
 				AND h.education_level IS NULL
-		`)
+		`
+		)
 		.all<HumanDistribution>();
 
 	if (humanResult.results.length === 0) {
@@ -78,7 +80,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 	}
 
 	// Build set of questions with human data
-	const humanQuestionIds = new Set(humanResult.results.map(h => h.question_id));
+	const humanQuestionIds = new Set(humanResult.results.map((h) => h.question_id));
 	const humanDistributions = new Map<string, Record<string, number>>();
 	for (const h of humanResult.results) {
 		humanDistributions.set(h.question_id, JSON.parse(h.distribution));
@@ -86,19 +88,23 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	// Get question metadata for questions with human data
 	const questionsResult = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT id, text, options, response_type
 			FROM questions
-			WHERE status = 'published' AND id IN (${Array.from(humanQuestionIds).map(() => '?').join(',')})
+			WHERE status = 'published' AND id IN (${Array.from(humanQuestionIds)
+				.map(() => '?')
+				.join(',')})
 			ORDER BY id
-		`)
+		`
+		)
 		.bind(...Array.from(humanQuestionIds))
 		.all<Question>();
 
-	const questionMeta = questionsResult.results.map(q => ({
+	const questionMeta = questionsResult.results.map((q) => ({
 		id: q.id,
 		text: q.text,
-		options: q.options ? JSON.parse(q.options) as string[] : [],
+		options: q.options ? (JSON.parse(q.options) as string[]) : [],
 		responseType: q.response_type
 	}));
 
@@ -108,7 +114,8 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	// Get all model responses
 	const responsesResult = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT
 				m.id as model_id,
 				m.name as model_name,
@@ -143,15 +150,19 @@ export const load: PageServerLoad = async ({ platform }) => {
 						LIMIT 1
 					))
 				)
-		`)
+		`
+		)
 		.all<ModelResponseRow>();
 
 	// Group and aggregate model responses
-	const rawResponses = new Map<string, {
-		name: string;
-		family: string;
-		byQuestion: Map<string, { answers: string[]; responseType: string }>
-	}>();
+	const rawResponses = new Map<
+		string,
+		{
+			name: string;
+			family: string;
+			byQuestion: Map<string, { answers: string[]; responseType: string }>;
+		}
+	>();
 
 	for (const r of responsesResult.results) {
 		if (!humanQuestionIds.has(r.question_id)) continue; // Only count questions with human data
@@ -177,9 +188,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 	for (const [modelId, data] of rawResponses) {
 		const aggregatedResponses = new Map<string, string>();
 		for (const [questionId, { answers, responseType }] of data.byQuestion) {
-			const aggregated = responseType === 'ordinal'
-				? computeMedian(answers)
-				: computeMode(answers);
+			const aggregated = responseType === 'ordinal' ? computeMedian(answers) : computeMode(answers);
 			if (aggregated) {
 				aggregatedResponses.set(questionId, aggregated);
 			}
@@ -237,10 +246,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 	} as MapData;
 };
 
-function buildVector(
-	questions: Array<{ id: string; options: string[] }>,
-	responses: Map<string, string>
-): number[] {
+function buildVector(questions: Array<{ id: string; options: string[] }>, responses: Map<string, string>): number[] {
 	const vector: number[] = [];
 
 	for (const q of questions) {

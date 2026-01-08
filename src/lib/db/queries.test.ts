@@ -69,9 +69,7 @@ describe('Model Queries', () => {
 	describe('getModels', () => {
 		it('queries active models by default', async () => {
 			await getModels(db);
-			expect(db.prepare).toHaveBeenCalledWith(
-				'SELECT * FROM models WHERE active = 1 ORDER BY family, name'
-			);
+			expect(db.prepare).toHaveBeenCalledWith('SELECT * FROM models WHERE active = 1 ORDER BY family, name');
 		});
 
 		it('queries all models when activeOnly is false', async () => {
@@ -132,13 +130,7 @@ describe('Model Queries', () => {
 			expect(db.prepare).toHaveBeenCalledWith(
 				'INSERT INTO models (id, name, family, openrouter_id, supports_reasoning) VALUES (?, ?, ?, ?, ?)'
 			);
-			expect(mockStatement.bind).toHaveBeenCalledWith(
-				'test-id-1234',
-				'GPT-4',
-				'OpenAI',
-				'openai/gpt-4',
-				1
-			);
+			expect(mockStatement.bind).toHaveBeenCalledWith('test-id-1234', 'GPT-4', 'OpenAI', 'openai/gpt-4', 1);
 		});
 	});
 
@@ -245,9 +237,7 @@ describe('Question Queries', () => {
 	describe('getQuestions', () => {
 		it('queries published questions by default', async () => {
 			await getQuestions(db);
-			expect(db.prepare).toHaveBeenCalledWith(
-				expect.stringContaining("WHERE status = 'published'")
-			);
+			expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining("WHERE status = 'published'"));
 		});
 
 		it('queries all questions when status is all', async () => {
@@ -331,18 +321,14 @@ describe('Question Queries', () => {
 			mockStatement.first.mockResolvedValue({ id: 'q-123' });
 			await updateQuestion(db, 'q-123', { text: 'New text', category: 'New category' });
 
-			expect(db.prepare).toHaveBeenCalledWith(
-				'UPDATE questions SET text = ?, category = ? WHERE id = ?'
-			);
+			expect(db.prepare).toHaveBeenCalledWith('UPDATE questions SET text = ?, category = ? WHERE id = ?');
 		});
 
 		it('updates response_type field', async () => {
 			mockStatement.first.mockResolvedValue({ id: 'q-123' });
 			await updateQuestion(db, 'q-123', { response_type: 'nominal' });
 
-			expect(db.prepare).toHaveBeenCalledWith(
-				'UPDATE questions SET response_type = ? WHERE id = ?'
-			);
+			expect(db.prepare).toHaveBeenCalledWith('UPDATE questions SET response_type = ? WHERE id = ?');
 			expect(mockStatement.bind).toHaveBeenCalledWith('nominal', 'q-123');
 		});
 
@@ -350,18 +336,14 @@ describe('Question Queries', () => {
 			mockStatement.first.mockResolvedValue({ id: 'q-123' });
 			await updateQuestion(db, 'q-123', { options: '["Yes", "No"]' });
 
-			expect(db.prepare).toHaveBeenCalledWith(
-				'UPDATE questions SET options = ? WHERE id = ?'
-			);
+			expect(db.prepare).toHaveBeenCalledWith('UPDATE questions SET options = ? WHERE id = ?');
 		});
 
 		it('updates active field (true)', async () => {
 			mockStatement.first.mockResolvedValue({ id: 'q-123' });
 			await updateQuestion(db, 'q-123', { active: true });
 
-			expect(db.prepare).toHaveBeenCalledWith(
-				'UPDATE questions SET active = ? WHERE id = ?'
-			);
+			expect(db.prepare).toHaveBeenCalledWith('UPDATE questions SET active = ? WHERE id = ?');
 			expect(mockStatement.bind).toHaveBeenCalledWith(1, 'q-123');
 		});
 
@@ -376,9 +358,7 @@ describe('Question Queries', () => {
 			mockStatement.first.mockResolvedValue({ id: 'q-123' });
 			await updateQuestion(db, 'q-123', { status: 'published' });
 
-			expect(db.prepare).toHaveBeenCalledWith(
-				'UPDATE questions SET status = ? WHERE id = ?'
-			);
+			expect(db.prepare).toHaveBeenCalledWith('UPDATE questions SET status = ? WHERE id = ?');
 			expect(mockStatement.bind).toHaveBeenCalledWith('published', 'q-123');
 		});
 	});
@@ -475,9 +455,7 @@ describe('Poll Queries', () => {
 			mockStatement.first.mockResolvedValue({ id: 'p-1', status: 'complete' });
 			await updatePollStatus(db, 'p-1', 'complete');
 
-			expect(db.prepare).toHaveBeenCalledWith(
-				expect.stringContaining("completed_at = datetime('now')")
-			);
+			expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining("completed_at = datetime('now')"));
 		});
 
 		it('updates status to pending without timestamp', async () => {

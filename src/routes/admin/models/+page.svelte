@@ -68,14 +68,15 @@
 								<div class="flex items-center gap-2">
 									<span class="font-medium text-gray-900 truncate">{model.name}</span>
 									{#if model.supports_reasoning}
-										<span class="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded" title="Extended thinking enabled">
+										<span
+											class="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded"
+											title="Extended thinking enabled"
+										>
 											thinking
 										</span>
 									{/if}
 									{#if !model.active}
-										<span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
-											inactive
-										</span>
+										<span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded"> inactive </span>
 									{/if}
 								</div>
 								<div class="text-sm text-gray-500 font-mono truncate">{model.openrouter_id}</div>
@@ -119,7 +120,12 @@
 	<div class="bg-white rounded-lg shadow p-12 text-center">
 		<div class="text-gray-400 mb-4">
 			<svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="1.5"
+					d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+				/>
 			</svg>
 		</div>
 		<h3 class="text-lg font-medium text-gray-900 mb-2">No models configured</h3>

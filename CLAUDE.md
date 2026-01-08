@@ -54,6 +54,7 @@ The site deploys to Cloudflare Pages. The poll processor worker deploys separate
 ## Database Schema
 
 Core tables:
+
 - **models** - AI models available for polling (name, family, openrouter_id, active)
 - **questions** - Survey questions (text, category, response_type, options, active)
 - **polls** - Individual poll runs (question × model, status)
@@ -66,27 +67,33 @@ Question response types: `multiple_choice`, `scale` (1-10), `yes_no`
 ## Code Conventions
 
 ### ABOUTME Comments
+
 Every file starts with two lines explaining what it does:
+
 ```typescript
 // ABOUTME: Queue consumer worker for processing poll jobs.
 // ABOUTME: Uses Vercel AI SDK with OpenRouter for structured responses.
 ```
 
 ### Svelte 5 Runes
+
 Use Svelte 5 runes syntax:
+
 ```svelte
 <script lang="ts">
-  let { data } = $props<{ data: PageData }>();
-  const derived = $derived(data.items.filter(x => x.active));
+	let { data } = $props<{ data: PageData }>();
+	const derived = $derived(data.items.filter((x) => x.active));
 </script>
 ```
 
 ### Platform Bindings
+
 Access Cloudflare bindings via `platform.env`:
+
 ```typescript
 export const load: PageServerLoad = async ({ platform }) => {
-  if (!platform?.env?.DB) return { items: [] };
-  // Use platform.env.DB, platform.env.POLL_QUEUE, etc.
+	if (!platform?.env?.DB) return { items: [] };
+	// Use platform.env.DB, platform.env.POLL_QUEUE, etc.
 };
 ```
 
@@ -102,6 +109,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 ## Environment Variables
 
 Required in Cloudflare:
+
 - `OPENROUTER_API_KEY` - API key for OpenRouter
 - `DB` - D1 database binding (configured in wrangler.toml)
 - `POLL_QUEUE` - Queue binding for async polling

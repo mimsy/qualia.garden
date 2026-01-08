@@ -7,19 +7,12 @@ import tsParser from '@typescript-eslint/parser';
 import svelte from 'eslint-plugin-svelte';
 import svelteParser from 'svelte-eslint-parser';
 import globals from 'globals';
+import prettierConfig from 'eslint-config-prettier';
 
 export default [
 	// Global ignores
 	{
-		ignores: [
-			'.svelte-kit/**',
-			'build/**',
-			'dist/**',
-			'node_modules/**',
-			'.wrangler/**',
-			'*.config.js',
-			'*.config.ts'
-		]
+		ignores: ['.svelte-kit/**', 'build/**', 'dist/**', 'node_modules/**', '.wrangler/**', '*.config.js', '*.config.ts']
 	},
 
 	// Base JS/TS config
@@ -44,10 +37,7 @@ export default [
 		},
 		rules: {
 			...ts.configs.recommended.rules,
-			'@typescript-eslint/no-unused-vars': [
-				'error',
-				{ argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
-			],
+			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
 			'@typescript-eslint/no-explicit-any': 'warn',
 			'no-undef': 'off' // TypeScript handles this
 		}
@@ -70,10 +60,7 @@ export default [
 		},
 		rules: {
 			...ts.configs.recommended.rules,
-			'@typescript-eslint/no-unused-vars': [
-				'error',
-				{ argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
-			],
+			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
 			'@typescript-eslint/no-explicit-any': 'warn',
 			'no-undef': 'off' // TypeScript handles this
 		}
@@ -100,10 +87,7 @@ export default [
 		rules: {
 			...svelte.configs.recommended.rules,
 			...ts.configs.recommended.rules,
-			'@typescript-eslint/no-unused-vars': [
-				'error',
-				{ argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
-			],
+			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
 			'@typescript-eslint/no-explicit-any': 'warn',
 			'no-undef': 'off', // TypeScript handles this
 			'svelte/no-at-html-tags': 'warn',
@@ -122,5 +106,8 @@ export default [
 				...globals.node
 			}
 		}
-	}
+	},
+
+	// Prettier - must be last to override conflicting rules
+	prettierConfig
 ];

@@ -17,11 +17,7 @@
 		<div class="max-w-6xl mx-auto px-6 py-4">
 			<div class="flex items-center justify-between">
 				<a href="/" class="flex items-center gap-3 group">
-					<img
-						src="/favicon.png"
-						alt=""
-						class="w-9 h-9 transition-transform group-hover:scale-105"
-					/>
+					<img src="/favicon.png" alt="" class="w-9 h-9 transition-transform group-hover:scale-105" />
 					<span class="font-semibold text-slate-800 text-lg tracking-tight">Qualia Garden</span>
 				</a>
 				<nav class="flex items-center gap-1">
@@ -30,10 +26,7 @@
 						class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
 						>Questions</a
 					>
-					<a
-						href="/models"
-						class="px-3 py-2 text-sm text-slate-900 font-medium bg-slate-100 rounded-lg">Models</a
-					>
+					<a href="/models" class="px-3 py-2 text-sm text-slate-900 font-medium bg-slate-100 rounded-lg">Models</a>
 				</nav>
 			</div>
 		</div>
@@ -42,17 +35,9 @@
 	<main class="max-w-6xl mx-auto px-6 py-8">
 		<!-- Breadcrumb -->
 		<div class="mb-8">
-			<a
-				href="/models"
-				class="text-slate-500 hover:text-slate-700 text-sm flex items-center gap-1.5 transition-colors"
-			>
+			<a href="/models" class="text-slate-500 hover:text-slate-700 text-sm flex items-center gap-1.5 transition-colors">
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M15 19l-7-7 7-7"
-					/>
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
 				</svg>
 				All Models
 			</a>
@@ -115,14 +100,10 @@
 									{model.name}
 								</span>
 								{#if model.supports_reasoning}
-									<span class="text-xs text-violet-600 bg-violet-50 px-2 py-0.5 rounded-md">
-										reasoning
-									</span>
+									<span class="text-xs text-violet-600 bg-violet-50 px-2 py-0.5 rounded-md"> reasoning </span>
 								{/if}
 								{#if !model.active}
-									<span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
-										inactive
-									</span>
+									<span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md"> inactive </span>
 								{/if}
 								<span class="text-xs text-slate-400">{model.questionCount}q</span>
 							</div>
@@ -162,12 +143,7 @@
 									stroke="currentColor"
 									viewBox="0 0 24 24"
 								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M9 5l7 7-7 7"
-									/>
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 								</svg>
 							</div>
 						</a>

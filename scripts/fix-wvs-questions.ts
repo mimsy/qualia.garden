@@ -18,10 +18,10 @@ function escapeSQL(str: string): string {
 
 // Query local D1 database
 function queryDB(sql: string): string {
-	const result = execSync(
-		`npx wrangler d1 execute qualia-garden-db --local --command "${sql.replace(/"/g, '\\"')}"`,
-		{ encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
-	);
+	const result = execSync(`npx wrangler d1 execute qualia-garden-db --local --command "${sql.replace(/"/g, '\\"')}"`, {
+		encoding: 'utf-8',
+		maxBuffer: 10 * 1024 * 1024
+	});
 	return result;
 }
 
@@ -58,10 +58,13 @@ for (const q of questions) {
 	}
 
 	// 2. Determine if all options have meaningful labels (not just the number repeated)
-	const hasFullLabels = answerLabels && options && options.every((opt) => {
-		const label = answerLabels[opt];
-		return label && label !== opt; // Label exists and isn't just the number
-	});
+	const hasFullLabels =
+		answerLabels &&
+		options &&
+		options.every((opt) => {
+			const label = answerLabels[opt];
+			return label && label !== opt; // Label exists and isn't just the number
+		});
 
 	// 3. Handle response type and options based on current type
 	if (q.response_type === 'yes_no' && answerLabels && options) {
@@ -97,7 +100,9 @@ for (const q of questions) {
 
 // Add statements to delete existing polls and responses
 const questionIds = questions.map((q) => `'${q.id}'`).join(',');
-sqlStatements.push(`DELETE FROM responses WHERE poll_id IN (SELECT id FROM polls WHERE question_id IN (${questionIds}));`);
+sqlStatements.push(
+	`DELETE FROM responses WHERE poll_id IN (SELECT id FROM polls WHERE question_id IN (${questionIds}));`
+);
 sqlStatements.push(`DELETE FROM polls WHERE question_id IN (${questionIds});`);
 
 // Output summary

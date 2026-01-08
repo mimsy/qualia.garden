@@ -97,19 +97,11 @@ export function createAuth(d1: D1Database, baseURL: string, env: AuthEnv) {
 		callbacks: {
 			// Make first user an admin
 			onUserCreated: async ({ user }: { user: { id: string } }) => {
-				const existingUsers = await db
-					.selectFrom('user')
-					.select('id')
-					.limit(2)
-					.execute();
+				const existingUsers = await db.selectFrom('user').select('id').limit(2).execute();
 
 				// If only one user exists (the one just created), make them admin
 				if (existingUsers.length === 1) {
-					await db
-						.updateTable('user')
-						.set({ isAdmin: 1 })
-						.where('id', '=', user.id)
-						.execute();
+					await db.updateTable('user').set({ isAdmin: 1 }).where('id', '=', user.id).execute();
 				}
 			}
 		}

@@ -13,12 +13,12 @@ export interface QuestionMeta {
 
 export interface QuestionStats {
 	questionId: string;
-	humanMean: number | null;       // For ordinal: normalized mean (0-1)
-	aiMean: number | null;          // For ordinal: normalized mean (0-1)
-	humanMode: string | null;       // For nominal: most common human answer
-	aiMode: string | null;          // For nominal: most common AI answer
-	humanAiScore: number;           // 0-100: AI-human agreement score
-	aiAgreementScore: number;       // 0-100: how much AI models agree with each other
+	humanMean: number | null; // For ordinal: normalized mean (0-1)
+	aiMean: number | null; // For ordinal: normalized mean (0-1)
+	humanMode: string | null; // For nominal: most common human answer
+	aiMode: string | null; // For nominal: most common AI answer
+	humanAiScore: number; // 0-100: AI-human agreement score
+	aiAgreementScore: number; // 0-100: how much AI models agree with each other
 	humanAgreementScore: number | null; // 0-100: how much humans agree with each other
 	responseType: string;
 	modelCount: number;
@@ -28,14 +28,14 @@ export interface QuestionStats {
 export const CACHE_VERSION = 4;
 
 export interface SourceStats {
-	overallScore: number;           // 0-100: aggregate AI-human agreement
-	overallAiAgreement: number;     // 0-100: aggregate AI agreement
+	overallScore: number; // 0-100: aggregate AI-human agreement
+	overallAiAgreement: number; // 0-100: aggregate AI agreement
 	overallHumanAgreement: number | null; // 0-100: aggregate human agreement
 	questionStats: QuestionStats[];
 	modelCount: number;
 	questionCount: number;
 	computedAt: string;
-	cacheVersion?: number;          // Added in v2 for cache invalidation
+	cacheVersion?: number; // Added in v2 for cache invalidation
 }
 
 // Score display helpers (0-100 scale)
@@ -60,25 +60,25 @@ export function getScoreLevel(score: number): ScoreLevel {
 // Tailwind color classes for score display
 const scoreTextColors: Record<ScoreLevel, string> = {
 	'very-high': 'text-emerald-600',
-	'high': 'text-emerald-500',
-	'moderate': 'text-amber-600',
-	'low': 'text-orange-500',
+	high: 'text-emerald-500',
+	moderate: 'text-amber-600',
+	low: 'text-orange-500',
 	'very-low': 'text-rose-500'
 };
 
 const scoreBgColors: Record<ScoreLevel, string> = {
 	'very-high': 'bg-emerald-500',
-	'high': 'bg-emerald-400',
-	'moderate': 'bg-amber-400',
-	'low': 'bg-orange-400',
+	high: 'bg-emerald-400',
+	moderate: 'bg-amber-400',
+	low: 'bg-orange-400',
 	'very-low': 'bg-rose-400'
 };
 
 const scoreDivergenceBg: Record<ScoreLevel, string> = {
 	'very-high': 'bg-emerald-50 border-emerald-200',
-	'high': 'bg-emerald-50 border-emerald-100',
-	'moderate': 'bg-amber-50 border-amber-100',
-	'low': 'bg-orange-50 border-orange-100',
+	high: 'bg-emerald-50 border-emerald-100',
+	moderate: 'bg-amber-50 border-amber-100',
+	low: 'bg-orange-50 border-orange-100',
 	'very-low': 'bg-rose-50 border-rose-100'
 };
 
@@ -109,10 +109,7 @@ function keyToIndex(key: string, options: string[]): number {
 // Normalize a distribution to use 1-indexed numeric keys
 // This ensures human distributions (which may use label keys) and AI distributions
 // (which use numeric keys) can be compared properly
-export function normalizeDistributionKeys(
-	dist: Record<string, number>,
-	options: string[]
-): Record<string, number> {
+export function normalizeDistributionKeys(dist: Record<string, number>, options: string[]): Record<string, number> {
 	const normalized: Record<string, number> = {};
 	for (const [key, count] of Object.entries(dist)) {
 		const idx = keyToIndex(key, options);
@@ -126,10 +123,7 @@ export function normalizeDistributionKeys(
 
 // Calculate normalized mean (0-1) from a distribution
 // Handles both numeric keys ("1", "2") and string keys ("Yes", "No")
-export function distributionMeanNormalized(
-	distribution: Record<string, number>,
-	options: string[]
-): number | null {
+export function distributionMeanNormalized(distribution: Record<string, number>, options: string[]): number | null {
 	if (options.length < 2) return null;
 
 	let total = 0;
@@ -151,7 +145,7 @@ export function distributionMeanNormalized(
 // Calculate normalized mean (0-1) from an array of 1-based string indices
 export function arrayMeanNormalized(answers: string[], optionCount: number): number | null {
 	if (answers.length === 0 || optionCount < 2) return null;
-	const nums = answers.map(a => parseInt(a, 10) - 1).filter(n => !isNaN(n) && n >= 0);
+	const nums = answers.map((a) => parseInt(a, 10) - 1).filter((n) => !isNaN(n) && n >= 0);
 	if (nums.length === 0) return null;
 	const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
 	return mean / (optionCount - 1);
@@ -160,7 +154,7 @@ export function arrayMeanNormalized(answers: string[], optionCount: number): num
 // Calculate normalized standard deviation (0-1) from an array of 1-based indices
 export function arrayStdDevNormalized(answers: string[], optionCount: number): number {
 	if (optionCount < 2) return 0;
-	const nums = answers.map(a => parseInt(a, 10) - 1).filter(n => !isNaN(n) && n >= 0);
+	const nums = answers.map((a) => parseInt(a, 10) - 1).filter((n) => !isNaN(n) && n >= 0);
 	if (nums.length < 2) return 0;
 	const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
 	const variance = nums.reduce((sum, n) => sum + (n - mean) ** 2, 0) / nums.length;
@@ -187,14 +181,14 @@ export function distributionMean(distribution: Record<string, number>): number |
 // Legacy: Calculate mean from an array of 1-based string keys - kept for map page
 export function arrayMean(answers: string[]): number | null {
 	if (answers.length === 0) return null;
-	const nums = answers.map(a => parseInt(a, 10)).filter(n => !isNaN(n));
+	const nums = answers.map((a) => parseInt(a, 10)).filter((n) => !isNaN(n));
 	if (nums.length === 0) return null;
 	return nums.reduce((a, b) => a + b, 0) / nums.length;
 }
 
 // Legacy: Calculate standard deviation - kept for reference
 export function arrayStdDev(answers: string[]): number {
-	const nums = answers.map(a => parseInt(a, 10)).filter(n => !isNaN(n));
+	const nums = answers.map((a) => parseInt(a, 10)).filter((n) => !isNaN(n));
 	if (nums.length < 2) return 0;
 	const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
 	const variance = nums.reduce((sum, n) => sum + (n - mean) ** 2, 0) / nums.length;
@@ -243,10 +237,12 @@ export function ordinalAgreementScore(
 	// Normalize both distributions to numeric keys if options provided
 	const normalizedHuman = options ? normalizeDistributionKeys(humanDist, options) : humanDist;
 	const normalizedAi = options ? normalizeDistributionKeys(aiDist, options) : aiDist;
-	const optionCount = options?.length || Math.max(
-		...Object.keys(normalizedHuman).map(k => parseInt(k, 10) || 0),
-		...Object.keys(normalizedAi).map(k => parseInt(k, 10) || 0)
-	);
+	const optionCount =
+		options?.length ||
+		Math.max(
+			...Object.keys(normalizedHuman).map((k) => parseInt(k, 10) || 0),
+			...Object.keys(normalizedAi).map((k) => parseInt(k, 10) || 0)
+		);
 
 	// EMD similarity: respects ordinal nature (adjacent options are more similar)
 	const emdSimilarity = ordinalEMDSimilarity(normalizedHuman, normalizedAi, optionCount);
@@ -263,7 +259,7 @@ export function ordinalAgreementScore(
 export function ordinalAgreementScoreMeanBased(humanMean: number, aiMean: number, optionCount: number): number {
 	const diff = Math.abs(humanMean - aiMean);
 	if (optionCount <= 2) {
-		return Math.round(Math.max(0, (1 - diff * 2)) * 100);
+		return Math.round(Math.max(0, 1 - diff * 2) * 100);
 	}
 	return Math.round(Math.pow(1 - diff, 1.5) * 100);
 }
@@ -298,10 +294,7 @@ export function ordinalInternalAgreement(answers: string[], optionCount: number)
 
 // Calculate overlap between two distributions (0-1 scale)
 // 1 = identical distributions, 0 = no overlap
-export function distributionOverlap(
-	dist1: Record<string, number>,
-	dist2: Record<string, number>
-): number {
+export function distributionOverlap(dist1: Record<string, number>, dist2: Record<string, number>): number {
 	const total1 = Object.values(dist1).reduce((a, b) => a + b, 0);
 	const total2 = Object.values(dist2).reduce((a, b) => a + b, 0);
 	if (total1 === 0 || total2 === 0) return 0;
@@ -343,7 +336,7 @@ export function ordinalEMDSimilarity(
 
 	// Max EMD is (optionCount - 1) when all mass at opposite ends
 	const maxEMD = optionCount - 1;
-	return 1 - (emd / maxEMD);
+	return 1 - emd / maxEMD;
 }
 
 // Calculate agreement score (0-100) for nominal questions
@@ -380,7 +373,11 @@ export function nominalInternalAgreement(answers: string[], optionCount: number)
 
 // Calculate internal agreement from a distribution (0-100)
 // Used for computing human agreement from survey data
-export function distributionInternalAgreement(dist: Record<string, number>, optionCount: number, isOrdinal: boolean): number {
+export function distributionInternalAgreement(
+	dist: Record<string, number>,
+	optionCount: number,
+	isOrdinal: boolean
+): number {
 	const total = Object.values(dist).reduce((a, b) => a + b, 0);
 	if (total === 0) return 0;
 	if (optionCount < 2) return 100;
@@ -457,9 +454,9 @@ export function computeQuestionStats(
 		} else {
 			// Nominal: use distribution overlap
 			// Convert AI answers from 1-indexed numbers to option labels
-			const aiAnswersLabeled = aiAnswers.map(ans => {
+			const aiAnswersLabeled = aiAnswers.map((ans) => {
 				const idx = parseInt(ans, 10) - 1;
-				return (idx >= 0 && idx < q.options.length) ? q.options[idx] : ans;
+				return idx >= 0 && idx < q.options.length ? q.options[idx] : ans;
 			});
 
 			// Convert human distribution keys to option labels
@@ -468,7 +465,7 @@ export function computeQuestionStats(
 				humanDistLabeled = {};
 				for (const [key, count] of Object.entries(humanDist)) {
 					const idx = parseInt(key, 10) - 1;
-					const label = (idx >= 0 && idx < q.options.length) ? q.options[idx] : key;
+					const label = idx >= 0 && idx < q.options.length ? q.options[idx] : key;
 					humanDistLabeled[label] = (humanDistLabeled[label] || 0) + count;
 				}
 			}
@@ -521,15 +518,14 @@ export function computeOverallScores(questionStats: QuestionStats[]): {
 	const totalHumanAi = questionStats.reduce((sum, q) => sum + q.humanAiScore, 0);
 	const totalAiAgreement = questionStats.reduce((sum, q) => sum + q.aiAgreementScore, 0);
 
-	const humanAgreementStats = questionStats.filter(q => q.humanAgreementScore !== null);
+	const humanAgreementStats = questionStats.filter((q) => q.humanAgreementScore !== null);
 	const totalHumanAgreement = humanAgreementStats.reduce((sum, q) => sum + (q.humanAgreementScore ?? 0), 0);
 
 	return {
 		overallScore: Math.round(totalHumanAi / questionStats.length),
 		overallAiAgreement: Math.round(totalAiAgreement / questionStats.length),
-		overallHumanAgreement: humanAgreementStats.length > 0
-			? Math.round(totalHumanAgreement / humanAgreementStats.length)
-			: null
+		overallHumanAgreement:
+			humanAgreementStats.length > 0 ? Math.round(totalHumanAgreement / humanAgreementStats.length) : null
 	};
 }
 
@@ -541,10 +537,7 @@ export function computeOverallScore(questionStats: QuestionStats[]): number {
 }
 
 // Aggregate multiple raw answers into a single representative answer
-export function aggregateResponses(
-	answers: string[],
-	responseType: string
-): string | null {
+export function aggregateResponses(answers: string[], responseType: string): string | null {
 	if (answers.length === 0) return null;
 	return responseType === 'ordinal' ? computeMedian(answers) : computeMode(answers);
 }
@@ -616,10 +609,7 @@ export function getCacheKey(
 }
 
 // Get cached source stats
-export async function getCachedSourceStats(
-	kv: KVNamespace | undefined,
-	cacheKey: string
-): Promise<SourceStats | null> {
+export async function getCachedSourceStats(kv: KVNamespace | undefined, cacheKey: string): Promise<SourceStats | null> {
 	if (!kv) return null;
 	try {
 		const cached = await kv.get(cacheKey, 'json');
@@ -644,10 +634,7 @@ export async function setCachedSourceStats(
 }
 
 // Invalidate all cache entries for a source
-export async function invalidateSourceCache(
-	kv: KVNamespace | undefined,
-	sourceId: string
-): Promise<void> {
+export async function invalidateSourceCache(kv: KVNamespace | undefined, sourceId: string): Promise<void> {
 	if (!kv) return;
 	try {
 		const prefix = `alignment:source:${sourceId}:`;

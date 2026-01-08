@@ -68,7 +68,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 
 	// Get all responses for these models
 	const responsesResult = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT p.model_id, p.question_id, r.parsed_answer
 			FROM polls p
 			JOIN responses r ON p.id = r.poll_id
@@ -96,7 +97,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 						LIMIT 1
 					))
 				)
-		`)
+		`
+		)
 		.bind(...modelIds)
 		.all<ResponseRow>();
 
@@ -144,11 +146,13 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	// Get question metadata
 	const questionIds = [...allQuestionIds];
 	const questionsResult = await db
-		.prepare(`
+		.prepare(
+			`
 			SELECT id, response_type, options, benchmark_source_id
 			FROM questions
 			WHERE id IN (${questionIds.map(() => '?').join(',')})
-		`)
+		`
+		)
 		.bind(...questionIds)
 		.all<QuestionRow>();
 
@@ -158,14 +162,13 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	}
 
 	// Get human distributions
-	const benchmarkedIds = questionsResult.results
-		.filter((q) => q.benchmark_source_id)
-		.map((q) => q.id);
+	const benchmarkedIds = questionsResult.results.filter((q) => q.benchmark_source_id).map((q) => q.id);
 
 	const humanDistMap = new Map<string, Record<string, number>>();
 	if (benchmarkedIds.length > 0) {
 		const humanResult = await db
-			.prepare(`
+			.prepare(
+				`
 				SELECT question_id, distribution
 				FROM human_response_distributions
 				WHERE question_id IN (${benchmarkedIds.map(() => '?').join(',')})
@@ -173,7 +176,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 					AND education_level IS NULL
 					AND age_group IS NULL
 					AND gender IS NULL
-			`)
+			`
+			)
 			.bind(...benchmarkedIds)
 			.all<HumanDistRow>();
 
@@ -212,8 +216,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			if (options.length === 0) continue;
 
 			// Aggregate answer
-			const aggregatedAnswer =
-				q.response_type === 'ordinal' ? computeMedian(answers) : computeMode(answers);
+			const aggregatedAnswer = q.response_type === 'ordinal' ? computeMedian(answers) : computeMode(answers);
 
 			// Self-consistency
 			if (answers.length >= 2) {
@@ -252,16 +255,12 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 
 		const avgHumanAlignment =
 			humanAlignmentScores.length > 0
-				? Math.round(
-						(humanAlignmentScores.reduce((a, b) => a + b, 0) / humanAlignmentScores.length) * 10
-					) / 10
+				? Math.round((humanAlignmentScores.reduce((a, b) => a + b, 0) / humanAlignmentScores.length) * 10) / 10
 				: null;
 
 		const avgSelfConsistency =
 			selfConsistencyScores.length > 0
-				? Math.round(
-						(selfConsistencyScores.reduce((a, b) => a + b, 0) / selfConsistencyScores.length) * 10
-					) / 10
+				? Math.round((selfConsistencyScores.reduce((a, b) => a + b, 0) / selfConsistencyScores.length) * 10) / 10
 				: null;
 
 		modelStats.push({
@@ -282,18 +281,14 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	const avgHumanAlignment =
 		modelsWithAlignment.length > 0
 			? Math.round(
-					(modelsWithAlignment.reduce((sum, m) => sum + m.humanAlignment!, 0) /
-						modelsWithAlignment.length) *
-						10
+					(modelsWithAlignment.reduce((sum, m) => sum + m.humanAlignment!, 0) / modelsWithAlignment.length) * 10
 				) / 10
 			: null;
 
 	const avgSelfConsistency =
 		modelsWithConsistency.length > 0
 			? Math.round(
-					(modelsWithConsistency.reduce((sum, m) => sum + m.selfConsistency!, 0) /
-						modelsWithConsistency.length) *
-						10
+					(modelsWithConsistency.reduce((sum, m) => sum + m.selfConsistency!, 0) / modelsWithConsistency.length) * 10
 				) / 10
 			: null;
 

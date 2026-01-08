@@ -21,35 +21,35 @@ const MFQ_ITEMS: MFQItem[] = [
 		foundation: 'harm',
 		part: 1,
 		text: 'Whether or not someone suffered emotionally',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 2,
 		foundation: 'fairness',
 		part: 1,
 		text: 'Whether or not some people were treated differently than others',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 3,
 		foundation: 'loyalty',
 		part: 1,
 		text: "Whether or not someone's action showed love for his or her country",
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 4,
 		foundation: 'authority',
 		part: 1,
 		text: 'Whether or not someone showed a lack of respect for authority',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 5,
 		foundation: 'purity',
 		part: 1,
 		text: 'Whether or not someone violated standards of purity and decency',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	// Item 6 is catch item - skipped
 	{
@@ -57,70 +57,70 @@ const MFQ_ITEMS: MFQItem[] = [
 		foundation: 'harm',
 		part: 1,
 		text: 'Whether or not someone cared for someone weak or vulnerable',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 8,
 		foundation: 'fairness',
 		part: 1,
 		text: 'Whether or not someone acted unfairly',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 9,
 		foundation: 'loyalty',
 		part: 1,
 		text: 'Whether or not someone did something to betray his or her group',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 10,
 		foundation: 'authority',
 		part: 1,
 		text: 'Whether or not someone conformed to the traditions of society',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 11,
 		foundation: 'purity',
 		part: 1,
 		text: 'Whether or not someone did something disgusting',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 12,
 		foundation: 'harm',
 		part: 1,
 		text: 'Whether or not someone was cruel',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 13,
 		foundation: 'fairness',
 		part: 1,
 		text: 'Whether or not someone was denied his or her rights',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 14,
 		foundation: 'loyalty',
 		part: 1,
 		text: 'Whether or not someone showed a lack of loyalty',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 15,
 		foundation: 'authority',
 		part: 1,
 		text: 'Whether or not an action caused chaos or disorder',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 	{
 		itemNumber: 16,
 		foundation: 'purity',
 		part: 1,
 		text: 'Whether or not someone acted in a way that God would approve of',
-		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:',
+		questionPrefix: 'When deciding whether something is right or wrong, how relevant is:'
 	},
 
 	// Part 2: Judgment items
@@ -129,35 +129,35 @@ const MFQ_ITEMS: MFQItem[] = [
 		foundation: 'harm',
 		part: 2,
 		text: 'Compassion for those who are suffering is the most crucial virtue.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 18,
 		foundation: 'fairness',
 		part: 2,
 		text: 'When the government makes laws, the number one principle should be ensuring that everyone is treated fairly.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 19,
 		foundation: 'loyalty',
 		part: 2,
 		text: "I am proud of my country's history.",
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 20,
 		foundation: 'authority',
 		part: 2,
 		text: 'Respect for authority is something all children need to learn.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 21,
 		foundation: 'purity',
 		part: 2,
 		text: 'People should not do things that are disgusting, even if no one is harmed.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	// Item 22 is catch item - skipped
 	{
@@ -165,71 +165,71 @@ const MFQ_ITEMS: MFQItem[] = [
 		foundation: 'harm',
 		part: 2,
 		text: 'One of the worst things a person could do is hurt a defenseless animal.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 24,
 		foundation: 'fairness',
 		part: 2,
 		text: 'Justice is the most important requirement for a society.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 25,
 		foundation: 'loyalty',
 		part: 2,
 		text: 'People should be loyal to their family members, even when they have done something wrong.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 26,
 		foundation: 'authority',
 		part: 2,
 		text: 'Men and women each have different roles to play in society.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 27,
 		foundation: 'purity',
 		part: 2,
 		text: 'I would call some acts wrong on the grounds that they are unnatural.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 28,
 		foundation: 'harm',
 		part: 2,
 		text: 'It can never be right to kill a human being.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 29,
 		foundation: 'fairness',
 		part: 2,
 		text: 'It is morally wrong that rich children inherit a lot of money while poor children inherit nothing.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 30,
 		foundation: 'authority',
 		part: 2,
 		text: 'It is more important to be a team player than to express oneself.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 31,
 		foundation: 'loyalty',
 		part: 2,
 		text: "If I were a soldier and disagreed with my commanding officer's orders, I would obey anyway because that is my duty.",
-		questionPrefix: 'Please indicate your agreement or disagreement:',
+		questionPrefix: 'Please indicate your agreement or disagreement:'
 	},
 	{
 		itemNumber: 32,
 		foundation: 'purity',
 		part: 2,
 		text: 'Chastity is an important and valuable virtue.',
-		questionPrefix: 'Please indicate your agreement or disagreement:',
-	},
+		questionPrefix: 'Please indicate your agreement or disagreement:'
+	}
 ];
 
 // Response options for each part (1-6 scale as used in the studies)
@@ -239,7 +239,7 @@ const RELEVANCE_OPTIONS = [
 	'Slightly relevant',
 	'Somewhat relevant',
 	'Very relevant',
-	'Extremely relevant',
+	'Extremely relevant'
 ];
 
 const JUDGMENT_OPTIONS = [
@@ -248,7 +248,7 @@ const JUDGMENT_OPTIONS = [
 	'Slightly disagree',
 	'Slightly agree',
 	'Moderately agree',
-	'Strongly agree',
+	'Strongly agree'
 ];
 
 // Column mappings for different study formats
@@ -287,7 +287,7 @@ const STUDY1_COLUMN_MAP: Record<number, string> = {
 	29: 'A2fair_3',
 	30: 'A2authority_3',
 	31: 'A2ingroup_3',
-	32: 'A2purity_3',
+	32: 'A2purity_3'
 };
 
 function parseCSV(content: string): Record<string, string>[] {
@@ -446,8 +446,12 @@ async function main() {
 
 	// First, delete old MFQ data
 	sql.push(`-- Remove old MFQ foundation-level data`);
-	sql.push(`DELETE FROM human_response_distributions WHERE benchmark_source_id IN (SELECT id FROM benchmark_sources WHERE short_name = 'MFQ');`);
-	sql.push(`DELETE FROM questions WHERE benchmark_source_id IN (SELECT id FROM benchmark_sources WHERE short_name = 'MFQ');`);
+	sql.push(
+		`DELETE FROM human_response_distributions WHERE benchmark_source_id IN (SELECT id FROM benchmark_sources WHERE short_name = 'MFQ');`
+	);
+	sql.push(
+		`DELETE FROM questions WHERE benchmark_source_id IN (SELECT id FROM benchmark_sources WHERE short_name = 'MFQ');`
+	);
 	sql.push(`DELETE FROM benchmark_sources WHERE short_name = 'MFQ';`);
 	sql.push('');
 
@@ -484,8 +488,7 @@ async function main() {
 		}
 
 		const fullQuestion = `${item.questionPrefix} "${item.text}"`;
-		const foundationName =
-			item.foundation.charAt(0).toUpperCase() + item.foundation.slice(1);
+		const foundationName = item.foundation.charAt(0).toUpperCase() + item.foundation.slice(1);
 
 		sql.push(`-- Item ${item.itemNumber}: ${foundationName} (Part ${item.part})`);
 		sql.push(`INSERT INTO questions (id, text, category, response_type, options, active, benchmark_source_id, benchmark_question_id, answer_labels) VALUES (

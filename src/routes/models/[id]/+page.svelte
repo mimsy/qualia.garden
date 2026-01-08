@@ -48,8 +48,6 @@
 		// Already a label or couldn't convert
 		return value;
 	}
-
-	type QuestionWithScores = typeof data.notableQuestions.highAlignment[number];
 </script>
 
 <svelte:head>
@@ -66,7 +64,11 @@
 					<span class="font-semibold text-slate-800 text-lg tracking-tight">Qualia Garden</span>
 				</a>
 				<nav class="flex items-center gap-1">
-					<a href="/questions" class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">Questions</a>
+					<a
+						href="/questions"
+						class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+						>Questions</a
+					>
 					<a href="/models" class="px-3 py-2 text-sm text-slate-900 font-medium bg-slate-100 rounded-lg">Models</a>
 				</nav>
 			</div>
@@ -97,14 +99,10 @@
 						{data.model.family}
 					</a>
 					{#if data.model.supports_reasoning}
-						<span class="text-xs text-violet-600 bg-violet-50 px-2 py-1 rounded-md font-medium">
-							reasoning
-						</span>
+						<span class="text-xs text-violet-600 bg-violet-50 px-2 py-1 rounded-md font-medium"> reasoning </span>
 					{/if}
 					{#if !data.model.active}
-						<span class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
-							inactive
-						</span>
+						<span class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-md"> inactive </span>
 					{/if}
 				</div>
 				<p class="text-slate-500">
@@ -190,34 +188,88 @@
 												{#if q.humanAlignment !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('alignment')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('alignment')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('alignment')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('alignment')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.humanAlignment)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('alignment')}">{Math.round(q.humanAlignment)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'alignment'
+															)}">{Math.round(q.humanAlignment)}</span
+														>
 													</div>
 												{/if}
 												{#if q.aiConsensus !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('consensus')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('consensus')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('consensus')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('consensus')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.aiConsensus)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('consensus')}">{Math.round(q.aiConsensus)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'consensus'
+															)}">{Math.round(q.aiConsensus)}</span
+														>
 													</div>
 												{/if}
 												{#if q.selfConsistency !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('confidence')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('confidence')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('confidence')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('confidence')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.selfConsistency)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('confidence')}">{Math.round(q.selfConsistency)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'confidence'
+															)}">{Math.round(q.selfConsistency)}</span
+														>
 													</div>
 												{/if}
 											</div>
@@ -257,34 +309,88 @@
 												{#if q.humanAlignment !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('alignment')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('alignment')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('alignment')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('alignment')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.humanAlignment)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('alignment')}">{Math.round(q.humanAlignment)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'alignment'
+															)}">{Math.round(q.humanAlignment)}</span
+														>
 													</div>
 												{/if}
 												{#if q.aiConsensus !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('consensus')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('consensus')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('consensus')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('consensus')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.aiConsensus)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('consensus')}">{Math.round(q.aiConsensus)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'consensus'
+															)}">{Math.round(q.aiConsensus)}</span
+														>
 													</div>
 												{/if}
 												{#if q.selfConsistency !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('confidence')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('confidence')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('confidence')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('confidence')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.selfConsistency)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('confidence')}">{Math.round(q.selfConsistency)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'confidence'
+															)}">{Math.round(q.selfConsistency)}</span
+														>
 													</div>
 												{/if}
 											</div>
@@ -336,34 +442,88 @@
 												{#if q.humanAlignment !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('alignment')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('alignment')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('alignment')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('alignment')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.humanAlignment)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('alignment')}">{Math.round(q.humanAlignment)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'alignment'
+															)}">{Math.round(q.humanAlignment)}</span
+														>
 													</div>
 												{/if}
 												{#if q.aiConsensus !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('consensus')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('consensus')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('consensus')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('consensus')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.aiConsensus)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('consensus')}">{Math.round(q.aiConsensus)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'consensus'
+															)}">{Math.round(q.aiConsensus)}</span
+														>
 													</div>
 												{/if}
 												{#if q.selfConsistency !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('confidence')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('confidence')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('confidence')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('confidence')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.selfConsistency)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('confidence')}">{Math.round(q.selfConsistency)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'confidence'
+															)}">{Math.round(q.selfConsistency)}</span
+														>
 													</div>
 												{/if}
 											</div>
@@ -403,34 +563,88 @@
 												{#if q.humanAlignment !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('alignment')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('alignment')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('alignment')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('alignment')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.humanAlignment)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('alignment')}">{Math.round(q.humanAlignment)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'alignment'
+															)}">{Math.round(q.humanAlignment)}</span
+														>
 													</div>
 												{/if}
 												{#if q.aiConsensus !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('consensus')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('consensus')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('consensus')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('consensus')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.aiConsensus)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('consensus')}">{Math.round(q.aiConsensus)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'consensus'
+															)}">{Math.round(q.aiConsensus)}</span
+														>
 													</div>
 												{/if}
 												{#if q.selfConsistency !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('confidence')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('confidence')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('confidence')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('confidence')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.selfConsistency)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('confidence')}">{Math.round(q.selfConsistency)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'confidence'
+															)}">{Math.round(q.selfConsistency)}</span
+														>
 													</div>
 												{/if}
 											</div>
@@ -481,34 +695,88 @@
 												{#if q.humanAlignment !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('alignment')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('alignment')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('alignment')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('alignment')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.humanAlignment)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('alignment')}">{Math.round(q.humanAlignment)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'alignment'
+															)}">{Math.round(q.humanAlignment)}</span
+														>
 													</div>
 												{/if}
 												{#if q.aiConsensus !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('consensus')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('consensus')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('consensus')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('consensus')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.aiConsensus)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('consensus')}">{Math.round(q.aiConsensus)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'consensus'
+															)}">{Math.round(q.aiConsensus)}</span
+														>
 													</div>
 												{/if}
 												{#if q.selfConsistency !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('confidence')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('confidence')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('confidence')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('confidence')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.selfConsistency)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('confidence')}">{Math.round(q.selfConsistency)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'confidence'
+															)}">{Math.round(q.selfConsistency)}</span
+														>
 													</div>
 												{/if}
 											</div>
@@ -539,34 +807,88 @@
 												{#if q.humanAlignment !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('alignment')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('alignment')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('alignment')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('alignment')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.humanAlignment)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('alignment')}">{Math.round(q.humanAlignment)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'alignment'
+															)}">{Math.round(q.humanAlignment)}</span
+														>
 													</div>
 												{/if}
 												{#if q.aiConsensus !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('consensus')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('consensus')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('consensus')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('consensus')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.aiConsensus)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('consensus')}">{Math.round(q.aiConsensus)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'consensus'
+															)}">{Math.round(q.aiConsensus)}</span
+														>
 													</div>
 												{/if}
 												{#if q.selfConsistency !== null}
 													<div class="relative w-6 h-6">
 														<svg class="w-6 h-6 -rotate-90" viewBox="0 0 36 36">
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleBgColor('confidence')} stroke-width="4" />
-															<circle cx="18" cy="18" r="14" fill="none" class={getCircleColor('confidence')} stroke-width="4"
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleBgColor('confidence')}
+																stroke-width="4"
+															/>
+															<circle
+																cx="18"
+																cy="18"
+																r="14"
+																fill="none"
+																class={getCircleColor('confidence')}
+																stroke-width="4"
 																stroke-dasharray={getCircleDasharray(q.selfConsistency)}
-																stroke-linecap="round" />
+																stroke-linecap="round"
+															/>
 														</svg>
-														<span class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor('confidence')}">{Math.round(q.selfConsistency)}</span>
+														<span
+															class="absolute inset-0 flex items-center justify-center text-[7px] font-bold {getCircleTextColor(
+																'confidence'
+															)}">{Math.round(q.selfConsistency)}</span
+														>
 													</div>
 												{/if}
 											</div>
@@ -615,14 +937,11 @@
 										<ScoreTooltip score={model.agreement} type="aiConsensus" position="bottom" context="model">
 											<div class="relative w-10 h-10 cursor-help shrink-0">
 												<svg class="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+													<circle cx="18" cy="18" r="14" fill="none" stroke-width="3" class="stroke-emerald-100" />
 													<circle
-														cx="18" cy="18" r="14"
-														fill="none"
-														stroke-width="3"
-														class="stroke-emerald-100"
-													/>
-													<circle
-														cx="18" cy="18" r="14"
+														cx="18"
+														cy="18"
+														r="14"
 														fill="none"
 														stroke-width="3"
 														stroke-linecap="round"
@@ -630,7 +949,9 @@
 														stroke-dasharray={getCircleDasharray(model.agreement)}
 													/>
 												</svg>
-												<span class="absolute inset-0 flex items-center justify-center text-xs font-semibold text-emerald-600">
+												<span
+													class="absolute inset-0 flex items-center justify-center text-xs font-semibold text-emerald-600"
+												>
 													{Math.round(model.agreement)}
 												</span>
 											</div>
@@ -661,14 +982,11 @@
 										<ScoreTooltip score={model.agreement} type="aiConsensus" position="bottom" context="model">
 											<div class="relative w-10 h-10 cursor-help shrink-0">
 												<svg class="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+													<circle cx="18" cy="18" r="14" fill="none" stroke-width="3" class="stroke-orange-100" />
 													<circle
-														cx="18" cy="18" r="14"
-														fill="none"
-														stroke-width="3"
-														class="stroke-orange-100"
-													/>
-													<circle
-														cx="18" cy="18" r="14"
+														cx="18"
+														cy="18"
+														r="14"
 														fill="none"
 														stroke-width="3"
 														stroke-linecap="round"
@@ -676,7 +994,9 @@
 														stroke-dasharray={getCircleDasharray(model.agreement)}
 													/>
 												</svg>
-												<span class="absolute inset-0 flex items-center justify-center text-xs font-semibold text-orange-600">
+												<span
+													class="absolute inset-0 flex items-center justify-center text-xs font-semibold text-orange-600"
+												>
 													{Math.round(model.agreement)}
 												</span>
 											</div>
