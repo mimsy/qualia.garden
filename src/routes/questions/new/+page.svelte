@@ -28,7 +28,6 @@
 				<nav class="flex gap-4">
 					<a href="/questions" class="text-gray-600 hover:text-gray-900">All Questions</a>
 					<a href="/models" class="text-gray-600 hover:text-gray-900">Models</a>
-					<a href="/map" class="text-gray-600 hover:text-gray-900">Model Map</a>
 				</nav>
 			</div>
 		</div>
