@@ -14,6 +14,8 @@
 	type PollType = (typeof data.allPolls)[number];
 
 	let selectedFamily = $state<string | null>(null);
+	let sortBy = $state<'name' | 'alignment' | 'consensus' | 'confidence'>('name');
+	let sortAscending = $state(true);
 	let showPollHistory = $state(false);
 	let showPollTrigger = $state(false);
 	let selectedModels = new SvelteSet<string>();
@@ -85,12 +87,40 @@
 	// Get unique families for filter
 	const families = $derived(getUniqueFamilies(data.responses));
 
-	// Filter responses by family
-	const filteredResponses = $derived(
-		selectedFamily
+	// Filter and sort responses
+	const filteredResponses = $derived.by(() => {
+		let responses = selectedFamily
 			? data.responses.filter((r: ResponseType) => r.model_family === selectedFamily)
-			: data.responses
-	);
+			: [...data.responses];
+
+		// Sort responses
+		responses.sort((a, b) => {
+			let comparison = 0;
+			switch (sortBy) {
+				case 'name':
+					comparison = a.model_name.localeCompare(b.model_name);
+					break;
+				case 'alignment':
+					const aAlign = data.modelHumanAlignment[a.model_id] ?? -1;
+					const bAlign = data.modelHumanAlignment[b.model_id] ?? -1;
+					comparison = bAlign - aAlign; // Higher is better
+					break;
+				case 'consensus':
+					const aCons = data.modelAiConsensus[a.model_id] ?? -1;
+					const bCons = data.modelAiConsensus[b.model_id] ?? -1;
+					comparison = bCons - aCons; // Higher is better
+					break;
+				case 'confidence':
+					const aConf = data.modelSelfConsistency[a.model_id] ?? -1;
+					const bConf = data.modelSelfConsistency[b.model_id] ?? -1;
+					comparison = bConf - aConf; // Higher is better
+					break;
+			}
+			return sortAscending ? comparison : -comparison;
+		});
+
+		return responses;
+	});
 
 	// Parse human distribution to aggregated format
 	const humanAggregateResults = $derived.by(() => {
@@ -680,25 +710,45 @@
 			<div class="mb-8">
 				<div class="flex items-center justify-between mb-5">
 					<h3 class="font-semibold text-slate-900 text-lg">Model Responses</h3>
-					<div class="flex gap-1.5">
-						<button
-							onclick={() => (selectedFamily = null)}
-							class="px-3 py-1.5 text-sm rounded-lg transition-colors {selectedFamily === null
-								? 'bg-slate-800 text-white'
-								: 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
+					<div class="flex items-center gap-3">
+						<!-- Provider filter -->
+						<select
+							bind:value={selectedFamily}
+							class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 						>
-							All
+							<option value={null}>All providers</option>
+							{#each families as family}
+								<option value={family} class="capitalize">{family}</option>
+							{/each}
+						</select>
+
+						<!-- Sort by -->
+						<select
+							bind:value={sortBy}
+							class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+						>
+							<option value="name">Sort by name</option>
+							<option value="alignment">Sort by alignment</option>
+							<option value="consensus">Sort by consensus</option>
+							<option value="confidence">Sort by confidence</option>
+						</select>
+
+						<!-- Sort direction -->
+						<button
+							onclick={() => (sortAscending = !sortAscending)}
+							class="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+							title={sortAscending ? 'Ascending' : 'Descending'}
+						>
+							{#if sortAscending}
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+								</svg>
+							{:else}
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+								</svg>
+							{/if}
 						</button>
-						{#each families as family}
-							<button
-								onclick={() => (selectedFamily = family)}
-								class="px-3 py-1.5 text-sm rounded-lg capitalize transition-colors {selectedFamily === family
-									? 'bg-slate-800 text-white'
-									: 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
-							>
-								{family}
-							</button>
-						{/each}
 					</div>
 				</div>
 
