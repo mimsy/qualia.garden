@@ -1,8 +1,10 @@
-// ABOUTME: Model detail page data loader.
-// ABOUTME: Computes human alignment per category and AI similarity rankings.
+// ABOUTME: Model detail page data loader and actions.
+// ABOUTME: Computes human alignment per category and AI similarity rankings. Admin actions for update/delete.
 
-import type { PageServerLoad } from './$types';
-import { error } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
+import { error, fail, redirect } from '@sveltejs/kit';
+import { dev } from '$app/environment';
+import { updateModel, deleteModel } from '$lib/db/queries';
 import { computeMedian, computeMode } from '$lib/db/types';
 import {
 	ordinalAgreementScore,
@@ -17,6 +19,7 @@ interface Model {
 	id: string;
 	name: string;
 	family: string;
+	openrouter_id: string;
 	supports_reasoning: boolean;
 	active: boolean;
 }
@@ -76,7 +79,9 @@ interface ModelSimilarity {
 	sharedQuestions: number;
 }
 
-export const load: PageServerLoad = async ({ params, platform }) => {
+export const load: PageServerLoad = async ({ params, platform, parent }) => {
+	const { isAdmin } = await parent();
+
 	if (!platform?.env?.DB) {
 		return error(500, 'Database not available');
 	}
@@ -86,7 +91,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 
 	// Get model metadata
 	const model = await db
-		.prepare('SELECT id, name, family, supports_reasoning, active FROM models WHERE id = ?')
+		.prepare('SELECT id, name, family, openrouter_id, supports_reasoning, active FROM models WHERE id = ?')
 		.bind(modelId)
 		.first<Model>();
 
@@ -156,7 +161,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 				lowConsensus: [],
 				highConfidence: [],
 				lowConfidence: []
-			}
+			},
+			isAdmin
 		};
 	}
 
@@ -521,6 +527,53 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		categoryScores,
 		mostSimilar,
 		mostDifferent,
-		notableQuestions
+		notableQuestions,
+		isAdmin
 	};
+};
+
+export const actions: Actions = {
+	update: async ({ params, request, platform, locals, url }) => {
+		const isPreview = url.host.includes('.pages.dev') && url.host !== 'qualia-garden.pages.dev';
+		const isAdmin = dev || isPreview || locals.user?.isAdmin;
+
+		if (!isAdmin) {
+			return fail(403, { error: 'Admin access required' });
+		}
+
+		if (!platform?.env?.DB) {
+			return fail(500, { error: 'Database not available' });
+		}
+
+		const formData = await request.formData();
+		const name = (formData.get('name') as string)?.trim();
+		const family = (formData.get('family') as string)?.trim();
+		const openrouter_id = (formData.get('openrouter_id') as string)?.trim();
+		const supports_reasoning = formData.get('supports_reasoning') === 'true';
+
+		if (!name || !family || !openrouter_id) {
+			return fail(400, { error: 'Name, family, and OpenRouter ID are required' });
+		}
+
+		await updateModel(platform.env.DB, params.id, { name, family, openrouter_id, supports_reasoning });
+
+		return { success: true };
+	},
+
+	delete: async ({ params, platform, locals, url }) => {
+		const isPreview = url.host.includes('.pages.dev') && url.host !== 'qualia-garden.pages.dev';
+		const isAdmin = dev || isPreview || locals.user?.isAdmin;
+
+		if (!isAdmin) {
+			return fail(403, { error: 'Admin access required' });
+		}
+
+		if (!platform?.env?.DB) {
+			return fail(500, { error: 'Database not available' });
+		}
+
+		await deleteModel(platform.env.DB, params.id);
+
+		redirect(303, '/models');
+	}
 };

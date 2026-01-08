@@ -1,7 +1,10 @@
-// ABOUTME: Models index page data loader.
-// ABOUTME: Fetches all models with response counts and three aggregate scores.
+// ABOUTME: Models index page data loader and actions.
+// ABOUTME: Fetches all models with response counts and three aggregate scores. Admin actions for toggle.
 
-import type { PageServerLoad } from './$types';
+import type { PageServerLoad, Actions } from './$types';
+import { fail } from '@sveltejs/kit';
+import { dev } from '$app/environment';
+import { updateModel } from '$lib/db/queries';
 import { computeMedian, computeMode } from '$lib/db/types';
 import {
 	ordinalAgreementScore,
@@ -40,9 +43,11 @@ interface HumanDistRow {
 	distribution: string;
 }
 
-export const load: PageServerLoad = async ({ platform }) => {
+export const load: PageServerLoad = async ({ platform, parent }) => {
+	const { isAdmin } = await parent();
+
 	if (!platform?.env?.DB) {
-		return { models: [] };
+		return { models: [], isAdmin };
 	}
 
 	const db = platform.env.DB;
@@ -334,5 +339,28 @@ export const load: PageServerLoad = async ({ platform }) => {
 		};
 	});
 
-	return { models };
+	return { models, isAdmin };
+};
+
+export const actions: Actions = {
+	toggle: async ({ request, platform, locals, url }) => {
+		const isPreview = url.host.includes('.pages.dev') && url.host !== 'qualia-garden.pages.dev';
+		const isAdmin = dev || isPreview || locals.user?.isAdmin;
+
+		if (!isAdmin) {
+			return fail(403, { error: 'Admin access required' });
+		}
+
+		if (!platform?.env?.DB) {
+			return fail(500, { error: 'Database not available' });
+		}
+
+		const formData = await request.formData();
+		const id = formData.get('id') as string;
+		const active = formData.get('active') === 'true';
+
+		await updateModel(platform.env.DB, id, { active: !active });
+
+		return { success: true };
+	}
 };

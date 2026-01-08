@@ -1,11 +1,107 @@
 <!-- ABOUTME: Model detail page showing human alignment and AI similarity. -->
 <!-- ABOUTME: Displays per-category scores, notable questions, and similar/different models. -->
 <script lang="ts">
-	import type { PageData } from './$types';
+	import { onMount } from 'svelte';
+	import type { PageData, ActionData } from './$types';
 	import ScoreBadge from '$lib/components/ScoreBadge.svelte';
 	import ScoreTooltip from '$lib/components/ScoreTooltip.svelte';
 
-	let { data } = $props<{ data: PageData }>();
+	let { data, form } = $props<{ data: PageData; form: ActionData }>();
+
+	// Admin edit state
+	interface OpenRouterModel {
+		id: string;
+		name: string;
+		context_length: number;
+		pricing: { prompt: string; completion: string };
+		supports_reasoning: boolean;
+	}
+
+	let searchQuery = $state('');
+	let availableModels = $state<OpenRouterModel[]>([]);
+	let loading = $state(true);
+	let showDropdown = $state(false);
+	let changingModel = $state(false);
+	let confirmDelete = $state(false);
+
+	// Form state - editable values synced with data.model
+	// Using $derived.by for the initial sync, then allowing user edits
+	const initialFormState = $derived({
+		openrouterId: data.model.openrouter_id || '',
+		displayName: data.model.name,
+		family: data.model.family,
+		supportsReasoning: data.model.supports_reasoning,
+		reasoningEnabled: data.model.supports_reasoning
+	});
+
+	// Track form state separately for user editing
+	let formState = $state({
+		openrouterId: '',
+		displayName: '',
+		family: '',
+		supportsReasoning: false,
+		reasoningEnabled: false
+	});
+
+	// Sync form state with initial values when data changes (e.g., after successful save)
+	$effect(() => {
+		formState.openrouterId = initialFormState.openrouterId;
+		formState.displayName = initialFormState.displayName;
+		formState.family = initialFormState.family;
+		formState.supportsReasoning = initialFormState.supportsReasoning;
+		formState.reasoningEnabled = initialFormState.reasoningEnabled;
+	});
+
+	const filteredModels = $derived(
+		searchQuery.length >= 2
+			? availableModels
+					.filter(
+						(m) =>
+							m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+							m.id.toLowerCase().includes(searchQuery.toLowerCase())
+					)
+					.slice(0, 15)
+			: []
+	);
+
+	onMount(async () => {
+		if (data.isAdmin) {
+			try {
+				const res = await fetch('/api/openrouter/models');
+				if (res.ok) {
+					availableModels = await res.json();
+				}
+			} catch (err) {
+				console.error('Failed to load models:', err);
+			}
+		}
+		loading = false;
+	});
+
+	function selectNewModel(model: OpenRouterModel) {
+		formState.openrouterId = model.id;
+		formState.family = model.id.split('/')[0];
+		formState.supportsReasoning = model.supports_reasoning;
+		formState.reasoningEnabled = model.supports_reasoning;
+		// Update display name to match new model
+		formState.displayName = model.name.includes(': ') ? model.name.split(': ').slice(1).join(': ') : model.name;
+		searchQuery = '';
+		showDropdown = false;
+		changingModel = false;
+	}
+
+	function handleInputBlur() {
+		setTimeout(() => {
+			showDropdown = false;
+		}, 200);
+	}
+
+	function formatPrice(price: string): string {
+		const num = parseFloat(price);
+		if (num === 0) return 'Free';
+		if (num < 0.001) return `$${(num * 1000000).toFixed(2)}/M`;
+		return `$${num.toFixed(4)}/1k`;
+	}
 
 	// Circle progress helpers
 	const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * 14; // radius = 14
@@ -126,6 +222,198 @@
 				</div>
 			{/if}
 		</div>
+
+		<!-- Admin Controls Section -->
+		{#if data.isAdmin}
+			<section class="mb-8">
+				<!-- Success/Error Messages -->
+				{#if form?.success}
+					<div class="bg-emerald-50 text-emerald-700 px-4 py-3 rounded-lg mb-4 border border-emerald-200">
+						Model updated successfully.
+					</div>
+				{/if}
+				{#if form?.error}
+					<div class="bg-red-50 text-red-700 px-4 py-3 rounded-lg mb-4 border border-red-200">
+						{form.error}
+					</div>
+				{/if}
+
+				<details class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+					<summary class="px-6 py-4 cursor-pointer hover:bg-slate-50 flex items-center justify-between">
+						<h2 class="text-lg font-semibold text-slate-900">Edit Model</h2>
+						<svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						</svg>
+					</summary>
+
+					<div class="px-6 pb-6 border-t border-slate-100">
+						<form method="POST" action="?/update" class="pt-6 space-y-6">
+							<!-- OpenRouter Model ID -->
+							<div>
+								<span class="block text-sm font-medium text-slate-700 mb-2">OpenRouter Model</span>
+								{#if !changingModel}
+									<div
+										class="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-3 border border-slate-200"
+									>
+										<div>
+											<div class="font-medium text-slate-900">{formState.openrouterId}</div>
+											<div class="text-sm text-slate-500">{formState.family}</div>
+										</div>
+										<button
+											type="button"
+											onclick={() => (changingModel = true)}
+											class="text-sm text-blue-600 hover:text-blue-700 font-medium"
+										>
+											Change
+										</button>
+									</div>
+								{:else}
+									<div class="relative">
+										<input
+											type="text"
+											bind:value={searchQuery}
+											onfocus={() => (showDropdown = true)}
+											onblur={handleInputBlur}
+											disabled={loading}
+											class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+											placeholder={loading ? 'Loading models...' : 'Search by name or ID...'}
+											autocomplete="off"
+										/>
+
+										{#if showDropdown && filteredModels.length > 0}
+											<div
+												class="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-lg max-h-80 overflow-auto"
+											>
+												{#each filteredModels as model (model.id)}
+													<button
+														type="button"
+														onclick={() => selectNewModel(model)}
+														class="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-slate-100 last:border-b-0 transition-colors"
+													>
+														<div class="flex justify-between items-start">
+															<div class="flex-1 min-w-0">
+																<div class="font-medium text-slate-900 truncate">{model.name}</div>
+																<div class="text-sm text-slate-500 truncate">{model.id}</div>
+															</div>
+															<div class="text-right text-sm text-slate-500 ml-4 flex-shrink-0">
+																<div>{(model.context_length / 1000).toFixed(0)}k ctx</div>
+																<div class="text-xs">{formatPrice(model.pricing.prompt)}</div>
+															</div>
+														</div>
+													</button>
+												{/each}
+											</div>
+										{/if}
+
+										{#if showDropdown && searchQuery.length >= 2 && filteredModels.length === 0 && !loading}
+											<div
+												class="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-lg p-4 text-slate-500"
+											>
+												No models found matching "{searchQuery}"
+											</div>
+										{/if}
+									</div>
+									<div class="mt-2 flex items-center gap-2">
+										<button
+											type="button"
+											onclick={() => (changingModel = false)}
+											class="text-sm text-slate-500 hover:text-slate-700"
+										>
+											Cancel
+										</button>
+										{#if searchQuery.length > 0 && searchQuery.length < 2}
+											<span class="text-sm text-slate-400">Type at least 2 characters to search...</span>
+										{/if}
+									</div>
+								{/if}
+							</div>
+
+							<!-- Hidden inputs for form submission -->
+							<input type="hidden" name="openrouter_id" value={formState.openrouterId} />
+							<input type="hidden" name="family" value={formState.family} />
+							<input type="hidden" name="supports_reasoning" value={formState.reasoningEnabled} />
+
+							<!-- Display Name -->
+							<div>
+								<label for="name" class="block text-sm font-medium text-slate-700 mb-2">Display Name</label>
+								<input
+									id="name"
+									name="name"
+									type="text"
+									bind:value={formState.displayName}
+									required
+									class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+								/>
+								<p class="text-sm text-slate-500 mt-1">How this model appears in the UI</p>
+							</div>
+
+							<!-- Reasoning Toggle (only show if model supports it) -->
+							{#if formState.supportsReasoning}
+								<div class="flex items-center gap-3">
+									<input
+										id="reasoning"
+										type="checkbox"
+										bind:checked={formState.reasoningEnabled}
+										class="h-4 w-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+									/>
+									<label for="reasoning" class="text-sm text-slate-700">Enable extended thinking/reasoning</label>
+								</div>
+								<p class="text-xs text-slate-500 -mt-4 ml-7">
+									When enabled, the model will show its reasoning process in responses.
+								</p>
+							{/if}
+
+							<!-- Save Button -->
+							<div class="pt-2">
+								<button
+									type="submit"
+									class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+								>
+									Save Changes
+								</button>
+							</div>
+						</form>
+
+						<!-- Danger Zone -->
+						<div class="mt-8 pt-6 border-t border-slate-200">
+							<h3 class="text-sm font-semibold text-red-600 mb-4">Danger Zone</h3>
+							{#if !confirmDelete}
+								<button
+									type="button"
+									onclick={() => (confirmDelete = true)}
+									class="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 font-medium transition-colors"
+								>
+									Delete Model
+								</button>
+							{:else}
+								<div class="bg-red-50 border border-red-200 rounded-lg p-4">
+									<p class="text-sm text-red-700 mb-4">
+										Are you sure you want to delete <strong>{data.model.name}</strong>? This action cannot be undone.
+									</p>
+									<div class="flex gap-3">
+										<form method="POST" action="?/delete">
+											<button
+												type="submit"
+												class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors"
+											>
+												Yes, Delete
+											</button>
+										</form>
+										<button
+											type="button"
+											onclick={() => (confirmDelete = false)}
+											class="px-4 py-2 text-slate-600 hover:text-slate-900 font-medium"
+										>
+											Cancel
+										</button>
+									</div>
+								</div>
+							{/if}
+						</div>
+					</div>
+				</details>
+			</section>
+		{/if}
 
 		{#if data.questionCount === 0}
 			<div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
