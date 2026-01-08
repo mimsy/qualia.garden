@@ -5,14 +5,16 @@
 	import ScoreTooltip from './ScoreTooltip.svelte';
 
 	type ScoreType = 'humanSimilarity' | 'aiConsensus' | 'aiConfidence';
+	type Context = 'question' | 'model' | 'aggregate';
 
 	interface Props {
 		score: number | null;
 		label: string;
 		type?: ScoreType;
+		context?: Context;
 	}
 
-	let { score, label, type: scoreType = 'humanSimilarity' }: Props = $props();
+	let { score, label, type: scoreType = 'humanSimilarity', context = 'question' }: Props = $props();
 
 	// Get intensity level based on score (low/med/high)
 	type Intensity = 'low' | 'med' | 'high';
@@ -46,7 +48,7 @@
 	const width = $derived(score !== null ? `${score}%` : '0%');
 </script>
 
-<ScoreTooltip {score} type={scoreType} flex>
+<ScoreTooltip {score} type={scoreType} {context} flex>
 	<div class="px-3 py-2 cursor-help">
 		<div class="flex items-center justify-between mb-1">
 			<span class="text-[10px] text-slate-500 uppercase tracking-wide">{label}</span>

@@ -7,7 +7,7 @@
 
 	type ScoreType = 'humanSimilarity' | 'aiConsensus' | 'aiConfidence';
 
-	type Context = 'question' | 'model';
+	type Context = 'question' | 'model' | 'aggregate';
 
 	interface Props {
 		score: number | null;
@@ -65,6 +65,13 @@
 					'Moderate': 'Some alignment with human responses',
 					'Low': 'This model diverges from human opinions',
 					'Very Low': 'This model shows little similarity to humans'
+				},
+				aggregate: {
+					'Very High': 'AI responses closely match human opinions across these questions',
+					'High': 'AI responses generally align with human opinions',
+					'Moderate': 'Mixed alignment between AI and human responses',
+					'Low': 'AI responses tend to diverge from human opinions',
+					'Very Low': 'AI and human responses show little similarity overall'
 				}
 			}
 		},
@@ -85,6 +92,13 @@
 					'Moderate': 'This model partially agrees with other AI models',
 					'Low': 'This model disagrees with most other AI models',
 					'Very Low': 'This model is an outlier among AI models'
+				},
+				aggregate: {
+					'Very High': 'AI models show strong agreement across these questions',
+					'High': 'AI models generally agree across these questions',
+					'Moderate': 'AI models show mixed agreement',
+					'Low': 'AI models tend to disagree across these questions',
+					'Very Low': 'AI models show significant disagreement overall'
 				}
 			}
 		},
@@ -105,6 +119,13 @@
 					'Moderate': 'This model shows some variation in responses',
 					'Low': 'This model gives varying answers',
 					'Very Low': 'This model is highly inconsistent'
+				},
+				aggregate: {
+					'Very High': 'AI responses are highly consistent across these questions',
+					'High': 'AI responses show good consistency overall',
+					'Moderate': 'Some variation in AI responses across questions',
+					'Low': 'AI responses vary across these questions',
+					'Very Low': 'High variability in AI responses overall'
 				}
 			}
 		}

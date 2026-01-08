@@ -105,11 +105,11 @@
 			<!-- Score bars footer -->
 			{#if data.overallHumanSimilarity !== null || data.overallAiConsensus !== null || data.overallAiConfidence !== null}
 				<div class="flex border-t border-slate-100">
-					<ScoreBadge score={data.overallHumanSimilarity} label="Alignment" type="humanSimilarity" />
+					<ScoreBadge score={data.overallHumanSimilarity} label="Alignment" type="humanSimilarity" context="aggregate" />
 					<div class="w-px bg-slate-100"></div>
-					<ScoreBadge score={data.overallAiConsensus} label="Consensus" type="aiConsensus" />
+					<ScoreBadge score={data.overallAiConsensus} label="Consensus" type="aiConsensus" context="aggregate" />
 					<div class="w-px bg-slate-100"></div>
-					<ScoreBadge score={data.overallAiConfidence} label="Confidence" type="aiConfidence" />
+					<ScoreBadge score={data.overallAiConfidence} label="Confidence" type="aiConfidence" context="aggregate" />
 				</div>
 			{/if}
 		</div>
