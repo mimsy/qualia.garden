@@ -98,6 +98,14 @@ export async function loadQuestionsWithStats(
 
 	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+	// Build a subquery for filtering questions (used by responses and human distributions)
+	// This avoids SQLite's variable limit when there are many questions
+	const questionSubquery = `
+		SELECT q.id FROM questions q
+		LEFT JOIN benchmark_sources bs ON q.benchmark_source_id = bs.id
+		${whereClause}
+	`;
+
 	// Get questions with source info
 	const questionsResult = await db
 		.prepare(
@@ -119,10 +127,9 @@ export async function loadQuestionsWithStats(
 		return [];
 	}
 
-	const questionIds = questions.map((q) => q.id);
-
 	// Get AI responses (latest batch per model per question)
 	// This fetches ALL individual samples for computing self-consistency
+	// Uses subquery to filter questions to avoid SQLite variable limit
 	const responsesResult = await db
 		.prepare(
 			`
@@ -137,7 +144,7 @@ export async function loadQuestionsWithStats(
 			JOIN questions q ON p.question_id = q.id
 			WHERE p.status = 'complete'
 				AND r.parsed_answer IS NOT NULL
-				AND p.question_id IN (${questionIds.map(() => '?').join(',')})
+				AND p.question_id IN (${questionSubquery})
 				AND (
 					(p.batch_id IS NOT NULL AND p.batch_id = (
 						SELECT p2.batch_id FROM polls p2
@@ -159,7 +166,7 @@ export async function loadQuestionsWithStats(
 				)
 		`
 		)
-		.bind(...questionIds)
+		.bind(...params)
 		.all<ModelResponseRow>();
 
 	// Group responses by question, then by model (keeping all samples per model)
@@ -179,19 +186,20 @@ export async function loadQuestionsWithStats(
 	}
 
 	// Get human distributions (overall only)
+	// Uses subquery to filter questions to avoid SQLite variable limit
 	const humanResult = await db
 		.prepare(
 			`
 			SELECT question_id, distribution, sample_size
 			FROM human_response_distributions
-			WHERE question_id IN (${questionIds.map(() => '?').join(',')})
+			WHERE question_id IN (${questionSubquery})
 				AND continent IS NULL
 				AND education_level IS NULL
 				AND age_group IS NULL
 				AND gender IS NULL
 		`
 		)
-		.bind(...questionIds)
+		.bind(...params)
 		.all<HumanDistributionRow>();
 
 	const humanDistributions = new Map<

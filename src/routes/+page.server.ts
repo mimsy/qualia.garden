@@ -15,7 +15,8 @@ import {
 	ordinalConsensusScore,
 	nominalConsensusScore,
 	type QuestionMeta,
-	type QuestionStats
+	type QuestionStats,
+	type SourceStats
 } from '$lib/alignment';
 
 interface BenchmarkSourceRow {
@@ -60,6 +61,17 @@ interface ExtremeQuestion {
 	score: number;
 	metric: MetricType;
 	isHigh: boolean;
+	// Additional data for display
+	alignment: number | null;
+	consensus: number | null;
+	confidence: number | null;
+	humanMode: string | null;
+	aiMode: string | null;
+	// For ordinal questions
+	humanMean: number | null;
+	aiMean: number | null;
+	responseType: string;
+	options: string[];
 }
 
 export interface SourceWithStats {
@@ -95,30 +107,52 @@ export interface ModelRanking {
 	questionsWithHumanData: number;
 }
 
+// Compute per-question self-consistency (confidence) from raw responses
+function computeQuestionConfidence(
+	rawResponses: Map<string, { name: string; byQuestion: Map<string, { answers: string[]; responseType: string }> }>,
+	questions: Array<{ id: string; options: string[] }>
+): Map<string, number> {
+	const questionOptionsMap = new Map(questions.map(q => [q.id, q.options.length]));
+	const questionConfidences = new Map<string, { total: number; count: number }>();
+
+	for (const [, data] of rawResponses) {
+		for (const [questionId, { answers, responseType }] of data.byQuestion) {
+			let sc: number;
+			if (answers.length < 2) {
+				sc = 100; // Perfect consistency with 1 sample
+			} else {
+				const optionCount = questionOptionsMap.get(questionId) ?? 5;
+				sc = responseType === 'ordinal'
+					? ordinalConsensusScore(answers, optionCount)
+					: nominalConsensusScore(answers);
+			}
+
+			if (!questionConfidences.has(questionId)) {
+				questionConfidences.set(questionId, { total: 0, count: 0 });
+			}
+			const agg = questionConfidences.get(questionId)!;
+			agg.total += sc;
+			agg.count++;
+		}
+	}
+
+	// Average confidence per question across all models
+	const result = new Map<string, number>();
+	for (const [questionId, { total, count }] of questionConfidences) {
+		result.set(questionId, Math.round(total / count));
+	}
+	return result;
+}
+
 // Compute average self-consistency (confidence) from raw responses
 function computeSourceConfidence(
 	rawResponses: Map<string, { name: string; byQuestion: Map<string, { answers: string[]; responseType: string }> }>,
 	questions: Array<{ id: string; options: string[] }>
 ): number | null {
-	const questionOptionsMap = new Map(questions.map(q => [q.id, q.options.length]));
-	const selfConsistencies: number[] = [];
-
-	for (const [, data] of rawResponses) {
-		for (const [questionId, { answers, responseType }] of data.byQuestion) {
-			if (answers.length < 2) {
-				selfConsistencies.push(100); // Perfect consistency with 1 sample
-				continue;
-			}
-			const optionCount = questionOptionsMap.get(questionId) ?? 5;
-			const sc = responseType === 'ordinal'
-				? ordinalConsensusScore(answers, optionCount)
-				: nominalConsensusScore(answers);
-			selfConsistencies.push(sc);
-		}
-	}
-
-	if (selfConsistencies.length === 0) return null;
-	return Math.round(selfConsistencies.reduce((a, b) => a + b, 0) / selfConsistencies.length);
+	const perQuestion = computeQuestionConfidence(rawResponses, questions);
+	if (perQuestion.size === 0) return null;
+	const values = Array.from(perQuestion.values());
+	return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
 }
 
 interface GlobalBounds {
@@ -126,23 +160,29 @@ interface GlobalBounds {
 	alignmentMax: number;
 	consensusMin: number;
 	consensusMax: number;
+	confidenceMin: number;
+	confidenceMax: number;
 }
 
 // Find the "most interesting" question - the one with the most extreme score relative to GLOBAL bounds
 // This highlights questions that stand out globally, not just within their source/category
-// Priority for ties: alignment → consensus
+// Priority for ties: alignment → consensus → confidence
 function findMostInteresting(
 	stats: QuestionStats[],
 	questionTextMap: Map<string, string>,
-	globalBounds: GlobalBounds
+	questionOptionsMap: Map<string, string[]>,
+	globalBounds: GlobalBounds,
+	questionConfidence?: Map<string, number>
 ): ExtremeQuestion | null {
 	if (stats.length === 0) return null;
 
-	const { alignmentMin, alignmentMax, consensusMin, consensusMax } = globalBounds;
+	const { alignmentMin, alignmentMax, consensusMin, consensusMax, confidenceMin, confidenceMax } = globalBounds;
 	const alignmentMid = (alignmentMin + alignmentMax) / 2;
 	const consensusMid = (consensusMin + consensusMax) / 2;
+	const confidenceMid = (confidenceMin + confidenceMax) / 2;
 	const alignmentRange = alignmentMax - alignmentMin;
 	const consensusRange = consensusMax - consensusMin;
+	const confidenceRange = confidenceMax - confidenceMin;
 
 	let best: { stat: QuestionStats; metric: MetricType; normalizedDist: number; score: number } | null = null;
 
@@ -161,8 +201,19 @@ function findMostInteresting(
 		if (q.aiAgreementScore > 0 && consensusRange > 0) {
 			const dist = Math.abs(q.aiAgreementScore - consensusMid);
 			const normalizedDist = dist / (consensusRange / 2);
-			if (!best || normalizedDist > best.normalizedDist) {
+			if (!best || normalizedDist > best.normalizedDist ||
+				(normalizedDist === best.normalizedDist && best.metric === 'confidence')) {
 				best = { stat: q, metric: 'consensus', normalizedDist, score: q.aiAgreementScore };
+			}
+		}
+
+		// Check confidence (if available)
+		const confidence = questionConfidence?.get(q.questionId);
+		if (confidence !== undefined && confidenceRange > 0) {
+			const dist = Math.abs(confidence - confidenceMid);
+			const normalizedDist = dist / (confidenceRange / 2);
+			if (!best || normalizedDist > best.normalizedDist) {
+				best = { stat: q, metric: 'confidence', normalizedDist, score: confidence };
 			}
 		}
 	}
@@ -173,16 +224,34 @@ function findMostInteresting(
 	if (!text) return null;
 
 	// Determine if high or low relative to the global midpoint
-	const isHigh = best.metric === 'alignment'
-		? best.score > alignmentMid
-		: best.score > consensusMid;
+	let isHigh: boolean;
+	if (best.metric === 'alignment') {
+		isHigh = best.score > alignmentMid;
+	} else if (best.metric === 'consensus') {
+		isHigh = best.score > consensusMid;
+	} else {
+		isHigh = best.score > confidenceMid;
+	}
+
+	// Get confidence for this question
+	const confidence = questionConfidence?.get(best.stat.questionId) ?? null;
+	const options = questionOptionsMap.get(best.stat.questionId) ?? [];
 
 	return {
 		id: best.stat.questionId,
 		text,
 		score: best.score,
 		metric: best.metric,
-		isHigh
+		isHigh,
+		alignment: best.stat.humanAiScore > 0 ? best.stat.humanAiScore : null,
+		consensus: best.stat.aiAgreementScore > 0 ? best.stat.aiAgreementScore : null,
+		confidence,
+		humanMode: best.stat.humanMode,
+		aiMode: best.stat.aiMode,
+		humanMean: best.stat.humanMean,
+		aiMean: best.stat.aiMean,
+		responseType: best.stat.responseType,
+		options
 	};
 }
 
@@ -218,11 +287,14 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	const questionsBySource = new Map<string, Array<QuestionMeta & { text: string }>>();
 	const questionTextMap = new Map<string, string>();
+	const questionOptionsMap = new Map<string, string[]>();
 	const questionCategoryMap = new Map<string, string>();
 	const allBenchmarkedQuestions: Array<QuestionMeta & { text: string }> = [];
 
 	for (const q of questionsResult.results) {
 		questionTextMap.set(q.id, q.text);
+		const options = q.options ? JSON.parse(q.options) as string[] : [];
+		questionOptionsMap.set(q.id, options);
 		if (q.category) {
 			questionCategoryMap.set(q.id, q.category);
 		}
@@ -231,7 +303,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 			const questionMeta = {
 				id: q.id,
 				text: q.text,
-				options: q.options ? JSON.parse(q.options) as string[] : [],
+				options,
 				responseType: q.response_type
 			};
 
@@ -327,7 +399,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 	}
 
 	// First pass: compute/collect stats for each source (without extremeQuestion yet)
-	const sourceStatsMap = new Map<string, typeof import('$lib/alignment').SourceStats>();
+	const sourceStatsMap = new Map<string, SourceStats>();
 	const allQuestionStats = new Map<string, QuestionStats>();
 
 	for (const source of sourcesResult.results) {
@@ -386,9 +458,25 @@ export const load: PageServerLoad = async ({ platform }) => {
 		}
 	}
 
-	// Calculate global bounds across ALL questions
+	// Compute per-question confidence for all sources
+	const allQuestionConfidence = new Map<string, number>();
+	const sourceQuestionConfidence = new Map<string, Map<string, number>>();
+	for (const source of sourcesResult.results) {
+		const questions = questionsBySource.get(source.id) || [];
+		const rawResponses = responsesBySource.get(source.id);
+		if (rawResponses && questions.length > 0) {
+			const confidence = computeQuestionConfidence(rawResponses, questions);
+			sourceQuestionConfidence.set(source.id, confidence);
+			for (const [qId, score] of confidence) {
+				allQuestionConfidence.set(qId, score);
+			}
+		}
+	}
+
+	// Calculate global bounds across ALL questions (including confidence)
 	let globalAlignmentMin = 100, globalAlignmentMax = 0;
 	let globalConsensusMin = 100, globalConsensusMax = 0;
+	let globalConfidenceMin = 100, globalConfidenceMax = 0;
 	for (const stat of allQuestionStats.values()) {
 		if (stat.humanAiScore > 0) {
 			globalAlignmentMin = Math.min(globalAlignmentMin, stat.humanAiScore);
@@ -399,11 +487,17 @@ export const load: PageServerLoad = async ({ platform }) => {
 			globalConsensusMax = Math.max(globalConsensusMax, stat.aiAgreementScore);
 		}
 	}
+	for (const confidence of allQuestionConfidence.values()) {
+		globalConfidenceMin = Math.min(globalConfidenceMin, confidence);
+		globalConfidenceMax = Math.max(globalConfidenceMax, confidence);
+	}
 	const globalBounds: GlobalBounds = {
 		alignmentMin: globalAlignmentMin,
 		alignmentMax: globalAlignmentMax,
 		consensusMin: globalConsensusMin,
-		consensusMax: globalConsensusMax
+		consensusMax: globalConsensusMax,
+		confidenceMin: globalConfidenceMin,
+		confidenceMax: globalConfidenceMax
 	};
 
 	// Second pass: build sources array with extremeQuestion using global bounds
@@ -412,15 +506,16 @@ export const load: PageServerLoad = async ({ platform }) => {
 		const sourceStats = sourceStatsMap.get(source.id);
 		const questions = questionsBySource.get(source.id) || [];
 
-		// Compute confidence from raw responses
+		// Get pre-computed confidence data
 		const rawResponses = responsesBySource.get(source.id);
+		const questionConfidence = sourceQuestionConfidence.get(source.id);
 		const aiConfidenceScore = rawResponses && questions.length > 0
 			? computeSourceConfidence(rawResponses, questions)
 			: null;
 
-		// Find the most interesting question using GLOBAL bounds
+		// Find the most interesting question using GLOBAL bounds (including confidence)
 		const extremeQuestion = sourceStats
-			? findMostInteresting(sourceStats.questionStats, questionTextMap, globalBounds)
+			? findMostInteresting(sourceStats.questionStats, questionTextMap, questionOptionsMap, globalBounds, questionConfidence)
 			: null;
 
 		sources.push({
@@ -531,7 +626,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 			aiConfidenceScore: categoryConfidence.get(category) ?? null,
 			questionCount: agg.count,
 			modelCount: modelCountByCategory.get(category) ?? 0,
-			extremeQuestion: findMostInteresting(agg.stats, questionTextMap, globalBounds)
+			extremeQuestion: findMostInteresting(agg.stats, questionTextMap, questionOptionsMap, globalBounds, allQuestionConfidence)
 		});
 	}
 	categories.sort((a, b) => a.category.localeCompare(b.category));

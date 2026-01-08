@@ -3,6 +3,7 @@
 	// ABOUTME: Shows benchmark sources with agreement scores and divergence highlights.
 
 	import type { PageData } from './$types';
+	import { goto } from '$app/navigation';
 	import { getScoreColor } from '$lib/alignment';
 	import ScoreBadge from '$lib/components/ScoreBadge.svelte';
 
@@ -12,21 +13,67 @@
 	type MetricType = 'alignment' | 'consensus' | 'confidence';
 
 	function getMetricLabel(metric: MetricType, isHigh: boolean): string {
-		if (metric === 'alignment') return isHigh ? 'Strong Alignment' : 'Low Alignment';
+		if (metric === 'alignment') return isHigh ? 'High Alignment' : 'Low Alignment';
 		if (metric === 'consensus') return isHigh ? 'High Consensus' : 'Low Consensus';
 		return isHigh ? 'High Confidence' : 'Low Confidence';
 	}
 
 	function getMetricBg(metric: MetricType, isHigh: boolean): string {
-		if (metric === 'alignment') return isHigh ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200';
-		if (metric === 'consensus') return isHigh ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200';
-		return isHigh ? 'bg-violet-50 border-violet-200' : 'bg-slate-50 border-slate-200';
+		// Keep same color family, use lighter shade for low
+		if (metric === 'alignment') return isHigh ? 'bg-emerald-50 border-emerald-300' : 'bg-emerald-50/50 border-emerald-200';
+		if (metric === 'consensus') return isHigh ? 'bg-blue-50 border-blue-300' : 'bg-blue-50/50 border-blue-200';
+		return isHigh ? 'bg-violet-50 border-violet-300' : 'bg-violet-50/50 border-violet-200';
 	}
 
 	function getMetricTextColor(metric: MetricType, isHigh: boolean): string {
-		if (metric === 'alignment') return isHigh ? 'text-emerald-600' : 'text-rose-600';
-		if (metric === 'consensus') return isHigh ? 'text-blue-600' : 'text-amber-600';
-		return isHigh ? 'text-violet-600' : 'text-slate-600';
+		// Keep same color family, use lighter shade for low
+		if (metric === 'alignment') return isHigh ? 'text-emerald-600' : 'text-emerald-500';
+		if (metric === 'consensus') return isHigh ? 'text-blue-600' : 'text-blue-500';
+		return isHigh ? 'text-violet-600' : 'text-violet-500';
+	}
+
+	// Circle progress colors
+	function getCircleColor(type: 'alignment' | 'consensus' | 'confidence'): string {
+		if (type === 'alignment') return 'stroke-emerald-500';
+		if (type === 'consensus') return 'stroke-blue-500';
+		return 'stroke-violet-500';
+	}
+
+	function getCircleBgColor(type: 'alignment' | 'consensus' | 'confidence'): string {
+		if (type === 'alignment') return 'stroke-emerald-100';
+		if (type === 'consensus') return 'stroke-blue-100';
+		return 'stroke-violet-100';
+	}
+
+	function getCircleTextColor(type: 'alignment' | 'consensus' | 'confidence'): string {
+		if (type === 'alignment') return 'text-emerald-600';
+		if (type === 'consensus') return 'text-blue-600';
+		return 'text-violet-600';
+	}
+
+	// Calculate stroke-dasharray for circle progress
+	const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * 14; // radius = 14
+	function getCircleDasharray(score: number): string {
+		const filled = (score / 100) * CIRCLE_CIRCUMFERENCE;
+		return `${filled} ${CIRCLE_CIRCUMFERENCE}`;
+	}
+
+	// Format response value for display
+	// For ordinal: find the option closest to the mean
+	// For nominal: return the mode label directly
+	function formatResponseValue(
+		mode: string | null,
+		mean: number | null,
+		responseType: string,
+		options: string[]
+	): string | null {
+		if (responseType === 'ordinal' && mean !== null && options.length > 0) {
+			// Convert normalized mean (0-1) to index (0 to N-1)
+			const index = Math.round(mean * (options.length - 1));
+			const clampedIndex = Math.max(0, Math.min(options.length - 1, index));
+			return options[clampedIndex];
+		}
+		return mode;
 	}
 </script>
 
@@ -128,27 +175,91 @@
 
 							<!-- Most interesting question -->
 							{#if source.extremeQuestion}
-								{@const metric = source.extremeQuestion.metric}
-								{@const isHigh = source.extremeQuestion.isHigh}
-								<div class="rounded-lg border p-3 {getMetricBg(metric, isHigh)}">
-									<div class="flex items-center gap-2 mb-1.5">
-										{#if isHigh}
-											<svg class="w-3.5 h-3.5 {getMetricTextColor(metric, isHigh)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-												<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+								{@const eq = source.extremeQuestion}
+								{@const metric = eq.metric}
+								{@const isHigh = eq.isHigh}
+								{@const humanValue = formatResponseValue(eq.humanMode, eq.humanMean, eq.responseType, eq.options)}
+								{@const aiValue = formatResponseValue(eq.aiMode, eq.aiMean, eq.responseType, eq.options)}
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<div
+								onclick={(e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); goto(`/questions/${eq.id}`); }}
+								onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); goto(`/questions/${eq.id}`); } }}
+								role="link"
+								tabindex="0"
+								class="rounded-lg border p-3 cursor-pointer {getMetricBg(metric, isHigh)} hover:shadow-md transition-shadow"
+							>
+									<!-- Header with label and circle meters -->
+									<div class="flex items-center justify-between gap-2 mb-2">
+										<div class="flex items-center gap-1.5">
+											<svg class="w-3.5 h-3.5 {getMetricTextColor(metric, isHigh)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+												{#if isHigh}
+													<path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+												{:else}
+													<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+												{/if}
 											</svg>
-										{:else}
-											<svg class="w-3.5 h-3.5 {getMetricTextColor(metric, isHigh)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-												<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-											</svg>
-										{/if}
-										<span class="text-xs font-semibold {getMetricTextColor(metric, isHigh)}">
-											{getMetricLabel(metric, isHigh)}
-										</span>
-										<span class="text-xs font-bold {getMetricTextColor(metric, isHigh)} ml-auto">
-											{Math.round(source.extremeQuestion.score)}
-										</span>
+											<span class="text-xs font-semibold {getMetricTextColor(metric, isHigh)}">
+												{getMetricLabel(metric, isHigh)}
+											</span>
+										</div>
+										<!-- Circle progress meters -->
+										<div class="flex items-center gap-1">
+											{#if eq.alignment !== null}
+												<div class="relative w-7 h-7">
+													<svg class="w-7 h-7 -rotate-90" viewBox="0 0 36 36">
+														<circle cx="18" cy="18" r="14" fill="none" class="{getCircleBgColor('alignment')}" stroke-width="3" />
+														<circle cx="18" cy="18" r="14" fill="none" class="{getCircleColor('alignment')}" stroke-width="3"
+															stroke-dasharray={getCircleDasharray(eq.alignment)}
+															stroke-linecap="round" />
+													</svg>
+													<span class="absolute inset-0 flex items-center justify-center text-[8px] font-bold {getCircleTextColor('alignment')}">{Math.round(eq.alignment)}</span>
+												</div>
+											{/if}
+											{#if eq.consensus !== null}
+												<div class="relative w-7 h-7">
+													<svg class="w-7 h-7 -rotate-90" viewBox="0 0 36 36">
+														<circle cx="18" cy="18" r="14" fill="none" class="{getCircleBgColor('consensus')}" stroke-width="3" />
+														<circle cx="18" cy="18" r="14" fill="none" class="{getCircleColor('consensus')}" stroke-width="3"
+															stroke-dasharray={getCircleDasharray(eq.consensus)}
+															stroke-linecap="round" />
+													</svg>
+													<span class="absolute inset-0 flex items-center justify-center text-[8px] font-bold {getCircleTextColor('consensus')}">{Math.round(eq.consensus)}</span>
+												</div>
+											{/if}
+											{#if eq.confidence !== null}
+												<div class="relative w-7 h-7">
+													<svg class="w-7 h-7 -rotate-90" viewBox="0 0 36 36">
+														<circle cx="18" cy="18" r="14" fill="none" class="{getCircleBgColor('confidence')}" stroke-width="3" />
+														<circle cx="18" cy="18" r="14" fill="none" class="{getCircleColor('confidence')}" stroke-width="3"
+															stroke-dasharray={getCircleDasharray(eq.confidence)}
+															stroke-linecap="round" />
+													</svg>
+													<span class="absolute inset-0 flex items-center justify-center text-[8px] font-bold {getCircleTextColor('confidence')}">{Math.round(eq.confidence)}</span>
+												</div>
+											{/if}
+										</div>
 									</div>
-									<p class="text-sm text-slate-700 line-clamp-2 leading-relaxed">{source.extremeQuestion.text}</p>
+
+									<!-- Question text -->
+									<p class="text-sm text-slate-700 line-clamp-2 leading-relaxed">{eq.text}</p>
+
+									<!-- AI vs Human choices (if available) -->
+									{#if humanValue || aiValue}
+										<div class="flex gap-3 mt-2 text-xs">
+											{#if humanValue}
+												<div class="flex-1 bg-white/60 rounded px-2 py-1.5 border border-slate-200/50">
+													<span class="text-slate-400 uppercase tracking-wide text-[10px]">Human</span>
+													<p class="text-slate-700 font-medium truncate">{humanValue}</p>
+												</div>
+											{/if}
+											{#if aiValue}
+												<div class="flex-1 bg-white/60 rounded px-2 py-1.5 border border-slate-200/50">
+													<span class="text-slate-400 uppercase tracking-wide text-[10px]">AI</span>
+													<p class="text-slate-700 font-medium truncate">{aiValue}</p>
+												</div>
+											{/if}
+										</div>
+									{/if}
 								</div>
 							{:else if source.questionCount > 0 && source.humanAiScore === null}
 								<div class="rounded-lg bg-slate-50 border border-slate-100 p-4 text-center">
@@ -208,27 +319,91 @@
 
 								<!-- Most interesting question -->
 								{#if category.extremeQuestion}
-									{@const metric = category.extremeQuestion.metric}
-									{@const isHigh = category.extremeQuestion.isHigh}
-									<div class="rounded-lg border p-2.5 {getMetricBg(metric, isHigh)}">
-										<div class="flex items-center gap-1.5 mb-1">
-											{#if isHigh}
-												<svg class="w-3 h-3 {getMetricTextColor(metric, isHigh)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-													<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+									{@const eq = category.extremeQuestion}
+									{@const metric = eq.metric}
+									{@const isHigh = eq.isHigh}
+									{@const humanVal = formatResponseValue(eq.humanMode, eq.humanMean, eq.responseType, eq.options)}
+									{@const aiVal = formatResponseValue(eq.aiMode, eq.aiMean, eq.responseType, eq.options)}
+									<!-- svelte-ignore a11y_no_static_element_interactions -->
+									<div
+									onclick={(e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); goto(`/questions/${eq.id}`); }}
+									onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); goto(`/questions/${eq.id}`); } }}
+									role="link"
+									tabindex="0"
+									class="rounded-lg border p-2.5 cursor-pointer {getMetricBg(metric, isHigh)} hover:shadow-md transition-shadow"
+								>
+										<!-- Header with label and circle meters -->
+										<div class="flex items-center justify-between gap-1 mb-1.5">
+											<div class="flex items-center gap-1">
+												<svg class="w-3 h-3 {getMetricTextColor(metric, isHigh)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+													{#if isHigh}
+														<path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+													{:else}
+														<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+													{/if}
 												</svg>
-											{:else}
-												<svg class="w-3 h-3 {getMetricTextColor(metric, isHigh)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-													<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-												</svg>
-											{/if}
-											<span class="text-xs font-semibold {getMetricTextColor(metric, isHigh)}">
-												{getMetricLabel(metric, isHigh)}
-											</span>
-											<span class="text-xs font-bold {getMetricTextColor(metric, isHigh)} ml-auto">
-												{Math.round(category.extremeQuestion.score)}
-											</span>
+												<span class="text-[10px] font-semibold {getMetricTextColor(metric, isHigh)}">
+													{getMetricLabel(metric, isHigh)}
+												</span>
+											</div>
+											<!-- Circle meters -->
+											<div class="flex items-center gap-0.5">
+												{#if eq.alignment !== null}
+													<div class="relative w-5 h-5">
+														<svg class="w-5 h-5 -rotate-90" viewBox="0 0 36 36">
+															<circle cx="18" cy="18" r="14" fill="none" class="{getCircleBgColor('alignment')}" stroke-width="4" />
+															<circle cx="18" cy="18" r="14" fill="none" class="{getCircleColor('alignment')}" stroke-width="4"
+																stroke-dasharray={getCircleDasharray(eq.alignment)}
+																stroke-linecap="round" />
+														</svg>
+														<span class="absolute inset-0 flex items-center justify-center text-[6px] font-bold {getCircleTextColor('alignment')}">{Math.round(eq.alignment)}</span>
+													</div>
+												{/if}
+												{#if eq.consensus !== null}
+													<div class="relative w-5 h-5">
+														<svg class="w-5 h-5 -rotate-90" viewBox="0 0 36 36">
+															<circle cx="18" cy="18" r="14" fill="none" class="{getCircleBgColor('consensus')}" stroke-width="4" />
+															<circle cx="18" cy="18" r="14" fill="none" class="{getCircleColor('consensus')}" stroke-width="4"
+																stroke-dasharray={getCircleDasharray(eq.consensus)}
+																stroke-linecap="round" />
+														</svg>
+														<span class="absolute inset-0 flex items-center justify-center text-[6px] font-bold {getCircleTextColor('consensus')}">{Math.round(eq.consensus)}</span>
+													</div>
+												{/if}
+												{#if eq.confidence !== null}
+													<div class="relative w-5 h-5">
+														<svg class="w-5 h-5 -rotate-90" viewBox="0 0 36 36">
+															<circle cx="18" cy="18" r="14" fill="none" class="{getCircleBgColor('confidence')}" stroke-width="4" />
+															<circle cx="18" cy="18" r="14" fill="none" class="{getCircleColor('confidence')}" stroke-width="4"
+																stroke-dasharray={getCircleDasharray(eq.confidence)}
+																stroke-linecap="round" />
+														</svg>
+														<span class="absolute inset-0 flex items-center justify-center text-[6px] font-bold {getCircleTextColor('confidence')}">{Math.round(eq.confidence)}</span>
+													</div>
+												{/if}
+											</div>
 										</div>
-										<p class="text-xs text-slate-600 line-clamp-2">{category.extremeQuestion.text}</p>
+
+										<!-- Question text -->
+										<p class="text-xs text-slate-600 line-clamp-2">{eq.text}</p>
+
+										<!-- Compact AI vs Human -->
+										{#if humanVal || aiVal}
+											<div class="flex gap-2 mt-1.5 text-[10px]">
+												{#if humanVal}
+													<div class="flex-1 truncate">
+														<span class="text-slate-400">H:</span>
+														<span class="text-slate-600 font-medium">{humanVal}</span>
+													</div>
+												{/if}
+												{#if aiVal}
+													<div class="flex-1 truncate">
+														<span class="text-slate-400">AI:</span>
+														<span class="text-slate-600 font-medium">{aiVal}</span>
+													</div>
+												{/if}
+											</div>
+										{/if}
 									</div>
 								{/if}
 							</a>

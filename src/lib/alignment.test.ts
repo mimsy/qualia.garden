@@ -654,7 +654,7 @@ describe('computeQuestionStats', () => {
 		const modelResponses = new Map([
 			['m1', { name: 'Model 1', responses: { q1: '2', q2: '1' } }]
 		]);
-		const humanDistributions = new Map([
+		const humanDistributions = new Map<string, Record<string, number>>([
 			['q1', { '2': 100 }],
 			['q2', { '1': 80, '2': 20 }]
 		]);
