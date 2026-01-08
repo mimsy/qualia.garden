@@ -398,5 +398,66 @@ export const actions: Actions = {
 		await createModel(platform.env.DB, { name, family, openrouter_id, supports_reasoning });
 
 		return { success: true, created: true };
+	},
+
+	syncReasoning: async ({ platform, locals, url }) => {
+		const isPreview = url.host.includes('.pages.dev') && url.host !== 'qualia-garden.pages.dev';
+		const isAdmin = dev || isPreview || locals.user?.isAdmin;
+
+		if (!isAdmin) {
+			return fail(403, { error: 'Admin access required' });
+		}
+
+		if (!platform?.env?.DB) {
+			return fail(500, { error: 'Database not available' });
+		}
+
+		const db = platform.env.DB;
+
+		// Fetch current reasoning support from OpenRouter
+		const response = await fetch('https://openrouter.ai/api/v1/models', {
+			headers: { 'Content-Type': 'application/json' }
+		});
+
+		if (!response.ok) {
+			return fail(500, { error: 'Failed to fetch models from OpenRouter' });
+		}
+
+		interface OpenRouterModel {
+			id: string;
+			supported_parameters?: string[];
+		}
+
+		const apiResponse = (await response.json()) as { data: OpenRouterModel[] };
+
+		// Build map of model ID -> supports_reasoning
+		const reasoningMap = new Map<string, boolean>();
+		for (const m of apiResponse.data) {
+			const supportsReasoning =
+				m.supported_parameters?.includes('reasoning') || m.supported_parameters?.includes('include_reasoning') || false;
+			reasoningMap.set(m.id, supportsReasoning);
+		}
+
+		// Get all models from our database
+		const modelsResult = await db.prepare('SELECT id, openrouter_id, supports_reasoning FROM models').all<{
+			id: string;
+			openrouter_id: string;
+			supports_reasoning: number;
+		}>();
+
+		// Update models where reasoning status differs
+		let updatedCount = 0;
+		for (const model of modelsResult.results) {
+			const orId = model.openrouter_id || model.id;
+			const shouldSupport = reasoningMap.get(orId) ?? false;
+			const currentlySupports = Boolean(model.supports_reasoning);
+
+			if (shouldSupport !== currentlySupports) {
+				await updateModel(db, model.id, { supports_reasoning: shouldSupport });
+				updatedCount++;
+			}
+		}
+
+		return { success: true, synced: true, updatedCount };
 	}
 };

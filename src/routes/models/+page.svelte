@@ -174,20 +174,46 @@
 	</header>
 
 	<main class="max-w-6xl mx-auto px-6 py-12">
+		<!-- Sync result message -->
+		{#if form?.synced}
+			<div class="mb-6 bg-green-50 text-green-700 px-4 py-3 rounded-lg border border-green-200">
+				Synced reasoning flags from OpenRouter. {form.updatedCount} model{form.updatedCount === 1 ? '' : 's'} updated.
+			</div>
+		{/if}
+
 		<!-- Hero -->
 		<div class="mb-8">
 			<div class="flex items-center justify-between mb-3">
 				<h1 class="text-3xl font-bold text-slate-900 tracking-tight">AI Models</h1>
 				{#if data.isAdmin}
-					<button
-						onclick={() => (showAddModal = true)}
-						class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
-					>
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-						</svg>
-						Add Model
-					</button>
+					<div class="flex items-center gap-2">
+						<form method="POST" action="?/syncReasoning">
+							<button
+								type="submit"
+								class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+								title="Update reasoning flags from OpenRouter"
+							>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+									/>
+								</svg>
+								Sync Reasoning
+							</button>
+						</form>
+						<button
+							onclick={() => (showAddModal = true)}
+							class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+							</svg>
+							Add Model
+						</button>
+					</div>
 				{/if}
 			</div>
 		</div>
