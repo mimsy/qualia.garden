@@ -171,7 +171,7 @@ async function main() {
 		sql.push(`INSERT INTO questions (id, text, category, response_type, options, active, benchmark_source_id, benchmark_question_id, answer_labels) VALUES (
   '${questionId}',
   '${escapeSQL(foundation.questionText)}',
-  'Ethics',
+  'Ethics & Values',
   'multiple_choice',
   '${escapeSQL(JSON.stringify(OPTIONS))}',
   0,

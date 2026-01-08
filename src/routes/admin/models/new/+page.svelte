@@ -51,7 +51,8 @@
 
 	function selectModel(model: OpenRouterModel) {
 		selectedModel = model;
-		displayName = model.name;
+		// Strip provider prefix (e.g., "Anthropic: Claude 3.5 Sonnet" → "Claude 3.5 Sonnet")
+		displayName = model.name.includes(': ') ? model.name.split(': ').slice(1).join(': ') : model.name;
 		// Default to enabled if the model supports reasoning
 		reasoningEnabled = model.supports_reasoning;
 		searchQuery = '';

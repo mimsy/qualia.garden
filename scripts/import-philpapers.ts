@@ -64,7 +64,7 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	meta_ethics: {
 		text: 'Meta-ethics: moral realism or moral anti-realism?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	metaphilosophy: {
 		text: 'Metaphilosophy: naturalism or non-naturalism?',
@@ -76,11 +76,11 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	moral_judgment: {
 		text: 'Moral judgment: cognitivism or non-cognitivism?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	moral_motivation: {
 		text: 'Moral motivation: internalism or externalism?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	newcombs_problem: {
 		text: "Newcomb's problem: one box or two boxes?",
@@ -88,7 +88,7 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	normative_ethics: {
 		text: 'Normative ethics: deontology, consequentialism, or virtue ethics?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	perceptual_experience: {
 		text: 'Perceptual experience: disjunctivism, qualia theory, representationalism, or sense-datum theory?',
@@ -120,7 +120,7 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	trolley_problem: {
 		text: 'Trolley problem (five straight ahead, one on side track, turn requires switching): switch or don\'t switch?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	truth: {
 		text: 'Truth: correspondence, deflationary, or epistemic?',
@@ -138,15 +138,15 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	eating_animals_and_animal_products: {
 		text: 'Eating animals and animal products (permissible in ordinary circumstances?): omnivorism, vegetarianism, or veganism?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	experience_machine: {
 		text: 'Experience machine (would you enter?): yes or no?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	footbridge: {
 		text: 'Footbridge (pushing man off bridge will save five on track below): push or don\'t push?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	gender: {
 		text: 'Gender: biological, psychological, social, or unreal?',
@@ -154,7 +154,7 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	meaning_of_life: {
 		text: 'Meaning of life: subjective, objective, or nonexistent?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	philosophical_progress: {
 		text: 'Philosophical progress (how much is there?): none, a little, or a lot?',
@@ -172,7 +172,7 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	// Additional questions (60 more)
 	abortion: {
 		text: 'Abortion (first trimester, no special circumstances): permissible or impermissible?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	aesthetic_experience: {
 		text: 'Aesthetic experience: perception, pleasure, or sui generis?',
@@ -192,7 +192,7 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	capital_punishment: {
 		text: 'Capital punishment: permissible or impermissible?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	causation: {
 		text: 'Causation: counterfactual/difference-making, process/production, primitive, or nonexistent?',
@@ -220,7 +220,7 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	environmental_ethics: {
 		text: 'Environmental ethics: anthropocentric or non-anthropocentric?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	extended_mind: {
 		text: 'Extended mind: yes or no?',
@@ -244,7 +244,7 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	human_genetic_engineering: {
 		text: 'Human genetic engineering: permissible or impermissible?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	hume: {
 		text: 'Hume (what is his view?): skeptic or naturalist?',
@@ -252,7 +252,7 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	immortality: {
 		text: 'Immortality (would you choose it?): yes or no?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	interlevel_metaphysics: {
 		text: 'Interlevel metaphysics (which is most useful?): grounding, identity, realization, or supervenience?',
@@ -288,15 +288,15 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	moral_principles: {
 		text: 'Moral principles: moral generalism or moral particularism?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	morality: {
 		text: 'Morality: non-naturalism, naturalist realism, constructivism, expressivism, or error theory?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	normative_concepts: {
 		text: 'Normative concepts (which most fundamental?): fit, ought, reason, or value?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	other_minds: {
 		text: 'Other minds (which groups have conscious members?): adult humans, cats, fish, flies, worms, plants, particles, newborn babies, current AI systems, future AI systems?',
@@ -304,7 +304,7 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	ought_implies_can: {
 		text: 'Ought implies can: yes or no?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	philosophical_knowledge: {
 		text: 'Philosophical knowledge (how much is there?): none, a little, or a lot?',
@@ -332,7 +332,7 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	practical_reason: {
 		text: 'Practical reason: Aristotelian, Humean, or Kantian?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	propositional_attitudes: {
 		text: 'Propositional attitudes: dispositional, phenomenal, representational, or nonexistent?',
@@ -400,7 +400,7 @@ const QUESTIONS: Record<string, { text: string; category: string }> = {
 	},
 	well_being: {
 		text: 'Well-being: hedonism, desire satisfaction, or objective list?',
-		category: 'Ethics',
+		category: 'Ethics & Values',
 	},
 	wittgenstein: {
 		text: 'Wittgenstein (which do you prefer?): early or late?',
