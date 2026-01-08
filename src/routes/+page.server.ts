@@ -91,6 +91,7 @@ export interface SourceWithStats {
 
 export interface CategoryStats {
 	category: string;
+	description: string | null;
 	humanAiScore: number;
 	aiAgreementScore: number;
 	aiConfidenceScore: number | null;
@@ -262,6 +263,15 @@ export const load: PageServerLoad = async ({ platform }) => {
 
 	const db = platform.env.DB;
 	const kv = platform.env.ALIGNMENT_CACHE;
+
+	// Get category descriptions
+	const categoryDescriptionsResult = await db
+		.prepare('SELECT name, description, display_order FROM categories ORDER BY display_order')
+		.all<{ name: string; description: string; display_order: number }>();
+	const categoryDescriptions = new Map<string, { description: string; order: number }>();
+	for (const row of categoryDescriptionsResult.results) {
+		categoryDescriptions.set(row.name, { description: row.description, order: row.display_order });
+	}
 
 	// Get all benchmark sources with question counts
 	const sourcesResult = await db
@@ -619,8 +629,10 @@ export const load: PageServerLoad = async ({ platform }) => {
 	const categories: CategoryStats[] = [];
 	for (const [category, agg] of categoryAggregates) {
 		if (agg.count === 0) continue;
+		const catInfo = categoryDescriptions.get(category);
 		categories.push({
 			category,
+			description: catInfo?.description ?? null,
 			humanAiScore: Math.round(agg.totalHumanAiScore / agg.count),
 			aiAgreementScore: Math.round(agg.totalAiAgreementScore / agg.count),
 			aiConfidenceScore: categoryConfidence.get(category) ?? null,
@@ -629,7 +641,13 @@ export const load: PageServerLoad = async ({ platform }) => {
 			extremeQuestion: findMostInteresting(agg.stats, questionTextMap, questionOptionsMap, globalBounds, allQuestionConfidence)
 		});
 	}
-	categories.sort((a, b) => a.category.localeCompare(b.category));
+	// Sort by display_order from categories table, fallback to alphabetical
+	categories.sort((a, b) => {
+		const orderA = categoryDescriptions.get(a.category)?.order ?? 999;
+		const orderB = categoryDescriptions.get(b.category)?.order ?? 999;
+		if (orderA !== orderB) return orderA - orderB;
+		return a.category.localeCompare(b.category);
+	});
 
 	// Compute model rankings
 	// Group all responses by model and compute per-model alignment scores

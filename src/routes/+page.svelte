@@ -298,9 +298,14 @@
 								href="/categories/{encodeURIComponent(category.category)}"
 								class="group bg-white rounded-xl border border-slate-200 p-5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-200"
 							>
-								<h3 class="font-semibold text-slate-900 group-hover:text-slate-700 transition-colors mb-3">
+								<h3 class="font-semibold text-slate-900 group-hover:text-slate-700 transition-colors mb-1">
 									{category.category}
 								</h3>
+								{#if category.description}
+									<p class="text-xs text-slate-500 mb-3 line-clamp-2">{category.description}</p>
+								{:else}
+									<div class="mb-3"></div>
+								{/if}
 
 								<!-- Score bars -->
 								<div class="flex border border-slate-100 rounded-lg mb-3 -mx-1">

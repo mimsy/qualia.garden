@@ -29,6 +29,12 @@ export interface Question {
 	benchmark_question_id: string | null;
 }
 
+export interface Category {
+	name: string;
+	description: string;
+	display_order: number;
+}
+
 export interface BenchmarkSource {
 	id: string;
 	name: string;

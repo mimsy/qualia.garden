@@ -8,27 +8,34 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	type SortKey = 'default' | 'humanSimilarity' | 'aiConsensus' | 'aiConfidence';
-	let sortBy = $state<SortKey>('default');
+	type SortKey = 'newest' | 'humanSimilarity' | 'aiConsensus' | 'aiConfidence';
+	let sortBy = $state<SortKey>('newest');
+	let sortAsc = $state(true);
 
 	const sortedQuestions = $derived.by(() => {
-		if (sortBy === 'default') {
-			return data.questions;
+		const qs = [...data.questions];
+		if (sortBy === 'newest') {
+			return qs.sort((a, b) => {
+				const cmp = b.createdAt.localeCompare(a.createdAt);
+				return sortAsc ? cmp : -cmp;
+			});
 		}
-		return [...data.questions].sort((a, b) => {
+		// For score sorts: nulls always go to bottom
+		return qs.sort((a, b) => {
 			const aVal = a[sortBy];
 			const bVal = b[sortBy];
 			if (aVal === null && bVal === null) return 0;
 			if (aVal === null) return 1;
 			if (bVal === null) return -1;
-			return aVal - bVal;
+			// sortAsc true = lowest first (ascending)
+			return sortAsc ? aVal - bVal : bVal - aVal;
 		});
 	});
 </script>
 
 <svelte:head>
 	<title>{data.category} — Qualia Garden</title>
-	<meta name="description" content="AI responses to {data.category} questions" />
+	<meta name="description" content={data.description ?? `AI responses to ${data.category} questions`} />
 </svelte:head>
 
 <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -54,7 +61,10 @@
 			<!-- Body -->
 			<div class="px-6 pt-5 pb-4">
 				<h1 class="text-2xl font-bold text-slate-900 tracking-tight mb-2">{data.category}</h1>
-				<p class="text-slate-500">
+				{#if data.description}
+					<p class="text-slate-600 mb-3">{data.description}</p>
+				{/if}
+				<p class="text-slate-500 text-sm">
 					{data.questionCount} question{data.questionCount === 1 ? '' : 's'}
 				</p>
 			</div>
@@ -72,21 +82,31 @@
 		</div>
 
 		<!-- Controls -->
-		<div class="flex flex-wrap gap-4 items-center mb-6">
+		<div class="flex flex-wrap gap-4 items-center justify-end mb-6">
 			<div class="flex items-center gap-2">
 				<span class="text-sm text-slate-500">Sort by</span>
 				<select
 					bind:value={sortBy}
-					class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+					class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200"
 				>
-					<option value="default">Default</option>
-					<option value="humanSimilarity">Lowest Alignment</option>
-					<option value="aiConsensus">Lowest AI Consensus</option>
-					<option value="aiConfidence">Lowest AI Confidence</option>
+					<option value="newest">Date</option>
+					<option value="humanSimilarity">Alignment</option>
+					<option value="aiConsensus">AI Consensus</option>
+					<option value="aiConfidence">AI Confidence</option>
 				</select>
-			</div>
-			<div class="text-sm text-slate-400 ml-auto">
-				{sortedQuestions.length} question{sortedQuestions.length === 1 ? '' : 's'}
+				<button
+					onclick={() => (sortAsc = !sortAsc)}
+					class="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200"
+					title={sortAsc ? 'Ascending' : 'Descending'}
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						{#if sortAsc}
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+						{:else}
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						{/if}
+					</svg>
+				</button>
 			</div>
 		</div>
 

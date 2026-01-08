@@ -4,6 +4,7 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { loadQuestionsWithStats, computeOverallStats } from '$lib/db/question-stats';
+import { getCategoryDescription } from '$lib/db/queries';
 
 export const load: PageServerLoad = async ({ params, platform }) => {
 	if (!platform?.env?.DB) {
@@ -23,12 +24,16 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		return error(404, 'Category not found or has no published questions');
 	}
 
+	// Get category description
+	const description = await getCategoryDescription(db, category);
+
 	// Compute overall scores
 	const { overallHumanSimilarity, overallAiConsensus, overallAiConfidence } =
 		computeOverallStats(questions);
 
 	return {
 		category,
+		description,
 		questions,
 		overallHumanSimilarity,
 		overallAiConsensus,

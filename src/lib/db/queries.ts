@@ -2,7 +2,7 @@
 // ABOUTME: Provides CRUD operations for models, questions, polls, and responses.
 
 import { nanoid } from 'nanoid';
-import type { Model, Question, Poll, Response, PollStatus, QuestionStatus } from './types';
+import type { Model, Question, Poll, Response, PollStatus, QuestionStatus, Category } from './types';
 
 // Models
 export async function getModels(db: D1Database, activeOnly = true): Promise<Model[]> {
@@ -330,6 +330,21 @@ export async function getCategories(db: D1Database): Promise<string[]> {
 		.prepare('SELECT DISTINCT category FROM questions WHERE category IS NOT NULL ORDER BY category')
 		.all<{ category: string }>();
 	return result.results.map((r) => r.category);
+}
+
+export async function getCategoriesWithDescriptions(db: D1Database): Promise<Category[]> {
+	const result = await db
+		.prepare('SELECT name, description, display_order FROM categories ORDER BY display_order')
+		.all<Category>();
+	return result.results;
+}
+
+export async function getCategoryDescription(db: D1Database, name: string): Promise<string | null> {
+	const result = await db
+		.prepare('SELECT description FROM categories WHERE name = ?')
+		.bind(name)
+		.first<{ description: string }>();
+	return result?.description ?? null;
 }
 
 // Users

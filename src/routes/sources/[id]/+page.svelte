@@ -3,35 +3,33 @@
 	// ABOUTME: Displays AI vs Human distribution comparison for each question.
 
 	import type { PageData } from './$types';
-	import type { QuestionWithStats } from '$lib/db/question-stats';
 	import { marked } from 'marked';
 	import QuestionCard from '$lib/components/QuestionCard.svelte';
 	import ScoreBadge from '$lib/components/ScoreBadge.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
-	type SortKey = 'default' | 'humanSimilarity' | 'aiConsensus' | 'aiConfidence';
-	let sortBy = $state<SortKey>('default');
-	let selectedCategory = $state('');
+	type SortKey = 'newest' | 'humanSimilarity' | 'aiConsensus' | 'aiConfidence';
+	let sortBy = $state<SortKey>('newest');
+	let sortAsc = $state(true);
 
-	type ScoreKey = 'humanSimilarity' | 'aiConsensus' | 'aiConfidence';
-
-	const filteredQuestions = $derived.by(() => {
-		let qs: QuestionWithStats[] = selectedCategory
-			? data.questions.filter((q: QuestionWithStats) => q.category === selectedCategory)
-			: data.questions;
-
-		if (sortBy === 'default') {
-			return qs;
+	const sortedQuestions = $derived.by(() => {
+		const qs = [...data.questions];
+		if (sortBy === 'newest') {
+			return qs.sort((a, b) => {
+				const cmp = b.createdAt.localeCompare(a.createdAt);
+				return sortAsc ? cmp : -cmp;
+			});
 		}
-		const key = sortBy as ScoreKey;
-		return [...qs].sort((a, b) => {
-			const aVal = a[key];
-			const bVal = b[key];
+		// For score sorts: nulls always go to bottom
+		return qs.sort((a, b) => {
+			const aVal = a[sortBy];
+			const bVal = b[sortBy];
 			if (aVal === null && bVal === null) return 0;
 			if (aVal === null) return 1;
 			if (bVal === null) return -1;
-			return aVal - bVal;
+			// sortAsc true = lowest first (ascending)
+			return sortAsc ? aVal - bVal : bVal - aVal;
 		});
 	});
 </script>
@@ -61,15 +59,6 @@
 	<main class="max-w-6xl mx-auto px-6 py-8">
 		<!-- Source Header Card -->
 		<div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-8">
-			<!-- Header bar with category count -->
-			{#if data.categories && data.categories.length > 1}
-				<div class="flex border-b border-slate-100 text-xs">
-					<div class="py-2 px-5 text-slate-500">
-						<span class="text-slate-400">Categories:</span> {data.categories.length}
-					</div>
-				</div>
-			{/if}
-
 			<!-- Body -->
 			<div class="px-6 pt-5 pb-4">
 				<div class="flex items-center gap-3 flex-wrap mb-3">
@@ -115,45 +104,41 @@
 		</div>
 
 		<!-- Controls -->
-		<div class="flex flex-wrap gap-4 items-center mb-6">
+		<div class="flex flex-wrap gap-4 items-center justify-end mb-6">
 			<div class="flex items-center gap-2">
 				<span class="text-sm text-slate-500">Sort by</span>
 				<select
 					bind:value={sortBy}
-					class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+					class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200"
 				>
-					<option value="default">Default</option>
-					<option value="humanSimilarity">Lowest Alignment</option>
-					<option value="aiConsensus">Lowest AI Consensus</option>
-					<option value="aiConfidence">Lowest AI Confidence</option>
+					<option value="newest">Date</option>
+					<option value="humanSimilarity">Alignment</option>
+					<option value="aiConsensus">AI Consensus</option>
+					<option value="aiConfidence">AI Confidence</option>
 				</select>
-			</div>
-			{#if data.categories && data.categories.length > 1}
-				<div class="flex items-center gap-2">
-					<span class="text-sm text-slate-500">Category</span>
-					<select
-						bind:value={selectedCategory}
-						class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-					>
-						<option value="">All</option>
-						{#each data.categories as cat (cat)}
-							<option value={cat}>{cat}</option>
-						{/each}
-					</select>
-				</div>
-			{/if}
-			<div class="text-sm text-slate-400 ml-auto">
-				{filteredQuestions.length} question{filteredQuestions.length === 1 ? '' : 's'}
+				<button
+					onclick={() => (sortAsc = !sortAsc)}
+					class="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200"
+					title={sortAsc ? 'Ascending' : 'Descending'}
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						{#if sortAsc}
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+						{:else}
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						{/if}
+					</svg>
+				</button>
 			</div>
 		</div>
 
 		<!-- Questions with Full Results -->
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-			{#each filteredQuestions as question (question.id)}
+			{#each sortedQuestions as question (question.id)}
 				<QuestionCard {question} showCategory />
 			{/each}
 		</div>
-		{#if filteredQuestions.length === 0}
+		{#if sortedQuestions.length === 0}
 			<div class="text-center py-16">
 				<p class="text-slate-500">No questions in this source yet.</p>
 			</div>
