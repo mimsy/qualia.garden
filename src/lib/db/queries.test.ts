@@ -17,6 +17,7 @@ import {
 	getFamilies,
 	getQuestions,
 	getQuestion,
+	getQuestionsByCategory,
 	createQuestion,
 	updateQuestion,
 	getPoll,
@@ -28,7 +29,11 @@ import {
 	getCategories,
 	getUserCount,
 	isFirstUser,
-	setUserAdmin
+	setUserAdmin,
+	getAdminUsers,
+	getQuestionResults,
+	getPollsForQuestion,
+	getResponseForPoll
 } from './queries';
 import type { Model, Question, Poll, Response } from './types';
 
@@ -146,6 +151,52 @@ describe('Model Queries', () => {
 			expect(mockStatement.bind).toHaveBeenCalledWith('New Name', 'test-id');
 		});
 
+		it('updates family field', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'test-id' });
+			await updateModel(db, 'test-id', { family: 'OpenAI' });
+
+			expect(db.prepare).toHaveBeenCalledWith('UPDATE models SET family = ? WHERE id = ?');
+			expect(mockStatement.bind).toHaveBeenCalledWith('OpenAI', 'test-id');
+		});
+
+		it('updates openrouter_id field', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'test-id' });
+			await updateModel(db, 'test-id', { openrouter_id: 'openai/gpt-4o' });
+
+			expect(db.prepare).toHaveBeenCalledWith('UPDATE models SET openrouter_id = ? WHERE id = ?');
+			expect(mockStatement.bind).toHaveBeenCalledWith('openai/gpt-4o', 'test-id');
+		});
+
+		it('updates active field', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'test-id' });
+			await updateModel(db, 'test-id', { active: true });
+
+			expect(db.prepare).toHaveBeenCalledWith('UPDATE models SET active = ? WHERE id = ?');
+			expect(mockStatement.bind).toHaveBeenCalledWith(1, 'test-id');
+		});
+
+		it('updates active field to false', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'test-id' });
+			await updateModel(db, 'test-id', { active: false });
+
+			expect(mockStatement.bind).toHaveBeenCalledWith(0, 'test-id');
+		});
+
+		it('updates supports_reasoning field', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'test-id' });
+			await updateModel(db, 'test-id', { supports_reasoning: true });
+
+			expect(db.prepare).toHaveBeenCalledWith('UPDATE models SET supports_reasoning = ? WHERE id = ?');
+			expect(mockStatement.bind).toHaveBeenCalledWith(1, 'test-id');
+		});
+
+		it('updates supports_reasoning field to false', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'test-id' });
+			await updateModel(db, 'test-id', { supports_reasoning: false });
+
+			expect(mockStatement.bind).toHaveBeenCalledWith(0, 'test-id');
+		});
+
 		it('returns unchanged model if no fields provided', async () => {
 			mockStatement.first.mockResolvedValue({ id: 'test-id', name: 'Old Name' });
 			await updateModel(db, 'test-id', {});
@@ -218,6 +269,27 @@ describe('Question Queries', () => {
 		});
 	});
 
+	describe('getQuestionsByCategory', () => {
+		it('queries by category', async () => {
+			mockStatement.all.mockResolvedValue({
+				results: [{ id: 'q-1', category: 'Ethics' }]
+			});
+			const result = await getQuestionsByCategory(db, 'Ethics');
+
+			expect(db.prepare).toHaveBeenCalledWith(
+				'SELECT * FROM questions WHERE category = ? AND active = 1 ORDER BY created_at'
+			);
+			expect(mockStatement.bind).toHaveBeenCalledWith('Ethics');
+			expect(result).toHaveLength(1);
+		});
+
+		it('returns empty array when no matches', async () => {
+			mockStatement.all.mockResolvedValue({ results: [] });
+			const result = await getQuestionsByCategory(db, 'Nonexistent');
+			expect(result).toHaveLength(0);
+		});
+	});
+
 	describe('createQuestion', () => {
 		it('creates question with required fields', async () => {
 			const mockQuestion: Question = {
@@ -262,6 +334,52 @@ describe('Question Queries', () => {
 			expect(db.prepare).toHaveBeenCalledWith(
 				'UPDATE questions SET text = ?, category = ? WHERE id = ?'
 			);
+		});
+
+		it('updates response_type field', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'q-123' });
+			await updateQuestion(db, 'q-123', { response_type: 'nominal' });
+
+			expect(db.prepare).toHaveBeenCalledWith(
+				'UPDATE questions SET response_type = ? WHERE id = ?'
+			);
+			expect(mockStatement.bind).toHaveBeenCalledWith('nominal', 'q-123');
+		});
+
+		it('updates options field', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'q-123' });
+			await updateQuestion(db, 'q-123', { options: '["Yes", "No"]' });
+
+			expect(db.prepare).toHaveBeenCalledWith(
+				'UPDATE questions SET options = ? WHERE id = ?'
+			);
+		});
+
+		it('updates active field (true)', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'q-123' });
+			await updateQuestion(db, 'q-123', { active: true });
+
+			expect(db.prepare).toHaveBeenCalledWith(
+				'UPDATE questions SET active = ? WHERE id = ?'
+			);
+			expect(mockStatement.bind).toHaveBeenCalledWith(1, 'q-123');
+		});
+
+		it('updates active field (false)', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'q-123' });
+			await updateQuestion(db, 'q-123', { active: false });
+
+			expect(mockStatement.bind).toHaveBeenCalledWith(0, 'q-123');
+		});
+
+		it('updates status field', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'q-123' });
+			await updateQuestion(db, 'q-123', { status: 'published' });
+
+			expect(db.prepare).toHaveBeenCalledWith(
+				'UPDATE questions SET status = ? WHERE id = ?'
+			);
+			expect(mockStatement.bind).toHaveBeenCalledWith('published', 'q-123');
 		});
 	});
 });
@@ -504,6 +622,169 @@ describe('Aggregation Queries', () => {
 			mockStatement.all.mockResolvedValue({ results: [] });
 			const result = await getCategories(db);
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('getAdminUsers', () => {
+		it('returns admin users', async () => {
+			mockStatement.all.mockResolvedValue({
+				results: [
+					{ id: 'u-1', email: 'admin1@test.com', name: 'Admin One' },
+					{ id: 'u-2', email: 'admin2@test.com', name: 'Admin Two' }
+				]
+			});
+			const result = await getAdminUsers(db);
+			expect(result).toHaveLength(2);
+			expect(result[0].email).toBe('admin1@test.com');
+		});
+
+		it('returns empty array when no admins', async () => {
+			mockStatement.all.mockResolvedValue({ results: [] });
+			const result = await getAdminUsers(db);
+			expect(result).toEqual([]);
+		});
+	});
+});
+
+describe('Question Results Queries', () => {
+	let db: D1Database;
+	let mockStatement: ReturnType<typeof createMockDb>['mockStatement'];
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		const mock = createMockDb();
+		db = mock.db;
+		mockStatement = mock.mockStatement;
+	});
+
+	describe('getPollsForQuestion', () => {
+		it('returns polls for a question', async () => {
+			mockStatement.all.mockResolvedValue({
+				results: [
+					{ id: 'p-1', question_id: 'q-1', model_id: 'm-1', status: 'complete' },
+					{ id: 'p-2', question_id: 'q-1', model_id: 'm-2', status: 'complete' }
+				]
+			});
+			const result = await getPollsForQuestion(db, 'q-1');
+			expect(result).toHaveLength(2);
+		});
+	});
+
+	describe('getResponseForPoll', () => {
+		it('returns response for a poll', async () => {
+			mockStatement.first.mockResolvedValue({
+				id: 'r-1',
+				poll_id: 'p-1',
+				parsed_answer: '1'
+			});
+			const result = await getResponseForPoll(db, 'p-1');
+			expect(result).toBeTruthy();
+			expect(result?.parsed_answer).toBe('1');
+		});
+
+		it('returns null when no response', async () => {
+			mockStatement.first.mockResolvedValue(null);
+			const result = await getResponseForPoll(db, 'p-1');
+			expect(result).toBeNull();
+		});
+	});
+
+	describe('getQuestionResults', () => {
+		it('returns null when question not found', async () => {
+			mockStatement.first.mockResolvedValue(null);
+			const result = await getQuestionResults(db, 'nonexistent');
+			expect(result).toBeNull();
+		});
+
+		it('returns question with responses', async () => {
+			const mockQuestion: Question = {
+				id: 'q-1',
+				text: 'Test question?',
+				category: 'Test',
+				response_type: 'ordinal',
+				options: '["A", "B"]',
+				active: true,
+				status: 'published',
+				created_at: '2024-01-01',
+				benchmark_source_id: null,
+				benchmark_question_id: null
+			};
+			const mockModel: Model = {
+				id: 'm-1',
+				name: 'GPT-4',
+				family: 'OpenAI',
+				openrouter_id: 'openai/gpt-4',
+				active: true,
+				supports_reasoning: false,
+				created_at: '2024-01-01'
+			};
+			const mockPoll: Poll = {
+				id: 'p-1',
+				question_id: 'q-1',
+				model_id: 'm-1',
+				status: 'complete',
+				batch_id: null,
+				created_at: '2024-01-01',
+				completed_at: '2024-01-01'
+			};
+			const mockResponse: Response = {
+				id: 'r-1',
+				poll_id: 'p-1',
+				raw_response: 'A',
+				parsed_answer: '1',
+				justification: 'Because...',
+				reasoning: null,
+				response_time_ms: 1000,
+				error: null,
+				created_at: '2024-01-01'
+			};
+
+			// Mock: first call returns question, then polls, then model, then response
+			mockStatement.first
+				.mockResolvedValueOnce(mockQuestion) // getQuestion
+				.mockResolvedValueOnce(mockModel) // getModel
+				.mockResolvedValueOnce(mockResponse); // getResponseForPoll
+			mockStatement.all.mockResolvedValueOnce({ results: [mockPoll] }); // getPollsForQuestion
+
+			const result = await getQuestionResults(db, 'q-1');
+
+			expect(result).toBeTruthy();
+			expect(result?.question.id).toBe('q-1');
+			expect(result?.responses).toHaveLength(1);
+			expect(result?.responses[0].model.name).toBe('GPT-4');
+		});
+
+		it('skips polls without matching models', async () => {
+			const mockQuestion: Question = {
+				id: 'q-1',
+				text: 'Test question?',
+				category: 'Test',
+				response_type: 'ordinal',
+				options: '["A", "B"]',
+				active: true,
+				status: 'published',
+				created_at: '2024-01-01',
+				benchmark_source_id: null,
+				benchmark_question_id: null
+			};
+			const mockPoll: Poll = {
+				id: 'p-1',
+				question_id: 'q-1',
+				model_id: 'm-deleted',
+				status: 'complete',
+				batch_id: null,
+				created_at: '2024-01-01',
+				completed_at: '2024-01-01'
+			};
+
+			mockStatement.first
+				.mockResolvedValueOnce(mockQuestion) // getQuestion
+				.mockResolvedValueOnce(null); // getModel returns null
+			mockStatement.all.mockResolvedValueOnce({ results: [mockPoll] });
+
+			const result = await getQuestionResults(db, 'q-1');
+
+			expect(result?.responses).toHaveLength(0);
 		});
 	});
 });
