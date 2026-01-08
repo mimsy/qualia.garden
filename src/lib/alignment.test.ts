@@ -302,11 +302,12 @@ describe('ordinalAgreementScore', () => {
 		expect(score).toBe(0);
 	});
 
-	it('returns 50 for adjacent distributions', () => {
+	it('returns 25 for adjacent but non-overlapping distributions', () => {
 		const humanDist = { '1': 100 };
 		const aiDist = { '2': 100 };
+		// EMD similarity = 50% (1 step apart), overlap = 0%, blended = 25%
 		const score = ordinalAgreementScore(humanDist, aiDist, options);
-		expect(score).toBe(50);
+		expect(score).toBe(25);
 	});
 
 	it('handles label-based distributions', () => {

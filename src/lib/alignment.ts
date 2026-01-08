@@ -232,9 +232,9 @@ export function arrayMode(answers: string[]): string | null {
 	return maxKey;
 }
 
-// Calculate agreement score (0-100) for ordinal questions using Earth Mover's Distance
-// EMD respects the ordinal nature of the scale - nearby options are more similar than distant ones
-// Both distributions are normalized to numeric keys before comparison
+// Calculate agreement score (0-100) for ordinal questions
+// Blends EMD (respects ordinal distance) with distribution overlap (captures shape similarity)
+// 50% EMD + 50% overlap provides intuitive scores that match visual perception
 export function ordinalAgreementScore(
 	humanDist: Record<string, number>,
 	aiDist: Record<string, number>,
@@ -247,8 +247,16 @@ export function ordinalAgreementScore(
 		...Object.keys(normalizedHuman).map(k => parseInt(k, 10) || 0),
 		...Object.keys(normalizedAi).map(k => parseInt(k, 10) || 0)
 	);
-	const similarity = ordinalEMDSimilarity(normalizedHuman, normalizedAi, optionCount);
-	return Math.round(similarity * 100);
+
+	// EMD similarity: respects ordinal nature (adjacent options are more similar)
+	const emdSimilarity = ordinalEMDSimilarity(normalizedHuman, normalizedAi, optionCount);
+
+	// Overlap similarity: captures shape differences humans notice visually
+	const overlapSimilarity = distributionOverlap(normalizedHuman, normalizedAi);
+
+	// Blend 50% EMD + 50% overlap
+	const blended = emdSimilarity * 0.5 + overlapSimilarity * 0.5;
+	return Math.round(blended * 100);
 }
 
 // Legacy mean-based ordinal agreement (kept for reference, not used)
