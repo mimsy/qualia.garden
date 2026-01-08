@@ -3,10 +3,31 @@
 	// ABOUTME: Shows benchmark sources with agreement scores and divergence highlights.
 
 	import type { PageData } from './$types';
-	import { getScoreColor, getDivergenceBg } from '$lib/alignment';
+	import { getScoreColor } from '$lib/alignment';
 	import ScoreBadge from '$lib/components/ScoreBadge.svelte';
 
 	let { data } = $props<{ data: PageData }>();
+
+	// Get styling for extreme question based on metric type and score
+	type MetricType = 'alignment' | 'consensus' | 'confidence';
+
+	function getMetricLabel(metric: MetricType, isHigh: boolean): string {
+		if (metric === 'alignment') return isHigh ? 'Strong Alignment' : 'Low Alignment';
+		if (metric === 'consensus') return isHigh ? 'High Consensus' : 'Low Consensus';
+		return isHigh ? 'High Confidence' : 'Low Confidence';
+	}
+
+	function getMetricBg(metric: MetricType, isHigh: boolean): string {
+		if (metric === 'alignment') return isHigh ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200';
+		if (metric === 'consensus') return isHigh ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200';
+		return isHigh ? 'bg-violet-50 border-violet-200' : 'bg-slate-50 border-slate-200';
+	}
+
+	function getMetricTextColor(metric: MetricType, isHigh: boolean): string {
+		if (metric === 'alignment') return isHigh ? 'text-emerald-600' : 'text-rose-600';
+		if (metric === 'consensus') return isHigh ? 'text-blue-600' : 'text-amber-600';
+		return isHigh ? 'text-violet-600' : 'text-slate-600';
+	}
 </script>
 
 <svelte:head>
@@ -82,13 +103,17 @@
 								</div>
 							</div>
 
-							<!-- Dual score bars -->
+							<!-- Score bars -->
 							{#if source.humanAiScore !== null}
 								<div class="flex border border-slate-100 rounded-lg mb-4 -mx-1">
 									<ScoreBadge score={source.humanAiScore} label="Alignment" type="humanSimilarity" />
 									{#if source.aiAgreementScore !== null}
 										<div class="w-px bg-slate-100"></div>
 										<ScoreBadge score={source.aiAgreementScore} label="Consensus" type="aiConsensus" />
+									{/if}
+									{#if source.aiConfidenceScore !== null}
+										<div class="w-px bg-slate-100"></div>
+										<ScoreBadge score={source.aiConfidenceScore} label="Confidence" type="aiConfidence" />
 									{/if}
 								</div>
 							{/if}
@@ -101,25 +126,27 @@
 								{/if}
 							</div>
 
-							<!-- Extreme question highlight -->
+							<!-- Most interesting question -->
 							{#if source.extremeQuestion}
-								<div class="rounded-lg border p-3 {getDivergenceBg(source.extremeQuestion.score)}">
-									<div class="flex items-center gap-2 mb-1">
-										{#if source.extremeQuestion.isHighAgreement}
-											<svg class="w-3.5 h-3.5 {getScoreColor(source.extremeQuestion.score)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								{@const metric = source.extremeQuestion.metric}
+								{@const isHigh = source.extremeQuestion.isHigh}
+								<div class="rounded-lg border p-3 {getMetricBg(metric, isHigh)}">
+									<div class="flex items-center gap-2 mb-1.5">
+										{#if isHigh}
+											<svg class="w-3.5 h-3.5 {getMetricTextColor(metric, isHigh)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 												<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
 											</svg>
-											<span class="text-xs font-medium {getScoreColor(source.extremeQuestion.score)}">
-												Strong Alignment · {Math.round(source.extremeQuestion.score)}
-											</span>
 										{:else}
-											<svg class="w-3.5 h-3.5 {getScoreColor(source.extremeQuestion.score)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-												<path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+											<svg class="w-3.5 h-3.5 {getMetricTextColor(metric, isHigh)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+												<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
 											</svg>
-											<span class="text-xs font-medium {getScoreColor(source.extremeQuestion.score)}">
-												Divergence · {Math.round(source.extremeQuestion.score)}
-											</span>
 										{/if}
+										<span class="text-xs font-semibold {getMetricTextColor(metric, isHigh)}">
+											{getMetricLabel(metric, isHigh)}
+										</span>
+										<span class="text-xs font-bold {getMetricTextColor(metric, isHigh)} ml-auto">
+											{Math.round(source.extremeQuestion.score)}
+										</span>
 									</div>
 									<p class="text-sm text-slate-700 line-clamp-2 leading-relaxed">{source.extremeQuestion.text}</p>
 								</div>
@@ -164,36 +191,42 @@
 									{category.category}
 								</h3>
 
-								<!-- Dual score bars -->
+								<!-- Score bars -->
 								<div class="flex border border-slate-100 rounded-lg mb-3 -mx-1">
 									<ScoreBadge score={category.humanAiScore} label="Alignment" type="humanSimilarity" />
 									<div class="w-px bg-slate-100"></div>
 									<ScoreBadge score={category.aiAgreementScore} label="Consensus" type="aiConsensus" />
+									{#if category.aiConfidenceScore !== null}
+										<div class="w-px bg-slate-100"></div>
+										<ScoreBadge score={category.aiConfidenceScore} label="Confidence" type="aiConfidence" />
+									{/if}
 								</div>
 
 								<div class="text-xs text-slate-400 mb-3">
 									{category.questionCount} question{category.questionCount === 1 ? '' : 's'} · {category.modelCount} models
 								</div>
 
-								<!-- Extreme question -->
+								<!-- Most interesting question -->
 								{#if category.extremeQuestion}
-									<div class="rounded-lg border p-2.5 {getDivergenceBg(category.extremeQuestion.score)}">
+									{@const metric = category.extremeQuestion.metric}
+									{@const isHigh = category.extremeQuestion.isHigh}
+									<div class="rounded-lg border p-2.5 {getMetricBg(metric, isHigh)}">
 										<div class="flex items-center gap-1.5 mb-1">
-											{#if category.extremeQuestion.isHighAgreement}
-												<svg class="w-3 h-3 {getScoreColor(category.extremeQuestion.score)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+											{#if isHigh}
+												<svg class="w-3 h-3 {getMetricTextColor(metric, isHigh)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 													<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
 												</svg>
-												<span class="text-xs font-medium {getScoreColor(category.extremeQuestion.score)}">
-													{Math.round(category.extremeQuestion.score)}
-												</span>
 											{:else}
-												<svg class="w-3 h-3 {getScoreColor(category.extremeQuestion.score)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-													<path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+												<svg class="w-3 h-3 {getMetricTextColor(metric, isHigh)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+													<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
 												</svg>
-												<span class="text-xs font-medium {getScoreColor(category.extremeQuestion.score)}">
-													{Math.round(category.extremeQuestion.score)}
-												</span>
 											{/if}
+											<span class="text-xs font-semibold {getMetricTextColor(metric, isHigh)}">
+												{getMetricLabel(metric, isHigh)}
+											</span>
+											<span class="text-xs font-bold {getMetricTextColor(metric, isHigh)} ml-auto">
+												{Math.round(category.extremeQuestion.score)}
+											</span>
 										</div>
 										<p class="text-xs text-slate-600 line-clamp-2">{category.extremeQuestion.text}</p>
 									</div>

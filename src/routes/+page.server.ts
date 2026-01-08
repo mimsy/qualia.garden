@@ -12,6 +12,8 @@ import {
 	CACHE_VERSION,
 	ordinalAgreementScore,
 	nominalAgreementScore,
+	ordinalConsensusScore,
+	nominalConsensusScore,
 	type QuestionMeta,
 	type QuestionStats
 } from '$lib/alignment';
@@ -50,11 +52,14 @@ interface HumanDistributionRow {
 	distribution: string;
 }
 
+type MetricType = 'alignment' | 'consensus' | 'confidence';
+
 interface ExtremeQuestion {
 	id: string;
 	text: string;
 	score: number;
-	isHighAgreement: boolean;
+	metric: MetricType;
+	isHigh: boolean;
 }
 
 export interface SourceWithStats {
@@ -67,6 +72,7 @@ export interface SourceWithStats {
 	questionCount: number;
 	humanAiScore: number | null;
 	aiAgreementScore: number | null;
+	aiConfidenceScore: number | null;
 	modelCount: number;
 	extremeQuestion: ExtremeQuestion | null;
 }
@@ -75,6 +81,7 @@ export interface CategoryStats {
 	category: string;
 	humanAiScore: number;
 	aiAgreementScore: number;
+	aiConfidenceScore: number | null;
 	questionCount: number;
 	modelCount: number;
 	extremeQuestion: ExtremeQuestion | null;
@@ -88,33 +95,69 @@ export interface ModelRanking {
 	questionsWithHumanData: number;
 }
 
-// Find the question with score furthest from 50 (most extreme agreement or disagreement)
-function findMostExtreme(
-	stats: QuestionStats[],
-	questionTextMap: Map<string, string>
-): ExtremeQuestion | null {
-	let mostExtreme: QuestionStats | null = null;
-	let maxDistance = -1;
+// Compute average self-consistency (confidence) from raw responses
+function computeSourceConfidence(
+	rawResponses: Map<string, { name: string; byQuestion: Map<string, { answers: string[]; responseType: string }> }>,
+	questions: Array<{ id: string; options: string[] }>
+): number | null {
+	const questionOptionsMap = new Map(questions.map(q => [q.id, q.options.length]));
+	const selfConsistencies: number[] = [];
 
-	for (const q of stats) {
-		if (q.humanAiScore === 0) continue;
-		const distance = Math.abs(q.humanAiScore - 50);
-		if (distance > maxDistance) {
-			maxDistance = distance;
-			mostExtreme = q;
+	for (const [, data] of rawResponses) {
+		for (const [questionId, { answers, responseType }] of data.byQuestion) {
+			if (answers.length < 2) {
+				selfConsistencies.push(100); // Perfect consistency with 1 sample
+				continue;
+			}
+			const optionCount = questionOptionsMap.get(questionId) ?? 5;
+			const sc = responseType === 'ordinal'
+				? ordinalConsensusScore(answers, optionCount)
+				: nominalConsensusScore(answers);
+			selfConsistencies.push(sc);
 		}
 	}
 
-	if (!mostExtreme) return null;
+	if (selfConsistencies.length === 0) return null;
+	return Math.round(selfConsistencies.reduce((a, b) => a + b, 0) / selfConsistencies.length);
+}
 
-	const text = questionTextMap.get(mostExtreme.questionId);
+// Find the "most interesting" question - the one with the most extreme score across metrics
+// Priority for ties: alignment → consensus (furthest from 50)
+function findMostInteresting(
+	stats: QuestionStats[],
+	questionTextMap: Map<string, string>
+): ExtremeQuestion | null {
+	let best: { stat: QuestionStats; metric: MetricType; distance: number; score: number } | null = null;
+
+	for (const q of stats) {
+		// Check alignment (humanAiScore)
+		if (q.humanAiScore > 0) {
+			const alignmentDist = Math.abs(q.humanAiScore - 50);
+			if (!best || alignmentDist > best.distance || (alignmentDist === best.distance && best.metric !== 'alignment')) {
+				best = { stat: q, metric: 'alignment', distance: alignmentDist, score: q.humanAiScore };
+			}
+		}
+
+		// Check consensus (aiAgreementScore)
+		if (q.aiAgreementScore > 0) {
+			const consensusDist = Math.abs(q.aiAgreementScore - 50);
+			if (!best || consensusDist > best.distance) {
+				best = { stat: q, metric: 'consensus', distance: consensusDist, score: q.aiAgreementScore };
+			}
+		}
+	}
+
+	if (!best) return null;
+
+	const text = questionTextMap.get(best.stat.questionId);
 	if (!text) return null;
 
 	return {
-		id: mostExtreme.questionId,
+		id: best.stat.questionId,
 		text,
-		score: mostExtreme.humanAiScore,
-		isHighAgreement: mostExtreme.humanAiScore > 50
+		score: best.score,
+		metric: best.metric,
+		isHigh: best.score > 50
 	};
 }
 
@@ -311,9 +354,15 @@ export const load: PageServerLoad = async ({ platform }) => {
 		// Use cached AI agreement score
 		const aiAgreementScore = sourceStats?.overallAiAgreement ?? null;
 
-		// Find the most extreme question (furthest from 50)
+		// Compute confidence from raw responses
+		const rawResponses = responsesBySource.get(source.id);
+		const aiConfidenceScore = rawResponses && questions.length > 0
+			? computeSourceConfidence(rawResponses, questions)
+			: null;
+
+		// Find the most interesting question
 		const extremeQuestion = sourceStats
-			? findMostExtreme(sourceStats.questionStats, questionTextMap)
+			? findMostInteresting(sourceStats.questionStats, questionTextMap)
 			: null;
 
 		sources.push({
@@ -326,6 +375,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 			questionCount: source.question_count,
 			humanAiScore: sourceStats?.overallScore ?? null,
 			aiAgreementScore,
+			aiConfidenceScore,
 			modelCount: sourceStats?.modelCount ?? 0,
 			extremeQuestion
 		});
@@ -396,6 +446,36 @@ export const load: PageServerLoad = async ({ platform }) => {
 		modelCountByCategory.set(row.category, row.model_count);
 	}
 
+	// Compute confidence per category from raw responses
+	const categoryConfidence = new Map<string, number>();
+	for (const [category, agg] of categoryAggregates) {
+		const questionIds = new Set(agg.stats.map(s => s.questionId));
+		const consistencies: number[] = [];
+
+		// Get responses for questions in this category
+		for (const [, sourceResponses] of responsesBySource) {
+			for (const [, modelData] of sourceResponses) {
+				for (const [questionId, { answers, responseType }] of modelData.byQuestion) {
+					if (!questionIds.has(questionId)) continue;
+					if (answers.length < 2) {
+						consistencies.push(100);
+						continue;
+					}
+					const q = allBenchmarkedQuestions.find(x => x.id === questionId);
+					const optionCount = q?.options.length ?? 5;
+					const sc = responseType === 'ordinal'
+						? ordinalConsensusScore(answers, optionCount)
+						: nominalConsensusScore(answers);
+					consistencies.push(sc);
+				}
+			}
+		}
+
+		if (consistencies.length > 0) {
+			categoryConfidence.set(category, Math.round(consistencies.reduce((a, b) => a + b, 0) / consistencies.length));
+		}
+	}
+
 	// Build category stats
 	const categories: CategoryStats[] = [];
 	for (const [category, agg] of categoryAggregates) {
@@ -404,9 +484,10 @@ export const load: PageServerLoad = async ({ platform }) => {
 			category,
 			humanAiScore: Math.round(agg.totalHumanAiScore / agg.count),
 			aiAgreementScore: Math.round(agg.totalAiAgreementScore / agg.count),
+			aiConfidenceScore: categoryConfidence.get(category) ?? null,
 			questionCount: agg.count,
 			modelCount: modelCountByCategory.get(category) ?? 0,
-			extremeQuestion: findMostExtreme(agg.stats, questionTextMap)
+			extremeQuestion: findMostInteresting(agg.stats, questionTextMap)
 		});
 	}
 	categories.sort((a, b) => a.category.localeCompare(b.category));
