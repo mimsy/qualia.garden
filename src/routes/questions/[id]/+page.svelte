@@ -5,7 +5,7 @@
 	import type { PageData, ActionData } from './$types';
 	import { enhance } from '$app/forms';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { getScoreLabel, getScoreColor, getScoreBgColor } from '$lib/alignment';
+	import { getScoreLabel } from '$lib/alignment';
 
 	let { data, form } = $props<{ data: PageData; form: ActionData }>();
 
@@ -169,32 +169,34 @@
 </script>
 
 <svelte:head>
-	<title>{data.question.text.slice(0, 50)}... - Qualia Garden</title>
+	<title>{data.question.text.slice(0, 50)}... — Qualia Garden</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
-	<header class="bg-white border-b">
-		<div class="max-w-6xl mx-auto px-4 py-6">
+<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+	<header class="border-b border-slate-200/80 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+		<div class="max-w-6xl mx-auto px-6 py-4">
 			<div class="flex items-center justify-between">
-				<a href="/" class="flex items-center gap-4">
-					<img src="/favicon.png" alt="" class="w-10 h-10" />
-					<div>
-						<h1 class="text-xl font-bold text-gray-900">Qualia Garden</h1>
-						<p class="text-sm text-gray-500">Exploring AI beliefs through systematic polling</p>
-					</div>
+				<a href="/" class="flex items-center gap-3 group">
+					<img src="/favicon.png" alt="" class="w-9 h-9 transition-transform group-hover:scale-105" />
+					<span class="font-semibold text-slate-800 text-lg tracking-tight">Qualia Garden</span>
 				</a>
-				<nav class="flex gap-4">
-					<a href="/questions" class="text-gray-600 hover:text-gray-900">All Questions</a>
-					<a href="/models" class="text-gray-600 hover:text-gray-900">Models</a>
-					<a href="/map" class="text-gray-600 hover:text-gray-900">Model Map</a>
+				<nav class="flex items-center gap-1">
+					<a href="/questions" class="px-3 py-2 text-sm text-slate-900 font-medium bg-slate-100 rounded-lg">Questions</a>
+					<a href="/models" class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">Models</a>
+					<a href="/map" class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">Map</a>
 				</nav>
 			</div>
 		</div>
 	</header>
 
-	<main class="max-w-6xl mx-auto px-4 py-12">
+	<main class="max-w-6xl mx-auto px-6 py-8">
 		<div class="mb-8">
-			<a href="/questions" class="text-blue-600 hover:underline text-sm">← Back to questions</a>
+			<a href="/questions" class="text-slate-500 hover:text-slate-700 text-sm flex items-center gap-1.5 transition-colors">
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+				</svg>
+				All Questions
+			</a>
 		</div>
 
 		{#if form?.error}
@@ -409,12 +411,12 @@
 			</form>
 		{:else}
 			<!-- Read-only view -->
-			<div class="bg-white rounded-lg shadow p-8 mb-8">
+			<div class="bg-white rounded-xl border border-slate-200 p-8 mb-8">
 				<div class="flex items-start justify-between">
 					<div class="flex-1">
 						<div class="mb-4 flex items-center gap-2">
 							{#if data.question.category}
-								<span class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
+								<span class="px-2 py-1 bg-slate-100 rounded text-xs text-slate-600">
 									{data.question.category}
 								</span>
 							{/if}
@@ -424,10 +426,10 @@
 								</span>
 							{/if}
 						</div>
-						<h2 class="text-2xl font-bold text-gray-900 mb-4">
+						<h2 class="text-2xl font-bold text-slate-900 mb-4">
 							{data.question.text}
 						</h2>
-						<div class="text-sm text-gray-500">
+						<div class="text-sm text-slate-500">
 							{data.question.response_type.replace('_', ' ')} •
 							{data.totalResponses} response{data.totalResponses === 1 ? '' : 's'}
 						</div>
@@ -449,66 +451,66 @@
 			{@const avgSelfConsistency = selfConsistencyValues.length > 0
 				? selfConsistencyValues.reduce((a: number, b: number) => a + b, 0) / selfConsistencyValues.length
 				: null}
-			<div class="bg-white rounded-lg shadow p-6 mb-8">
-				<h3 class="font-bold text-gray-900 mb-4">Scores</h3>
+			<div class="bg-white rounded-xl border border-slate-200 p-6 mb-8">
+				<h3 class="font-semibold text-slate-900 mb-5">Scores</h3>
 				<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-					<!-- Alignment -->
-					<div class="text-center">
-						<div class="text-sm text-gray-500 mb-2">Alignment</div>
+					<!-- Alignment (emerald) -->
+					<div class="text-center p-4 rounded-lg bg-emerald-50/50 border border-emerald-100">
+						<div class="text-xs font-medium text-emerald-600 uppercase tracking-wide mb-2">Alignment</div>
 						{#if data.humanAiScore !== null}
-							<div class="text-3xl font-bold {getScoreColor(data.humanAiScore)}">
+							<div class="text-3xl font-bold text-emerald-600">
 								{Math.round(data.humanAiScore)}
 							</div>
-							<div class="text-xs text-gray-400 mt-1">{getScoreLabel(data.humanAiScore)}</div>
-							<div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
+							<div class="text-xs text-emerald-500/70 mt-1">{getScoreLabel(data.humanAiScore)}</div>
+							<div class="mt-3 h-2 bg-emerald-100 rounded-full overflow-hidden">
 								<div
-									class="h-full {getScoreBgColor(data.humanAiScore)} rounded-full transition-all"
+									class="h-full bg-emerald-500 rounded-full transition-all"
 									style="width: {data.humanAiScore}%"
 								></div>
 							</div>
 						{:else}
-							<div class="text-2xl text-gray-300">—</div>
-							<div class="text-xs text-gray-400 mt-1">No human data</div>
+							<div class="text-2xl text-emerald-300">—</div>
+							<div class="text-xs text-emerald-400 mt-1">No human data</div>
 						{/if}
 					</div>
 
-					<!-- AI Consensus -->
-					<div class="text-center">
-						<div class="text-sm text-gray-500 mb-2">AI Consensus</div>
+					<!-- AI Consensus (blue) -->
+					<div class="text-center p-4 rounded-lg bg-blue-50/50 border border-blue-100">
+						<div class="text-xs font-medium text-blue-600 uppercase tracking-wide mb-2">AI Consensus</div>
 						{#if data.aiConsensusScore !== null}
-							<div class="text-3xl font-bold {getScoreColor(data.aiConsensusScore)}">
+							<div class="text-3xl font-bold text-blue-600">
 								{Math.round(data.aiConsensusScore)}
 							</div>
-							<div class="text-xs text-gray-400 mt-1">{getScoreLabel(data.aiConsensusScore)}</div>
-							<div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
+							<div class="text-xs text-blue-500/70 mt-1">{getScoreLabel(data.aiConsensusScore)}</div>
+							<div class="mt-3 h-2 bg-blue-100 rounded-full overflow-hidden">
 								<div
-									class="h-full {getScoreBgColor(data.aiConsensusScore)} rounded-full transition-all"
+									class="h-full bg-blue-500 rounded-full transition-all"
 									style="width: {data.aiConsensusScore}%"
 								></div>
 							</div>
 						{:else}
-							<div class="text-2xl text-gray-300">—</div>
-							<div class="text-xs text-gray-400 mt-1">Need 2+ models</div>
+							<div class="text-2xl text-blue-300">—</div>
+							<div class="text-xs text-blue-400 mt-1">Need 2+ models</div>
 						{/if}
 					</div>
 
-					<!-- AI Confidence -->
-					<div class="text-center">
-						<div class="text-sm text-gray-500 mb-2">AI Confidence</div>
+					<!-- AI Confidence (violet) -->
+					<div class="text-center p-4 rounded-lg bg-violet-50/50 border border-violet-100">
+						<div class="text-xs font-medium text-violet-600 uppercase tracking-wide mb-2">AI Confidence</div>
 						{#if avgSelfConsistency !== null}
-							<div class="text-3xl font-bold {getScoreColor(avgSelfConsistency)}">
+							<div class="text-3xl font-bold text-violet-600">
 								{Math.round(avgSelfConsistency)}
 							</div>
-							<div class="text-xs text-gray-400 mt-1">{getScoreLabel(avgSelfConsistency)}</div>
-							<div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
+							<div class="text-xs text-violet-500/70 mt-1">{getScoreLabel(avgSelfConsistency)}</div>
+							<div class="mt-3 h-2 bg-violet-100 rounded-full overflow-hidden">
 								<div
-									class="h-full {getScoreBgColor(avgSelfConsistency)} rounded-full transition-all"
+									class="h-full bg-violet-500 rounded-full transition-all"
 									style="width: {avgSelfConsistency}%"
 								></div>
 							</div>
 						{:else}
-							<div class="text-2xl text-gray-300">—</div>
-							<div class="text-xs text-gray-400 mt-1">No data</div>
+							<div class="text-2xl text-violet-300">—</div>
+							<div class="text-xs text-violet-400 mt-1">No data</div>
 						{/if}
 					</div>
 				</div>
@@ -517,8 +519,8 @@
 
 		{#if data.benchmarkSource}
 			<!-- Comparison View: AI vs Human -->
-			<div class="bg-white rounded-lg shadow p-6 mb-8">
-				<h3 class="font-bold text-gray-900 mb-6">AI vs Human Comparison</h3>
+			<div class="bg-white rounded-xl border border-slate-200 p-6 mb-8">
+				<h3 class="font-semibold text-slate-900 mb-6">AI vs Human Comparison</h3>
 
 				{#if humanAggregateResults.length > 0 || data.totalResponses > 0}
 				{@const humanResults = humanAggregateResults}
@@ -676,8 +678,8 @@
 		{:else if data.totalResponses > 0}
 			<!-- Standard View: No human comparison -->
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-				<div class="bg-white rounded-lg shadow p-6">
-					<h3 class="font-bold text-gray-900 mb-6">Aggregate Results</h3>
+				<div class="bg-white rounded-xl border border-slate-200 p-6">
+					<h3 class="font-semibold text-slate-900 mb-6">Aggregate Results</h3>
 					<div class="space-y-4">
 						{#each data.aggregateResults as result}
 							<div>
@@ -699,8 +701,8 @@
 				</div>
 
 				{#if data.options}
-					<div class="bg-white rounded-lg shadow p-6">
-						<h3 class="font-bold text-gray-900 mb-4">Answer Options</h3>
+					<div class="bg-white rounded-xl border border-slate-200 p-6">
+						<h3 class="font-semibold text-slate-900 mb-4">Answer Options</h3>
 						<ol class="list-none space-y-2">
 							{#each data.options as option, i}
 								<li class="flex gap-2 text-sm">
@@ -716,9 +718,9 @@
 
 		{#if data.totalResponses > 0}
 
-			<div class="bg-white rounded-lg shadow p-6">
+			<div class="bg-white rounded-xl border border-slate-200 p-6">
 				<div class="flex items-center justify-between mb-6">
-					<h3 class="font-bold text-gray-900">Individual Responses</h3>
+					<h3 class="font-semibold text-slate-900">Individual Responses</h3>
 					<div class="flex gap-2">
 						<button
 							onclick={() => (selectedFamily = null)}
@@ -762,8 +764,8 @@
 								<div class="flex items-center gap-4">
 									{#if data.modelSelfConsistency[response.model_id] !== undefined}
 										{@const sc = data.modelSelfConsistency[response.model_id]}
-										<span class="text-xs {getScoreColor(sc)}" title="Self-consistency: {Math.round(sc)}">
-											{Math.round(sc)}
+										<span class="text-xs text-violet-600 font-medium" title="Self-consistency: {Math.round(sc)}%">
+											{Math.round(sc)}%
 										</span>
 									{/if}
 									{#if response.complete_count > 0 && response.aggregated_answer}
@@ -833,8 +835,8 @@
 				</div>
 			</div>
 		{:else}
-			<div class="bg-white rounded-lg shadow p-12 text-center">
-				<p class="text-gray-500 mb-4">No responses yet for this question.</p>
+			<div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
+				<p class="text-slate-500 mb-4">No responses yet for this question.</p>
 				{#if data.isAdmin}
 					<p class="text-sm text-gray-400 mb-4">
 						Use the poll trigger below to get AI responses.
@@ -849,12 +851,12 @@
 
 		{#if data.isAdmin}
 			<!-- Poll Trigger Section -->
-			<div class="bg-white rounded-lg shadow p-6 mb-8">
+			<div class="bg-white rounded-xl border border-slate-200 p-6 mb-8">
 				<button
 					onclick={() => (showPollTrigger = !showPollTrigger)}
 					class="w-full flex items-center justify-between text-left"
 				>
-					<h3 class="font-bold text-gray-900">Poll Models</h3>
+					<h3 class="font-semibold text-slate-900">Poll Models</h3>
 					<svg
 						class="w-5 h-5 text-gray-400 transition-transform {showPollTrigger ? 'rotate-180' : ''}"
 						fill="none"
@@ -931,12 +933,12 @@
 
 			<!-- Poll History Section -->
 			{#if data.allPolls.length > 0}
-				<div class="bg-white rounded-lg shadow p-6">
+				<div class="bg-white rounded-xl border border-slate-200 p-6">
 					<button
 						onclick={() => (showPollHistory = !showPollHistory)}
 						class="w-full flex items-center justify-between text-left"
 					>
-						<h3 class="font-bold text-gray-900">Poll History ({data.allPolls.length} polls)</h3>
+						<h3 class="font-semibold text-slate-900">Poll History ({data.allPolls.length} polls)</h3>
 						<svg
 							class="w-5 h-5 text-gray-400 transition-transform {showPollHistory ? 'rotate-180' : ''}"
 							fill="none"

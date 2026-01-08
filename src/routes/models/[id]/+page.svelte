@@ -103,7 +103,7 @@
 			</div>
 		{:else}
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-				<!-- Human Similarity Card -->
+				<!-- Alignment Card -->
 				<div class="bg-white rounded-xl border border-slate-200 p-6">
 					<h2 class="text-lg font-semibold text-slate-900 mb-5">Alignment</h2>
 
