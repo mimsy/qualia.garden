@@ -760,6 +760,7 @@
 					{#each filteredResponses as response}
 						{@const sc = data.modelSelfConsistency[response.model_id]}
 						{@const ha = data.modelHumanAlignment[response.model_id]}
+						{@const ac = data.modelAiConsensus[response.model_id]}
 						{@const justification = getRepresentativeJustification(response)}
 						<button
 							onclick={() => (modalResponse = response)}
@@ -775,11 +776,11 @@
 								</div>
 
 								<!-- Score circles -->
-								<div class="flex gap-2 shrink-0">
-									<!-- Alignment circle (emerald) -->
+								<div class="flex gap-1.5 shrink-0">
+									<!-- Human alignment circle (emerald) -->
 									{#if ha !== undefined && ha !== null}
-										<div class="relative w-10 h-10" title="Alignment: {Math.round(ha)}%">
-											<svg class="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+										<div class="relative w-9 h-9" title="Human: How closely this model's response distribution matches human responses">
+											<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
 												<circle
 													cx="18" cy="18" r="14"
 													fill="none"
@@ -801,10 +802,35 @@
 										</div>
 									{/if}
 
-									<!-- Confidence circle (violet) -->
+									<!-- AI consensus circle (blue) -->
+									{#if ac !== undefined && ac !== null}
+										<div class="relative w-9 h-9" title="AI: How closely this model's response distribution matches other AI models">
+											<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
+												<circle
+													cx="18" cy="18" r="14"
+													fill="none"
+													stroke-width="3"
+													class="stroke-blue-100"
+												/>
+												<circle
+													cx="18" cy="18" r="14"
+													fill="none"
+													stroke-width="3"
+													stroke-linecap="round"
+													class="stroke-blue-500"
+													stroke-dasharray={getCircleDasharray(ac)}
+												/>
+											</svg>
+											<span class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-blue-600">
+												{Math.round(ac)}
+											</span>
+										</div>
+									{/if}
+
+									<!-- Self-consistency circle (violet) -->
 									{#if sc !== undefined && sc !== null}
-										<div class="relative w-10 h-10" title="Confidence: {Math.round(sc)}%">
-											<svg class="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+										<div class="relative w-9 h-9" title="Confidence: How consistently this model gives the same answer across samples">
+											<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
 												<circle
 													cx="18" cy="18" r="14"
 													fill="none"
@@ -1045,6 +1071,7 @@
 {#if modalResponse}
 	{@const sc = data.modelSelfConsistency[modalResponse.model_id]}
 	{@const ha = data.modelHumanAlignment[modalResponse.model_id]}
+	{@const ac = data.modelAiConsensus[modalResponse.model_id]}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -1061,13 +1088,22 @@
 			<div class="px-6 py-5 border-b border-slate-200 flex items-start justify-between gap-4">
 				<div class="flex-1 min-w-0">
 					<h3 class="text-lg font-semibold text-slate-900 truncate">{modalResponse.model_name}</h3>
-					<div class="flex items-center gap-3 mt-1 flex-wrap">
+					<div class="flex items-center gap-3 mt-2 flex-wrap">
 						<span class="text-sm text-slate-500 capitalize">{modalResponse.model_family}</span>
 						{#if ha !== undefined && ha !== null}
-							<span class="text-sm text-emerald-600 font-medium">{Math.round(ha)}% alignment</span>
+							<span class="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium" title="How closely this model's response distribution matches human responses">
+								{Math.round(ha)}% human
+							</span>
+						{/if}
+						{#if ac !== undefined && ac !== null}
+							<span class="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-medium" title="How closely this model's response distribution matches other AI models">
+								{Math.round(ac)}% AI
+							</span>
 						{/if}
 						{#if sc !== undefined && sc !== null}
-							<span class="text-sm text-violet-600 font-medium">{Math.round(sc)}% confidence</span>
+							<span class="text-xs px-2 py-1 rounded-full bg-violet-50 text-violet-700 font-medium" title="How consistently this model gives the same answer across samples">
+								{Math.round(sc)}% confidence
+							</span>
 						{/if}
 					</div>
 				</div>

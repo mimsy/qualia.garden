@@ -250,6 +250,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 	let aiConsensusScore: number | null = null;
 	const modelSelfConsistency: Record<string, number> = {};
 	const modelHumanAlignment: Record<string, number> = {};
+	const modelAiConsensus: Record<string, number> = {};
 
 	if (options && respondedModels.length > 0) {
 		// Get all aggregated answers for AI consensus
@@ -318,15 +319,30 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 			}
 		}
 
-		// Compute per-model human alignment scores
+		// Build the aggregate AI distribution (across all models' samples)
+		const aggregateAiDist: Record<string, number> = {};
+		for (const response of aggregatedResponses) {
+			for (const sample of response.samples) {
+				if (sample.parsed_answer) {
+					aggregateAiDist[sample.parsed_answer] = (aggregateAiDist[sample.parsed_answer] || 0) + 1;
+				}
+			}
+		}
+
+		// Compute per-model human alignment scores (using full sample distribution)
 		if (overallHumanDist) {
 			const humanDist = JSON.parse(overallHumanDist.distribution) as Record<string, number>;
 
 			for (const response of aggregatedResponses) {
-				if (!response.aggregated_answer) continue;
+				// Build this model's sample distribution
+				const modelDist: Record<string, number> = {};
+				for (const sample of response.samples) {
+					if (sample.parsed_answer) {
+						modelDist[sample.parsed_answer] = (modelDist[sample.parsed_answer] || 0) + 1;
+					}
+				}
 
-				// Create a single-answer "distribution" for this model
-				const modelDist: Record<string, number> = { [response.aggregated_answer]: 1 };
+				if (Object.keys(modelDist).length === 0) continue;
 
 				if (question.response_type === 'ordinal') {
 					modelHumanAlignment[response.model_id] = ordinalAgreementScore(
@@ -336,10 +352,12 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 					);
 				} else {
 					// Nominal: convert to labels
-					const idx = parseInt(response.aggregated_answer, 10) - 1;
-					const label =
-						idx >= 0 && idx < options.length ? options[idx] : response.aggregated_answer;
-					const modelDistLabeled: Record<string, number> = { [label]: 1 };
+					const modelDistLabeled: Record<string, number> = {};
+					for (const [key, count] of Object.entries(modelDist)) {
+						const idx = parseInt(key, 10) - 1;
+						const label = idx >= 0 && idx < options.length ? options[idx] : key;
+						modelDistLabeled[label] = (modelDistLabeled[label] || 0) + count;
+					}
 
 					const humanDistLabeled: Record<string, number> = {};
 					for (const [key, count] of Object.entries(humanDist)) {
@@ -352,6 +370,46 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 						modelDistLabeled
 					);
 				}
+			}
+		}
+
+		// Compute per-model AI consensus scores (comparing model distribution to aggregate AI)
+		for (const response of aggregatedResponses) {
+			// Build this model's sample distribution
+			const modelDist: Record<string, number> = {};
+			for (const sample of response.samples) {
+				if (sample.parsed_answer) {
+					modelDist[sample.parsed_answer] = (modelDist[sample.parsed_answer] || 0) + 1;
+				}
+			}
+
+			if (Object.keys(modelDist).length === 0) continue;
+
+			if (question.response_type === 'ordinal') {
+				modelAiConsensus[response.model_id] = ordinalAgreementScore(
+					aggregateAiDist,
+					modelDist,
+					options
+				);
+			} else {
+				// Nominal: convert to labels
+				const modelDistLabeled: Record<string, number> = {};
+				for (const [key, count] of Object.entries(modelDist)) {
+					const idx = parseInt(key, 10) - 1;
+					const label = idx >= 0 && idx < options.length ? options[idx] : key;
+					modelDistLabeled[label] = (modelDistLabeled[label] || 0) + count;
+				}
+
+				const aiDistLabeled: Record<string, number> = {};
+				for (const [key, count] of Object.entries(aggregateAiDist)) {
+					const keyIdx = parseInt(key, 10) - 1;
+					const keyLabel = keyIdx >= 0 && keyIdx < options.length ? options[keyIdx] : key;
+					aiDistLabeled[keyLabel] = (aiDistLabeled[keyLabel] || 0) + count;
+				}
+				modelAiConsensus[response.model_id] = nominalAgreementScore(
+					aiDistLabeled,
+					modelDistLabeled
+				);
 			}
 		}
 	}
@@ -410,6 +468,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		aiConsensusScore,
 		modelSelfConsistency,
 		modelHumanAlignment,
+		modelAiConsensus,
 		allPolls,
 		availableModels,
 		categories
