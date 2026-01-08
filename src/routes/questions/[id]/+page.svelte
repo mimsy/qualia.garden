@@ -13,10 +13,10 @@
 	type PollType = (typeof data.allPolls)[number];
 
 	let selectedFamily = $state<string | null>(null);
-	let expandedModel = $state<string | null>(null);
 	let showPollHistory = $state(false);
 	let showPollTrigger = $state(false);
 	let selectedModels = new SvelteSet<string>();
+	let modalResponse = $state<ResponseType | null>(null);
 
 	// Edit form state - derived initial values
 	const initialText = $derived(data.question.text);
@@ -108,8 +108,22 @@
 			.sort((a, b) => parseInt(a.answer) - parseInt(b.answer));
 	});
 
-	function toggleExpanded(modelId: string) {
-		expandedModel = expandedModel === modelId ? null : modelId;
+	// Get a representative justification for a response (one where answer matches the modal answer)
+	type SampleType = ResponseType['samples'][number];
+	function getRepresentativeJustification(response: ResponseType): string | null {
+		if (!response.aggregated_answer) return null;
+		// Find a sample with matching answer that has a justification
+		const matchingSample = response.samples.find(
+			(s: SampleType) => s.parsed_answer === response.aggregated_answer && s.justification
+		);
+		return matchingSample?.justification ?? response.samples.find((s: SampleType) => s.justification)?.justification ?? null;
+	}
+
+	// Circle progress helpers
+	const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * 14; // radius = 14
+	function getCircleDasharray(score: number): string {
+		const filled = (score / 100) * CIRCLE_CIRCUMFERENCE;
+		return `${filled} ${CIRCLE_CIRCUMFERENCE}`;
 	}
 
 	// Sample count for polling (default 5, max 10)
@@ -717,25 +731,24 @@
 		{/if}
 
 		{#if data.totalResponses > 0}
-
-			<div class="bg-white rounded-xl border border-slate-200 p-6">
-				<div class="flex items-center justify-between mb-6">
-					<h3 class="font-semibold text-slate-900">Individual Responses</h3>
-					<div class="flex gap-2">
+			<div class="mb-8">
+				<div class="flex items-center justify-between mb-5">
+					<h3 class="font-semibold text-slate-900 text-lg">Model Responses</h3>
+					<div class="flex gap-1.5">
 						<button
 							onclick={() => (selectedFamily = null)}
-							class="px-3 py-1 text-sm rounded {selectedFamily === null
-								? 'bg-blue-100 text-blue-700'
-								: 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+							class="px-3 py-1.5 text-sm rounded-lg transition-colors {selectedFamily === null
+								? 'bg-slate-800 text-white'
+								: 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
 						>
 							All
 						</button>
 						{#each families as family}
 							<button
 								onclick={() => (selectedFamily = family)}
-								class="px-3 py-1 text-sm rounded capitalize {selectedFamily === family
-									? 'bg-blue-100 text-blue-700'
-									: 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+								class="px-3 py-1.5 text-sm rounded-lg capitalize transition-colors {selectedFamily === family
+									? 'bg-slate-800 text-white'
+									: 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
 							>
 								{family}
 							</button>
@@ -743,92 +756,90 @@
 					</div>
 				</div>
 
-				<div class="space-y-3">
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 					{#each filteredResponses as response}
-						<div class="border rounded-lg overflow-hidden">
-							<button
-								onclick={() => toggleExpanded(response.model_id)}
-								class="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 text-left"
-							>
-								<div class="flex items-center gap-3">
-									<span class="font-medium text-gray-900">{response.model_name}</span>
-									<span class="px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-500 capitalize">
-										{response.model_family}
-									</span>
-									{#if response.sample_count > 1}
-										<span class="px-2 py-0.5 bg-blue-50 rounded text-xs text-blue-600">
-											{response.complete_count}/{response.sample_count} samples
-										</span>
-									{/if}
+						{@const sc = data.modelSelfConsistency[response.model_id]}
+						{@const justification = getRepresentativeJustification(response)}
+						<button
+							onclick={() => (modalResponse = response)}
+							class="bg-white rounded-xl border border-slate-200 p-5 text-left hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/50 transition-all group"
+						>
+							<!-- Header: Model name, family, confidence circle -->
+							<div class="flex items-start justify-between gap-3 mb-4">
+								<div class="min-w-0 flex-1">
+									<div class="font-medium text-slate-900 truncate group-hover:text-slate-700">
+										{response.model_name}
+									</div>
+									<div class="text-xs text-slate-400 capitalize">{response.model_family}</div>
 								</div>
-								<div class="flex items-center gap-4">
-									{#if data.modelSelfConsistency[response.model_id] !== undefined}
-										{@const sc = data.modelSelfConsistency[response.model_id]}
-										<span class="text-xs text-violet-600 font-medium" title="Self-consistency: {Math.round(sc)}%">
-											{Math.round(sc)}%
+
+								<!-- Confidence circle -->
+								{#if sc !== undefined && sc !== null}
+									<div class="relative w-11 h-11 shrink-0" title="Confidence: {Math.round(sc)}%">
+										<svg class="w-11 h-11 -rotate-90" viewBox="0 0 36 36">
+											<circle
+												cx="18" cy="18" r="14"
+												fill="none"
+												stroke-width="3"
+												class="stroke-violet-100"
+											/>
+											<circle
+												cx="18" cy="18" r="14"
+												fill="none"
+												stroke-width="3"
+												stroke-linecap="round"
+												class="stroke-violet-500"
+												stroke-dasharray={getCircleDasharray(sc)}
+											/>
+										</svg>
+										<span class="absolute inset-0 flex items-center justify-center text-xs font-semibold text-violet-600">
+											{Math.round(sc)}
 										</span>
-									{/if}
-									{#if response.complete_count > 0 && response.aggregated_answer}
-										<span class="text-sm font-medium text-gray-700">
-											{getAnswerLabel(response.aggregated_answer)}
-										</span>
-									{:else if response.complete_count === 0 && response.sample_count > 0}
-										{@const pendingCount = response.samples.filter((s: typeof response.samples[number]) => s.status === 'pending').length}
-										{#if pendingCount > 0}
-											<span class="text-sm text-yellow-600">Pending ({pendingCount})...</span>
-										{:else}
-											<span class="text-sm text-red-600">Failed</span>
-										{/if}
+									</div>
+								{/if}
+							</div>
+
+							<!-- Answer -->
+							{#if response.complete_count > 0 && response.aggregated_answer}
+								<div class="mb-3">
+									<div class="text-xs text-slate-400 uppercase tracking-wide mb-1">Answer</div>
+									<div class="text-sm font-medium text-slate-800">
+										{getAnswerLabel(response.aggregated_answer)}
+									</div>
+								</div>
+							{:else if response.complete_count === 0 && response.sample_count > 0}
+								{@const pendingCount = response.samples.filter((s: typeof response.samples[number]) => s.status === 'pending').length}
+								<div class="mb-3">
+									{#if pendingCount > 0}
+										<span class="text-sm text-amber-600">Pending ({pendingCount})...</span>
 									{:else}
-										<span class="text-sm text-gray-400">No answer</span>
+										<span class="text-sm text-red-500">Failed</span>
 									{/if}
-									<svg
-										class="w-5 h-5 text-gray-400 transition-transform {expandedModel ===
-										response.model_id
-											? 'rotate-180'
-											: ''}"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M19 9l-7 7-7-7"
-										/>
-									</svg>
-								</div>
-							</button>
-							{#if expandedModel === response.model_id}
-								<div class="px-4 py-3 bg-gray-50 border-t space-y-3">
-									{#each response.samples as sample, i}
-										<div class="border-l-2 pl-3 {sample.status === 'complete' ? 'border-green-300' : sample.status === 'pending' ? 'border-yellow-300' : 'border-red-300'}">
-											<div class="flex items-center gap-2 mb-1">
-												<span class="text-xs text-gray-500">Sample {i + 1}</span>
-												{#if sample.parsed_answer}
-													<span class="text-sm font-medium text-gray-700">
-														{getAnswerLabel(sample.parsed_answer)}
-													</span>
-												{:else if sample.status === 'pending'}
-													<span class="text-xs text-yellow-600">Pending...</span>
-												{:else}
-													<span class="text-xs text-red-600">Failed</span>
-												{/if}
-												{#if sample.response_time_ms}
-													<span class="text-xs text-gray-400 ml-auto">{sample.response_time_ms}ms</span>
-												{/if}
-											</div>
-											{#if sample.justification}
-												<p class="text-sm text-gray-600 whitespace-pre-wrap">{sample.justification}</p>
-											{/if}
-										</div>
-									{/each}
 								</div>
 							{/if}
-						</div>
+
+							<!-- Justification preview -->
+							{#if justification}
+								<p class="text-sm text-slate-500 line-clamp-3 leading-relaxed">
+									{justification}
+								</p>
+							{/if}
+
+							<!-- Footer: sample count hint -->
+							<div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+								<span class="text-xs text-slate-400">
+									{response.complete_count} sample{response.complete_count === 1 ? '' : 's'}
+								</span>
+								<span class="text-xs text-slate-400 group-hover:text-slate-600 transition-colors flex items-center gap-1">
+									View all
+									<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+									</svg>
+								</span>
+							</div>
+						</button>
 					{:else}
-						<div class="text-center py-8 text-gray-500">
+						<div class="col-span-full text-center py-12 text-slate-500">
 							No responses from this model family.
 						</div>
 					{/each}
@@ -1000,3 +1011,86 @@
 		{/if}
 	</main>
 </div>
+
+<!-- Sample details modal -->
+{#if modalResponse}
+	{@const sc = data.modelSelfConsistency[modalResponse.model_id]}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+		onclick={() => (modalResponse = null)}
+		onkeydown={(e) => e.key === 'Escape' && (modalResponse = null)}
+	>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
+		>
+			<!-- Modal header -->
+			<div class="px-6 py-5 border-b border-slate-200 flex items-start justify-between gap-4">
+				<div class="flex-1 min-w-0">
+					<h3 class="text-lg font-semibold text-slate-900 truncate">{modalResponse.model_name}</h3>
+					<div class="flex items-center gap-3 mt-1">
+						<span class="text-sm text-slate-500 capitalize">{modalResponse.model_family}</span>
+						{#if sc !== undefined && sc !== null}
+							<span class="text-sm text-violet-600 font-medium">{Math.round(sc)}% confidence</span>
+						{/if}
+					</div>
+				</div>
+				<button
+					onclick={() => (modalResponse = null)}
+					aria-label="Close modal"
+					class="p-2 -m-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+				</button>
+			</div>
+
+			<!-- Modal answer summary -->
+			{#if modalResponse.aggregated_answer}
+				<div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
+					<div class="text-xs text-slate-500 uppercase tracking-wide mb-1">Modal Answer</div>
+					<div class="font-medium text-slate-900">{getAnswerLabel(modalResponse.aggregated_answer)}</div>
+				</div>
+			{/if}
+
+			<!-- Samples list -->
+			<div class="flex-1 overflow-y-auto px-6 py-4">
+				<div class="text-xs text-slate-500 uppercase tracking-wide mb-3">
+					All Samples ({modalResponse.complete_count}/{modalResponse.sample_count})
+				</div>
+				<div class="space-y-4">
+					{#each modalResponse.samples as sample, i}
+						<div class="rounded-xl border {sample.status === 'complete' ? 'border-slate-200 bg-white' : sample.status === 'pending' ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50'} p-4">
+							<div class="flex items-center justify-between mb-2">
+								<div class="flex items-center gap-2">
+									<span class="text-xs font-medium text-slate-500">Sample {i + 1}</span>
+									{#if sample.parsed_answer}
+										<span class="px-2 py-0.5 rounded text-xs font-medium {sample.parsed_answer === modalResponse.aggregated_answer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}">
+											{getAnswerLabel(sample.parsed_answer)}
+										</span>
+									{:else if sample.status === 'pending'}
+										<span class="text-xs text-amber-600">Pending...</span>
+									{:else}
+										<span class="text-xs text-red-600">Failed</span>
+									{/if}
+								</div>
+								{#if sample.response_time_ms}
+									<span class="text-xs text-slate-400">{sample.response_time_ms}ms</span>
+								{/if}
+							</div>
+							{#if sample.justification}
+								<p class="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{sample.justification}</p>
+							{:else if sample.error}
+								<p class="text-sm text-red-600">{sample.error}</p>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
