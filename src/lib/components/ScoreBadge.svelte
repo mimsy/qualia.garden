@@ -46,8 +46,8 @@
 	const width = $derived(score !== null ? `${score}%` : '0%');
 </script>
 
-<ScoreTooltip {score} type={scoreType}>
-	<div class="flex-1 px-3 py-2 cursor-help">
+<ScoreTooltip {score} type={scoreType} flex>
+	<div class="px-3 py-2 cursor-help">
 		<div class="flex items-center justify-between mb-1">
 			<span class="text-[10px] text-slate-500 uppercase tracking-wide">{label}</span>
 			<span class="text-xs font-semibold {score !== null ? colors.text : 'text-slate-400'}">

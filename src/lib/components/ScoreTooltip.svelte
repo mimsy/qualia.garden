@@ -12,11 +12,36 @@
 		type: ScoreType;
 		children: Snippet;
 		position?: 'top' | 'bottom';
+		flex?: boolean;
 	}
 
-	let { score, type, children, position = 'bottom' }: Props = $props();
+	let { score, type, children, position = 'bottom', flex = false }: Props = $props();
 
 	let showTooltip = $state(false);
+	let triggerEl: HTMLDivElement | null = $state(null);
+	let tooltipPosition = $state({ top: 0, left: 0 });
+
+	// Update tooltip position when showing
+	function updatePosition() {
+		if (!triggerEl) return;
+		const rect = triggerEl.getBoundingClientRect();
+		const tooltipWidth = 224; // w-56 = 14rem = 224px
+
+		let left = rect.left + rect.width / 2 - tooltipWidth / 2;
+		// Keep tooltip within viewport
+		left = Math.max(8, Math.min(left, window.innerWidth - tooltipWidth - 8));
+
+		const top = position === 'top'
+			? rect.top - 8 // Will be positioned above with bottom-full
+			: rect.bottom + 8;
+
+		tooltipPosition = { top, left };
+	}
+
+	function handleMouseEnter() {
+		updatePosition();
+		showTooltip = true;
+	}
 
 	// Score type metadata
 	const scoreInfo: Record<ScoreType, { title: string; color: string; descriptions: Record<string, string> }> = {
@@ -86,46 +111,40 @@
 </script>
 
 <div
-	class="relative inline-block"
-	onmouseenter={() => (showTooltip = true)}
+	bind:this={triggerEl}
+	class="relative {flex ? 'flex-1' : 'inline-block'}"
+	onmouseenter={handleMouseEnter}
 	onmouseleave={() => (showTooltip = false)}
-	onfocus={() => (showTooltip = true)}
+	onfocus={handleMouseEnter}
 	onblur={() => (showTooltip = false)}
 	role="button"
 	tabindex="0"
 >
 	{@render children()}
-
-	{#if showTooltip && score !== null}
-		<div
-			class="absolute z-50 w-56 p-3 rounded-lg border shadow-lg {colorClasses.bg} {colorClasses.border}
-				{position === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'}
-				left-1/2 -translate-x-1/2"
-		>
-			<!-- Arrow -->
-			<div
-				class="absolute left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 {colorClasses.bg} {colorClasses.border}
-					{position === 'top' ? 'bottom-[-5px] border-t-0 border-l-0' : 'top-[-5px] border-b-0 border-r-0'}"
-			></div>
-
-			<!-- Content -->
-			<div class="relative">
-				<div class="flex items-center justify-between mb-2">
-					<span class="text-xs font-semibold uppercase tracking-wide {colorClasses.title}">
-						{info.title}
-					</span>
-					<span class="px-1.5 py-0.5 text-xs font-medium rounded {colorClasses.label}">
-						{label}
-					</span>
-				</div>
-				<div class="flex items-baseline gap-1 mb-2">
-					<span class="text-2xl font-bold {colorClasses.score}">{Math.round(score)}</span>
-					<span class="text-sm text-slate-400">/ 100</span>
-				</div>
-				<p class="text-xs text-slate-600 leading-relaxed">
-					{description}
-				</p>
-			</div>
-		</div>
-	{/if}
 </div>
+
+{#if showTooltip && score !== null}
+	<div
+		class="fixed z-[100] w-56 p-3 rounded-lg border shadow-lg {colorClasses.bg} {colorClasses.border}"
+		style="top: {tooltipPosition.top}px; left: {tooltipPosition.left}px;"
+	>
+		<!-- Content -->
+		<div class="relative">
+			<div class="flex items-center justify-between mb-2">
+				<span class="text-xs font-semibold uppercase tracking-wide {colorClasses.title}">
+					{info.title}
+				</span>
+				<span class="px-1.5 py-0.5 text-xs font-medium rounded {colorClasses.label}">
+					{label}
+				</span>
+			</div>
+			<div class="flex items-baseline gap-1 mb-2">
+				<span class="text-2xl font-bold {colorClasses.score}">{Math.round(score)}</span>
+				<span class="text-sm text-slate-400">/ 100</span>
+			</div>
+			<p class="text-xs text-slate-600 leading-relaxed">
+				{description}
+			</p>
+		</div>
+	</div>
+{/if}
