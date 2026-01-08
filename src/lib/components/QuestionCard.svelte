@@ -47,7 +47,7 @@
   </div>
 
   <!-- Butterfly Chart or Fallback -->
-  <div class="px-5">
+  <div class="px-5 mb-3">
     {#if question.modelCount > 0 && question.options.length > 0}
       <ButterflyChart
         aiResults={question.aiResults}
@@ -66,7 +66,7 @@
   </div>
 
   <!-- Score Bars Footer -->
-  <div class="flex border-t border-slate-100 mt-auto pt-1">
+  <div class="flex border-t border-slate-100 mt-auto">
     <ScoreBadge score={question.humanSimilarity} label="Alignment" type="humanSimilarity" />
     <div class="w-px bg-slate-100"></div>
     <ScoreBadge score={question.aiConsensus} label="Consensus" type="aiConsensus" />

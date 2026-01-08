@@ -3,7 +3,7 @@
 	// ABOUTME: Displays AI vs Human distribution comparison for each question.
 
 	import type { PageData } from './$types';
-	import { getScoreLabel, getScoreColor } from '$lib/alignment';
+	import { getScoreLabel } from '$lib/alignment';
 	import QuestionCard from '$lib/components/QuestionCard.svelte';
 
 	let { data } = $props<{ data: PageData }>();
@@ -69,36 +69,36 @@
 					</p>
 				</div>
 				{#if data.overallHumanSimilarity !== null || data.overallAiConsensus !== null || data.overallAiConfidence !== null}
-					<div class="flex gap-6 shrink-0">
+					<div class="flex gap-4 shrink-0">
 						{#if data.overallHumanSimilarity !== null}
-							<div class="text-center">
-								<div class="text-xs text-slate-500 mb-1">Alignment</div>
-								<div class="text-2xl font-bold {getScoreColor(data.overallHumanSimilarity)}">
+							<div class="text-center p-3 rounded-lg bg-emerald-50/50 border border-emerald-100">
+								<div class="text-xs text-emerald-600 font-medium uppercase tracking-wide mb-1">Alignment</div>
+								<div class="text-2xl font-bold text-emerald-600">
 									{data.overallHumanSimilarity}
 								</div>
-								<div class="text-xs {getScoreColor(data.overallHumanSimilarity)} font-medium">
+								<div class="text-xs text-emerald-500/70 font-medium">
 									{getScoreLabel(data.overallHumanSimilarity)}
 								</div>
 							</div>
 						{/if}
 						{#if data.overallAiConsensus !== null}
-							<div class="text-center">
-								<div class="text-xs text-slate-500 mb-1">AI Consensus</div>
-								<div class="text-2xl font-bold {getScoreColor(data.overallAiConsensus)}">
+							<div class="text-center p-3 rounded-lg bg-blue-50/50 border border-blue-100">
+								<div class="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">Consensus</div>
+								<div class="text-2xl font-bold text-blue-600">
 									{data.overallAiConsensus}
 								</div>
-								<div class="text-xs {getScoreColor(data.overallAiConsensus)} font-medium">
+								<div class="text-xs text-blue-500/70 font-medium">
 									{getScoreLabel(data.overallAiConsensus)}
 								</div>
 							</div>
 						{/if}
 						{#if data.overallAiConfidence !== null}
-							<div class="text-center">
-								<div class="text-xs text-slate-500 mb-1">AI Confidence</div>
-								<div class="text-2xl font-bold {getScoreColor(data.overallAiConfidence)}">
+							<div class="text-center p-3 rounded-lg bg-violet-50/50 border border-violet-100">
+								<div class="text-xs text-violet-600 font-medium uppercase tracking-wide mb-1">Confidence</div>
+								<div class="text-2xl font-bold text-violet-600">
 									{data.overallAiConfidence}
 								</div>
-								<div class="text-xs {getScoreColor(data.overallAiConfidence)} font-medium">
+								<div class="text-xs text-violet-500/70 font-medium">
 									{getScoreLabel(data.overallAiConfidence)}
 								</div>
 							</div>
@@ -130,7 +130,7 @@
 		<!-- Questions with Full Results -->
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 			{#each sortedQuestions as question (question.id)}
-				<QuestionCard {question} />
+				<QuestionCard {question} showSource />
 			{/each}
 		</div>
 		{#if sortedQuestions.length === 0}
