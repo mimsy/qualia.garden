@@ -3,7 +3,8 @@
 	// ABOUTME: Shows benchmark sources with agreement scores and divergence highlights.
 
 	import type { PageData } from './$types';
-	import { getScoreColor, getScoreBgColor, getDivergenceBg } from '$lib/alignment';
+	import { getScoreColor, getDivergenceBg } from '$lib/alignment';
+	import ScoreBadge from '$lib/components/ScoreBadge.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 </script>
@@ -83,32 +84,11 @@
 
 							<!-- Dual score bars -->
 							{#if source.humanAiScore !== null}
-								<div class="flex gap-6 mb-4">
-									<div class="flex-1">
-										<div class="flex items-center justify-between mb-1">
-											<span class="text-xs text-slate-500">Human Similarity</span>
-											<span class="text-sm font-semibold {getScoreColor(source.humanAiScore)}">{Math.round(source.humanAiScore)}</span>
-										</div>
-										<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-											<div
-												class="h-full rounded-full {getScoreBgColor(source.humanAiScore)}"
-												style="width: {source.humanAiScore}%"
-											></div>
-										</div>
-									</div>
+								<div class="flex border border-slate-100 rounded-lg mb-4 -mx-1">
+									<ScoreBadge score={source.humanAiScore} label="Alignment" type="humanSimilarity" />
 									{#if source.aiAgreementScore !== null}
-										<div class="flex-1">
-											<div class="flex items-center justify-between mb-1">
-												<span class="text-xs text-slate-500">AI Consensus</span>
-												<span class="text-sm font-semibold {getScoreColor(source.aiAgreementScore)}">{Math.round(source.aiAgreementScore)}</span>
-											</div>
-											<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-												<div
-													class="h-full rounded-full {getScoreBgColor(source.aiAgreementScore)}"
-													style="width: {source.aiAgreementScore}%"
-												></div>
-											</div>
-										</div>
+										<div class="w-px bg-slate-100"></div>
+										<ScoreBadge score={source.aiAgreementScore} label="Consensus" type="aiConsensus" />
 									{/if}
 								</div>
 							{/if}
@@ -185,31 +165,10 @@
 								</h3>
 
 								<!-- Dual score bars -->
-								<div class="flex gap-4 mb-3">
-									<div class="flex-1">
-										<div class="flex items-center justify-between mb-1">
-											<span class="text-xs text-slate-500">Human Similarity</span>
-											<span class="text-sm font-semibold {getScoreColor(category.humanAiScore)}">{Math.round(category.humanAiScore)}</span>
-										</div>
-										<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-											<div
-												class="h-full rounded-full {getScoreBgColor(category.humanAiScore)}"
-												style="width: {category.humanAiScore}%"
-											></div>
-										</div>
-									</div>
-									<div class="flex-1">
-										<div class="flex items-center justify-between mb-1">
-											<span class="text-xs text-slate-500">AI Consensus</span>
-											<span class="text-sm font-semibold {getScoreColor(category.aiAgreementScore)}">{Math.round(category.aiAgreementScore)}</span>
-										</div>
-										<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-											<div
-												class="h-full rounded-full {getScoreBgColor(category.aiAgreementScore)}"
-												style="width: {category.aiAgreementScore}%"
-											></div>
-										</div>
-									</div>
+								<div class="flex border border-slate-100 rounded-lg mb-3 -mx-1">
+									<ScoreBadge score={category.humanAiScore} label="Alignment" type="humanSimilarity" />
+									<div class="w-px bg-slate-100"></div>
+									<ScoreBadge score={category.aiAgreementScore} label="Consensus" type="aiConsensus" />
 								</div>
 
 								<div class="text-xs text-slate-400 mb-3">

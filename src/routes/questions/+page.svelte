@@ -182,7 +182,7 @@
 							class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200"
 						>
 							<option value="newest">Date</option>
-							<option value="humanSimilarity">Human Similarity</option>
+							<option value="humanSimilarity">Alignment</option>
 							<option value="aiConsensus">AI Consensus</option>
 							<option value="aiConfidence">AI Confidence</option>
 						</select>

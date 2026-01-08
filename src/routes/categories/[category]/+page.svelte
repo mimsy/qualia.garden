@@ -72,7 +72,7 @@
 					<div class="flex gap-6 shrink-0">
 						{#if data.overallHumanSimilarity !== null}
 							<div class="text-center">
-								<div class="text-xs text-slate-500 mb-1">Human Similarity</div>
+								<div class="text-xs text-slate-500 mb-1">Alignment</div>
 								<div class="text-2xl font-bold {getScoreColor(data.overallHumanSimilarity)}">
 									{data.overallHumanSimilarity}
 								</div>
@@ -117,7 +117,7 @@
 					class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200"
 				>
 					<option value="default">Default</option>
-					<option value="humanSimilarity">Lowest Human Similarity</option>
+					<option value="humanSimilarity">Lowest Alignment</option>
 					<option value="aiConsensus">Lowest AI Consensus</option>
 					<option value="aiConfidence">Lowest AI Confidence</option>
 				</select>

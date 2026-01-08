@@ -83,7 +83,7 @@
 					<div class="flex gap-6">
 						{#if data.avgHumanAlignment !== null}
 							<div class="text-center">
-								<div class="text-xs text-slate-500 mb-1">Avg Human Similarity</div>
+								<div class="text-xs text-slate-500 mb-1">Avg Alignment</div>
 								<div class="text-2xl font-bold {getScoreColor(data.avgHumanAlignment)}">
 									{Math.round(data.avgHumanAlignment)}
 								</div>

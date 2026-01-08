@@ -452,9 +452,9 @@
 			<div class="bg-white rounded-lg shadow p-6 mb-8">
 				<h3 class="font-bold text-gray-900 mb-4">Scores</h3>
 				<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-					<!-- Human Similarity -->
+					<!-- Alignment -->
 					<div class="text-center">
-						<div class="text-sm text-gray-500 mb-2">Human Similarity</div>
+						<div class="text-sm text-gray-500 mb-2">Alignment</div>
 						{#if data.humanAiScore !== null}
 							<div class="text-3xl font-bold {getScoreColor(data.humanAiScore)}">
 								{Math.round(data.humanAiScore)}
