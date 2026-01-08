@@ -22,10 +22,23 @@
 	let confirmDelete = $state(false);
 	let changingModel = $state(false);
 
-	// Form field values (initialized from existing model)
-	let selectedOpenRouterId = $state(data.model.openrouter_id);
-	let displayName = $state(data.model.name);
-	let reasoningEnabled = $state(data.model.supports_reasoning);
+	// Form field values (initialized from existing model via $derived)
+	// Using $derived ensures these update if navigating to a different model
+	const initialOpenRouterId = $derived(data.model.openrouter_id);
+	const initialDisplayName = $derived(data.model.name);
+	const initialReasoningEnabled = $derived(data.model.supports_reasoning);
+
+	// Editable state that tracks user changes
+	let selectedOpenRouterId = $state('');
+	let displayName = $state('');
+	let reasoningEnabled = $state(false);
+
+	// Initialize form values when model data changes
+	$effect(() => {
+		selectedOpenRouterId = initialOpenRouterId;
+		displayName = initialDisplayName;
+		reasoningEnabled = initialReasoningEnabled;
+	});
 
 	// Track whether the currently selected OpenRouter model supports reasoning
 	const modelSupportsReasoning = $derived(

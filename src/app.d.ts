@@ -9,7 +9,7 @@ declare global {
 				name: string;
 				email: string;
 				emailVerified: boolean;
-				image: string | null;
+				image?: string | null;
 				isAdmin: boolean;
 				createdAt: Date;
 				updatedAt: Date;
@@ -19,8 +19,10 @@ declare global {
 				userId: string;
 				token: string;
 				expiresAt: Date;
-				ipAddress: string | null;
-				userAgent: string | null;
+				ipAddress?: string | null;
+				userAgent?: string | null;
+				createdAt?: Date;
+				updatedAt?: Date;
 			} | null;
 		}
 		interface Platform {

@@ -7,8 +7,8 @@ export const authClient = createAuthClient({
 	baseURL: typeof window !== 'undefined' ? window.location.origin : ''
 });
 
-// Reactive session state
-export const session = authClient.session;
+// Reactive session state - use useSession for Svelte
+export const { useSession } = authClient;
 
 // Auth methods
 export const signIn = authClient.signIn;

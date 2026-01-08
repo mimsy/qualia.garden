@@ -3,8 +3,9 @@
 	// ABOUTME: Wraps all admin pages with consistent navigation.
 
 	import type { LayoutData } from './$types';
+	import type { Snippet } from 'svelte';
 
-	let { data, children } = $props<{ data: LayoutData; children: any }>();
+	let { data, children } = $props<{ data: LayoutData; children: Snippet }>();
 </script>
 
 <div class="min-h-screen bg-gray-100">

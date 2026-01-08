@@ -24,10 +24,16 @@
 	let isComputing = $state(true);
 	let error = $state<string | null>(null);
 
-	// UMAP parameters
-	let nNeighbors = $state(Math.min(5, Math.max(2, data.entities.length - 1)));
+	// UMAP parameters - computed default based on entity count
+	const defaultNeighbors = $derived(Math.min(5, Math.max(2, data.entities.length - 1)));
+	let nNeighbors = $state(5);
 	let minDist = $state(0.1);
 	let spread = $state(1.0);
+
+	// Initialize nNeighbors when data changes
+	$effect(() => {
+		nNeighbors = defaultNeighbors;
+	});
 
 	// Color palette for families
 	const familyColors: Record<string, string> = {
@@ -181,6 +187,8 @@
 							{#each points as point}
 								{@const isHovered = hoveredPoint?.id === point.id}
 								<g
+									role="button"
+									tabindex="0"
 									onmouseenter={() => handleMouseEnter(point)}
 									onmouseleave={handleMouseLeave}
 									class="cursor-pointer"
@@ -230,16 +238,16 @@
 						<h3 class="font-semibold text-gray-900 mb-3">Parameters</h3>
 						<div class="space-y-4">
 							<div>
-								<label class="block text-sm text-gray-600 mb-1">Neighbors: {nNeighbors}</label>
-								<input type="range" min="2" max={Math.max(2, data.entities.length - 1)} bind:value={nNeighbors} class="w-full" />
+								<label for="neighbors-input" class="block text-sm text-gray-600 mb-1">Neighbors: {nNeighbors}</label>
+								<input id="neighbors-input" type="range" min="2" max={Math.max(2, data.entities.length - 1)} bind:value={nNeighbors} class="w-full" />
 							</div>
 							<div>
-								<label class="block text-sm text-gray-600 mb-1">Min Distance: {minDist.toFixed(2)}</label>
-								<input type="range" min="0.01" max="1" step="0.01" bind:value={minDist} class="w-full" />
+								<label for="min-dist-input" class="block text-sm text-gray-600 mb-1">Min Distance: {minDist.toFixed(2)}</label>
+								<input id="min-dist-input" type="range" min="0.01" max="1" step="0.01" bind:value={minDist} class="w-full" />
 							</div>
 							<div>
-								<label class="block text-sm text-gray-600 mb-1">Spread: {spread.toFixed(1)}</label>
-								<input type="range" min="0.5" max="3" step="0.1" bind:value={spread} class="w-full" />
+								<label for="spread-input" class="block text-sm text-gray-600 mb-1">Spread: {spread.toFixed(1)}</label>
+								<input id="spread-input" type="range" min="0.5" max="3" step="0.1" bind:value={spread} class="w-full" />
 							</div>
 							<button onclick={computeUMAP} disabled={isComputing} class="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50">
 								{isComputing ? 'Computing...' : 'Recompute'}

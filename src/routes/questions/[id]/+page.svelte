@@ -18,11 +18,25 @@
 	let showPollTrigger = $state(false);
 	let selectedModels = new SvelteSet<string>();
 
-	// Edit form state
-	let editText = $state(data.question.text);
-	let editCategory = $state(data.question.category || '');
-	let editResponseType = $state(data.question.response_type);
-	let editOptionsList = $state<string[]>(data.options || ['']);
+	// Edit form state - derived initial values
+	const initialText = $derived(data.question.text);
+	const initialCategory = $derived(data.question.category || '');
+	const initialResponseType = $derived(data.question.response_type);
+	const initialOptions = $derived(data.options || ['']);
+
+	// Editable state
+	let editText = $state('');
+	let editCategory = $state('');
+	let editResponseType = $state('ordinal');
+	let editOptionsList = $state<string[]>(['']);
+
+	// Initialize form values when question data changes
+	$effect(() => {
+		editText = initialText;
+		editCategory = initialCategory;
+		editResponseType = initialResponseType;
+		editOptionsList = [...initialOptions];
+	});
 
 	function addOption() {
 		editOptionsList = [...editOptionsList, ''];
@@ -277,16 +291,16 @@
 						</div>
 					</div>
 
-					<div>
+					<fieldset>
 						<input type="hidden" name="options" value={serializedOptions} />
 						<div class="flex items-center justify-between mb-2">
-							<label class="block text-sm font-medium text-gray-700">
+							<legend class="block text-sm font-medium text-gray-700">
 								{#if editResponseType === 'ordinal'}
 									Options (ordered scale, first = lowest)
 								{:else}
 									Options (unordered choices)
 								{/if}
-							</label>
+							</legend>
 							<button
 								type="button"
 								onclick={addOption}
@@ -384,7 +398,7 @@
 								</div>
 							</div>
 						{/if}
-					</div>
+					</fieldset>
 
 					<div class="flex justify-end">
 						<button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">

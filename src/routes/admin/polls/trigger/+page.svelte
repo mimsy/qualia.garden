@@ -46,9 +46,9 @@
 			</select>
 		</div>
 
-		<div>
+		<fieldset>
 			<div class="flex justify-between items-center mb-2">
-				<label class="block text-sm font-medium text-gray-700">Models</label>
+				<legend class="block text-sm font-medium text-gray-700">Models</legend>
 				<button
 					type="button"
 					onclick={toggleAll}
@@ -76,7 +76,7 @@
 					<p class="text-gray-500 text-sm">No active models. Enable some in the Models page.</p>
 				{/each}
 			</div>
-		</div>
+		</fieldset>
 
 		<div class="flex gap-4">
 			<button

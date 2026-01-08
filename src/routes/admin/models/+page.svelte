@@ -81,11 +81,13 @@
 								<div class="text-sm text-gray-500 font-mono truncate">{model.openrouter_id}</div>
 							</div>
 							<div class="flex items-center gap-3 ml-4">
-								<form method="POST" action="?/toggle" onclick={(e) => e.stopPropagation()}>
+								<form method="POST" action="?/toggle">
 									<input type="hidden" name="id" value={model.id} />
 									<input type="hidden" name="active" value={model.active.toString()} />
 									<button
 										type="submit"
+										onclick={(e) => e.stopPropagation()}
+										onkeydown={(e) => e.stopPropagation()}
 										class="w-12 h-6 rounded-full transition-colors relative {model.active
 											? 'bg-green-500'
 											: 'bg-gray-300'}"

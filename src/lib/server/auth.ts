@@ -96,7 +96,7 @@ export function createAuth(d1: D1Database, baseURL: string, env: AuthEnv) {
 		},
 		callbacks: {
 			// Make first user an admin
-			onUserCreated: async ({ user }) => {
+			onUserCreated: async ({ user }: { user: { id: string } }) => {
 				const existingUsers = await db
 					.selectFrom('user')
 					.select('id')
