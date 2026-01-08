@@ -8,6 +8,7 @@ AI opinion polling platform that surveys LLMs on value questions and compares re
 - **Backend**: Cloudflare Pages (hosting), D1 (SQLite database), Queues (async processing)
 - **AI**: OpenRouter API via Vercel AI SDK for structured outputs
 - **Language**: TypeScript throughout
+- **Package Manager**: Bun
 
 ## Architecture
 
@@ -29,27 +30,73 @@ scripts/            # Import scripts (e.g., World Values Survey data)
 ## Development Commands
 
 ```bash
-npm run dev              # Start dev server (vite)
-npm run build            # Build for production
-npm run check            # TypeScript/Svelte checking
+bun run dev              # Start dev server (vite)
+bun run build            # Build for production
+bun run check            # TypeScript/Svelte checking
+
+# Testing
+bun run test             # Run tests in watch mode
+bun run test:run         # Run tests once
+bun run test:coverage    # Run tests with coverage report
+
+# Linting & Formatting
+bun run lint             # Run ESLint
+bun run lint:fix         # Fix ESLint errors
+bun run format           # Format with Prettier
+bun run format:check     # Check formatting
 
 # Database
-npm run db:migrate       # Apply migrations to local D1
-npm run db:migrate:remote # Apply migrations to remote D1
+bun run db:migrate       # Apply migrations to local D1
+bun run db:migrate:remote # Apply migrations to remote D1
 
 # Poll processor worker
-npm run worker:dev       # Run worker locally
-npm run worker:deploy    # Deploy worker to Cloudflare
+bun run worker:dev       # Run worker locally
+bun run worker:deploy    # Deploy worker to Cloudflare
 ```
 
 ## Deployment
 
 ```bash
-npm run build
+bun run build
 wrangler pages deploy .svelte-kit/cloudflare
 ```
 
 The site deploys to Cloudflare Pages. The poll processor worker deploys separately.
+
+## Testing
+
+Tests use Vitest. Test files are co-located with source files using `.test.ts` suffix.
+
+```bash
+bun run test:run         # Run all tests
+bun run test:coverage    # Run with coverage report
+```
+
+Key test files:
+
+- `src/lib/alignment.test.ts` - Score calculation tests
+- `src/lib/db/queries.test.ts` - Database query tests
+- `workers/poll-processor/index.test.ts` - Poll processor helper tests
+
+Git hooks (via Husky):
+
+- **pre-commit**: Runs lint-staged (ESLint + Prettier on staged files)
+- **pre-push**: Runs full test suite
+
+## Svelte Development
+
+**Important**: When creating or editing `.svelte` files or `.svelte.ts` modules, use the Svelte MCP server tools for documentation lookup and code validation. The `svelte-file-editor` agent and `svelte-code-writer` skill provide access to official Svelte 5 documentation and can validate code against current best practices.
+
+### Svelte 5 Runes
+
+Use Svelte 5 runes syntax:
+
+```svelte
+<script lang="ts">
+	let { data } = $props<{ data: PageData }>();
+	const derived = $derived(data.items.filter((x) => x.active));
+</script>
+```
 
 ## Database Schema
 
@@ -75,17 +122,6 @@ Every file starts with two lines explaining what it does:
 // ABOUTME: Uses Vercel AI SDK with OpenRouter for structured responses.
 ```
 
-### Svelte 5 Runes
-
-Use Svelte 5 runes syntax:
-
-```svelte
-<script lang="ts">
-	let { data } = $props<{ data: PageData }>();
-	const derived = $derived(data.items.filter((x) => x.active));
-</script>
-```
-
 ### Platform Bindings
 
 Access Cloudflare bindings via `platform.env`:
@@ -103,6 +139,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 - `src/lib/db/queries.ts` - All database queries
 - `src/lib/db/types.ts` - TypeScript interfaces for DB tables
 - `workers/poll-processor/index.ts` - Queue consumer for AI polling
+- `workers/poll-processor/helpers.ts` - Testable helper functions for poll processing
 - `wrangler.toml` - Cloudflare Pages configuration
 - `workers/poll-processor/wrangler.toml` - Worker configuration
 
