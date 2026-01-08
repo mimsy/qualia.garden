@@ -26,6 +26,10 @@
 	const aiMaxPct = $derived(Math.max(...aiResults.map((r) => r.percentage), 0));
 	const humanMaxPct = $derived(Math.max(...humanResults.map((r) => r.percentage), 0));
 
+	// Find top answer keys for highlighting
+	const aiTopAnswer = $derived(aiResults.find((r) => r.percentage === aiMaxPct)?.answer);
+	const humanTopAnswer = $derived(humanResults.find((r) => r.percentage === humanMaxPct)?.answer);
+
 	// Calculate center column width based on longest option (~7px per char at text-[11px])
 	const maxOptionLength = $derived(Math.max(...options.map((o) => o.length), 3));
 	const centerWidth = $derived(Math.min(Math.max(maxOptionLength * 7 + 12, 40), 140));
@@ -50,15 +54,16 @@
 		)}
 		{@const aiPct = aiResult?.percentage ?? 0}
 		{@const humanPct = humanResult?.percentage ?? 0}
-		{@const isAiMode = aiPct > 0 && aiPct === aiMaxPct}
-		{@const isHumanMode = humanPct > 0 && humanPct === humanMaxPct}
+		{@const isAiTop = optionKey === aiTopAnswer}
+		{@const isHumanTop = optionKey === humanTopAnswer || option === humanResults.find((r) => r.percentage === humanMaxPct)?.label}
+		{@const isBothTop = isAiTop && isHumanTop}
 		<div class="flex items-center text-xs">
 			<span
-				class="w-9 text-right tabular-nums shrink-0 {isAiMode
+				class="w-9 text-right tabular-nums shrink-0 {isAiTop
 					? 'text-blue-600 font-semibold'
 					: 'text-slate-400'}"
 			>
-				{aiPct > 0 ? `${aiPct.toFixed(0)}%` : ''}
+				{aiPct.toFixed(0)}%
 			</span>
 			<div class="flex-1 h-2 bg-slate-100 rounded-l overflow-hidden flex justify-end ml-1">
 				<div
@@ -67,11 +72,19 @@
 				></div>
 			</div>
 			<div
-				class="text-center text-slate-600 truncate px-1 shrink-0 text-[11px]"
+				class="text-center truncate px-1 shrink-0 text-[11px]"
 				style="width: {centerWidth}px"
 				title={option}
 			>
-				{option}
+				{#if isBothTop}
+					<span class="font-bold" style="background: linear-gradient(90deg, #2563eb, #10b981); -webkit-background-clip: text; background-clip: text; color: transparent;">{option}</span>
+				{:else if isAiTop}
+					<span class="font-bold text-blue-600">{option}</span>
+				{:else if isHumanTop}
+					<span class="font-bold text-emerald-600">{option}</span>
+				{:else}
+					<span class="text-slate-600">{option}</span>
+				{/if}
 			</div>
 			<div class="flex-1 h-2 bg-slate-100 rounded-r overflow-hidden mr-1">
 				<div
@@ -80,11 +93,11 @@
 				></div>
 			</div>
 			<span
-				class="w-9 tabular-nums shrink-0 {isHumanMode
+				class="w-9 tabular-nums shrink-0 {isHumanTop
 					? 'text-emerald-600 font-semibold'
 					: 'text-slate-400'}"
 			>
-				{humanPct > 0 ? `${humanPct.toFixed(0)}%` : ''}
+				{humanPct.toFixed(0)}%
 			</span>
 		</div>
 	{/each}

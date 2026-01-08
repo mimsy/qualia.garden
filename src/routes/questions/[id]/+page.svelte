@@ -6,6 +6,7 @@
 	import { enhance } from '$app/forms';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { getScoreLabel } from '$lib/alignment';
+	import ScoreBadge from '$lib/components/ScoreBadge.svelte';
 
 	let { data, form } = $props<{ data: PageData; form: ActionData }>();
 
@@ -204,15 +205,6 @@
 	</header>
 
 	<main class="max-w-6xl mx-auto px-6 py-8">
-		<div class="mb-8">
-			<a href="/questions" class="text-slate-500 hover:text-slate-700 text-sm flex items-center gap-1.5 transition-colors">
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-				</svg>
-				All Questions
-			</a>
-		</div>
-
 		{#if form?.error}
 			<div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
 				{form.error}
@@ -424,272 +416,226 @@
 				</div>
 			</form>
 		{:else}
-			<!-- Read-only view -->
-			<div class="bg-white rounded-xl border border-slate-200 p-8 mb-8">
-				<div class="flex items-start justify-between">
-					<div class="flex-1">
-						<div class="mb-4 flex items-center gap-2">
-							{#if data.question.category}
-								<span class="px-2 py-1 bg-slate-100 rounded text-xs text-slate-600">
-									{data.question.category}
-								</span>
-							{/if}
-							{#if data.isAdmin}
-								<span class="px-2 py-1 rounded text-xs {getStatusBadgeClass(data.question.status)}">
-									{data.question.status}
-								</span>
-							{/if}
-						</div>
-						<h2 class="text-2xl font-bold text-slate-900 mb-4">
-							{data.question.text}
-						</h2>
-						<div class="text-sm text-slate-500">
-							{data.question.response_type.replace('_', ' ')} •
-							{data.totalResponses} response{data.totalResponses === 1 ? '' : 's'}
-						</div>
-					</div>
-					{#if data.isAdmin && data.question.status === 'published'}
-						<form method="POST" action="?/archive" use:enhance>
-							<button type="submit" class="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded">
-								Archive
-							</button>
-						</form>
-					{/if}
-				</div>
-			</div>
-		{/if}
-
-		<!-- Scores Summary Section -->
-		{#if data.totalResponses > 0 && (data.humanAiScore !== null || data.aiAgreementScore !== null)}
+			<!-- Read-only view - unified question card -->
 			{@const selfConsistencyValues = Object.values(data.modelSelfConsistency).filter((v): v is number => v !== null)}
 			{@const avgSelfConsistency = selfConsistencyValues.length > 0
 				? selfConsistencyValues.reduce((a: number, b: number) => a + b, 0) / selfConsistencyValues.length
 				: null}
-			<div class="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-				<h3 class="font-semibold text-slate-900 mb-5">Scores</h3>
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-					<!-- Alignment (emerald) -->
-					<div class="text-center p-4 rounded-lg bg-emerald-50/50 border border-emerald-100">
-						<div class="text-xs font-medium text-emerald-600 uppercase tracking-wide mb-2">Alignment</div>
-						{#if data.humanAiScore !== null}
-							<div class="text-3xl font-bold text-emerald-600">
-								{Math.round(data.humanAiScore)}
-							</div>
-							<div class="text-xs text-emerald-500/70 mt-1">{getScoreLabel(data.humanAiScore)}</div>
-							<div class="mt-3 h-2 bg-emerald-100 rounded-full overflow-hidden">
-								<div
-									class="h-full bg-emerald-500 rounded-full transition-all"
-									style="width: {data.humanAiScore}%"
-								></div>
-							</div>
-						{:else}
-							<div class="text-2xl text-emerald-300">—</div>
-							<div class="text-xs text-emerald-400 mt-1">No human data</div>
+			{@const humanResults = humanAggregateResults}
+			{@const maxPercentage = Math.max(
+				...data.aggregateResults.map((r: { percentage: number }) => r.percentage),
+				...humanResults.map((r: { percentage: number }) => r.percentage),
+				1
+			)}
+			{@const aiMaxPct = Math.max(...data.aggregateResults.map((r: { percentage: number }) => r.percentage), 0)}
+			{@const humanMaxPct = Math.max(...humanResults.map((r: { percentage: number }) => r.percentage), 0)}
+			{@const aiTopAnswer = data.aggregateResults.find((r: { percentage: number }) => r.percentage === aiMaxPct)?.answer}
+			{@const humanTopAnswer = humanResults.find((r: { percentage: number }) => r.percentage === humanMaxPct)?.answer}
+			<div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-8">
+				<!-- Header with source/category links -->
+				{#if data.benchmarkSource || data.question.category}
+					<div class="flex border-b border-slate-100 text-xs">
+						{#if data.benchmarkSource}
+							<a
+								href="/sources/{data.benchmarkSource.id}"
+								class="flex-1 py-2 px-5 text-slate-500 hover:text-blue-600 hover:bg-slate-50 transition-colors truncate"
+							>
+								<span class="text-slate-400">Source:</span> {data.benchmarkSource.short_name}
+							</a>
+						{/if}
+						{#if data.question.category}
+							<a
+								href="/categories/{encodeURIComponent(data.question.category)}"
+								class="flex-1 py-2 px-5 text-slate-500 hover:text-blue-600 hover:bg-slate-50 transition-colors truncate {data.benchmarkSource ? 'border-l border-slate-100' : ''}"
+							>
+								<span class="text-slate-400">Category:</span> {data.question.category}
+							</a>
 						{/if}
 					</div>
+				{/if}
 
-					<!-- AI Consensus (blue) -->
-					<div class="text-center p-4 rounded-lg bg-blue-50/50 border border-blue-100">
-						<div class="text-xs font-medium text-blue-600 uppercase tracking-wide mb-2">AI Consensus</div>
-						{#if data.aiConsensusScore !== null}
-							<div class="text-3xl font-bold text-blue-600">
-								{Math.round(data.aiConsensusScore)}
-							</div>
-							<div class="text-xs text-blue-500/70 mt-1">{getScoreLabel(data.aiConsensusScore)}</div>
-							<div class="mt-3 h-2 bg-blue-100 rounded-full overflow-hidden">
-								<div
-									class="h-full bg-blue-500 rounded-full transition-all"
-									style="width: {data.aiConsensusScore}%"
-								></div>
-							</div>
-						{:else}
-							<div class="text-2xl text-blue-300">—</div>
-							<div class="text-xs text-blue-400 mt-1">Need 2+ models</div>
-						{/if}
-					</div>
-
-					<!-- AI Confidence (violet) -->
-					<div class="text-center p-4 rounded-lg bg-violet-50/50 border border-violet-100">
-						<div class="text-xs font-medium text-violet-600 uppercase tracking-wide mb-2">AI Confidence</div>
-						{#if avgSelfConsistency !== null}
-							<div class="text-3xl font-bold text-violet-600">
-								{Math.round(avgSelfConsistency)}
-							</div>
-							<div class="text-xs text-violet-500/70 mt-1">{getScoreLabel(avgSelfConsistency)}</div>
-							<div class="mt-3 h-2 bg-violet-100 rounded-full overflow-hidden">
-								<div
-									class="h-full bg-violet-500 rounded-full transition-all"
-									style="width: {avgSelfConsistency}%"
-								></div>
-							</div>
-						{:else}
-							<div class="text-2xl text-violet-300">—</div>
-							<div class="text-xs text-violet-400 mt-1">No data</div>
+				<!-- Question text and admin controls -->
+				<div class="px-8 pt-6 pb-4">
+					<div class="flex items-start justify-between gap-4">
+						<div class="flex-1">
+							<h2 class="text-2xl font-bold text-slate-900">
+								{data.question.text}
+							</h2>
+							{#if data.isAdmin && data.question.status !== 'published'}
+								<span class="inline-block mt-2 px-2 py-1 rounded text-xs {getStatusBadgeClass(data.question.status)}">
+									{data.question.status}
+								</span>
+							{/if}
+						</div>
+						{#if data.isAdmin && data.question.status === 'published'}
+							<form method="POST" action="?/archive" use:enhance>
+								<button type="submit" class="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded">
+									Archive
+								</button>
+							</form>
 						{/if}
 					</div>
 				</div>
-			</div>
-		{/if}
 
-		{#if data.benchmarkSource}
-			<!-- Comparison View: AI vs Human -->
-			<div class="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-				<h3 class="font-semibold text-slate-900 mb-6">AI vs Human Comparison</h3>
-
-				{#if humanAggregateResults.length > 0 || data.totalResponses > 0}
-				{@const humanResults = humanAggregateResults}
-				{@const maxPercentage = Math.max(
-					...data.aggregateResults.map((r: { percentage: number }) => r.percentage),
-					...humanResults.map((r: { percentage: number }) => r.percentage),
-					1
-				)}
-				{@const aiMaxPct = Math.max(...data.aggregateResults.map((r: { percentage: number }) => r.percentage), 0)}
-				{@const humanMaxPct = Math.max(...humanResults.map((r: { percentage: number }) => r.percentage), 0)}
-					<!-- Legend -->
-					<div class="flex items-center justify-center gap-8 mb-6">
-						<div class="flex items-center gap-2">
-							<div class="w-3 h-3 rounded-full bg-blue-500"></div>
-							<span class="text-sm text-gray-700">AI Models</span>
-							<span class="text-xs text-gray-500">({data.totalResponses} models)</span>
-						</div>
-						<div class="flex items-center gap-2">
-							<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
-							<span class="text-sm text-gray-700">Humans</span>
-							{#if data.humanDistribution}
-								<span class="text-xs text-gray-500">({data.humanDistribution.sample_size.toLocaleString()} respondents)</span>
-							{/if}
-						</div>
-					</div>
-
-					<!-- Back-to-back butterfly chart -->
-					{#if data.options && data.options.length > 0}
-						<div class="space-y-2">
-							{#each data.options as option, i}
-								{@const optionKey = String(i + 1)}
-								{@const aiResult = data.aggregateResults.find((r: { answer: string }) => r.answer === optionKey)}
-								{@const humanResult = humanResults.find((r: { answer: string; label: string }) => r.answer === optionKey || r.label === option)}
-								{@const aiPct = aiResult?.percentage ?? 0}
-								{@const humanPct = humanResult?.percentage ?? 0}
-								{@const isAiMode = aiPct > 0 && aiPct === aiMaxPct}
-								{@const isHumanMode = humanPct > 0 && humanPct === humanMaxPct}
-								<div class="flex items-center gap-2">
-									<!-- AI bar (right-aligned, grows left) -->
-									<div class="flex-1 flex items-center justify-end gap-2">
-										{#if isAiMode}<span class="text-blue-500">●</span>{/if}
-										<span class="text-xs tabular-nums w-8 text-right {isAiMode ? 'text-blue-600 font-semibold' : 'text-gray-500'}">
-											{aiPct > 0 ? `${aiPct.toFixed(0)}%` : ''}
-										</span>
-										<div class="w-32 sm:w-48 h-6 bg-gray-100 rounded-l overflow-hidden flex justify-end">
-											<div
-												class="h-full bg-blue-500 rounded-l transition-all"
-												style="width: {(aiPct / maxPercentage) * 100}%"
-											></div>
-										</div>
-									</div>
-									<!-- Center label -->
-									<div class="w-32 sm:w-40 text-center px-2">
-										<span class="text-sm text-gray-700 leading-tight">{option}</span>
-									</div>
-									<!-- Human bar (left-aligned, grows right) -->
-									<div class="flex-1 flex items-center gap-2">
-										<div class="w-32 sm:w-48 h-6 bg-gray-100 rounded-r overflow-hidden">
-											<div
-												class="h-full bg-emerald-500 rounded-r transition-all"
-												style="width: {(humanPct / maxPercentage) * 100}%"
-											></div>
-										</div>
-										<span class="text-xs tabular-nums w-8 {isHumanMode ? 'text-emerald-600 font-semibold' : 'text-gray-500'}">
-											{humanPct > 0 ? `${humanPct.toFixed(0)}%` : ''}
-										</span>
-										{#if isHumanMode}<span class="text-emerald-500">●</span>{/if}
+				<!-- Butterfly chart (inside card) -->
+				{#if data.benchmarkSource && (humanResults.length > 0 || data.totalResponses > 0)}
+					<div class="px-8 pb-6">
+						{#if data.options && data.options.length > 0}
+							<!-- Column headers with side-aligned labels -->
+							<div class="flex items-center gap-2 mb-3">
+								<div class="flex-1 flex items-center justify-end gap-2">
+									<div class="flex items-center gap-1.5 text-xs text-blue-600 font-medium">
+										<div class="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+										<span>AI</span>
+										<span class="text-gray-400 font-normal">({data.totalResponses})</span>
 									</div>
 								</div>
-							{/each}
-						</div>
-					{:else}
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-						<!-- AI Results (fallback) -->
-						<div>
-							<div class="flex items-center gap-2 mb-4">
-								<div class="w-3 h-3 rounded-full bg-blue-500"></div>
-								<span class="font-medium text-gray-700">AI Models</span>
-								<span class="text-xs text-gray-500">({data.totalResponses} models)</span>
+								<div class="w-32 sm:w-40 text-center px-2"></div>
+								<div class="flex-1 flex items-center gap-2">
+									<div class="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+										<div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+										<span>Human</span>
+										{#if data.humanDistribution}
+											<span class="text-gray-400 font-normal">({data.humanDistribution.sample_size.toLocaleString()})</span>
+										{/if}
+									</div>
+								</div>
 							</div>
-							<div class="space-y-3">
-								{#each data.aggregateResults as result}
-									<div>
-										<div class="flex justify-between text-sm mb-1">
-											<span class="text-gray-700 truncate pr-2">
-												{getAnswerLabel(result.answer)}
+
+							<div class="space-y-2">
+								{#each data.options as option, i}
+									{@const optionKey = String(i + 1)}
+									{@const aiResult = data.aggregateResults.find((r: { answer: string }) => r.answer === optionKey)}
+									{@const humanResult = humanResults.find((r: { answer: string; label: string }) => r.answer === optionKey || r.label === option)}
+									{@const aiPct = aiResult?.percentage ?? 0}
+									{@const humanPct = humanResult?.percentage ?? 0}
+									{@const isAiTop = optionKey === aiTopAnswer}
+									{@const isHumanTop = optionKey === humanTopAnswer || option === humanResults.find((r: { percentage: number }) => r.percentage === humanMaxPct)?.label}
+									{@const isBothTop = isAiTop && isHumanTop}
+									<div class="flex items-center gap-2">
+										<!-- AI bar (right-aligned, grows left) -->
+										<div class="flex-1 flex items-center justify-end gap-2">
+											<span class="text-xs tabular-nums w-10 text-right {isAiTop ? 'text-blue-600 font-semibold' : 'text-gray-500'}">
+												{aiPct.toFixed(0)}%
 											</span>
-											<span class="text-gray-500 flex-shrink-0">
-												{result.percentage.toFixed(0)}%
-											</span>
+											<div class="w-32 sm:w-48 h-6 bg-gray-100 rounded-l overflow-hidden flex justify-end">
+												<div
+													class="h-full bg-blue-500 rounded-l transition-all"
+													style="width: {(aiPct / maxPercentage) * 100}%"
+												></div>
+											</div>
 										</div>
-										<div class="h-5 bg-gray-100 rounded overflow-hidden">
-											<div
-												class="h-full bg-blue-500 rounded transition-all"
-												style="width: {result.percentage}%"
-											></div>
+										<!-- Center label with conditional styling -->
+										<div class="w-32 sm:w-40 text-center px-2">
+											{#if isBothTop}
+												<span class="text-sm font-bold leading-tight" style="background: linear-gradient(90deg, #2563eb, #10b981); -webkit-background-clip: text; background-clip: text; color: transparent;">{option}</span>
+											{:else if isAiTop}
+												<span class="text-sm font-bold text-blue-600 leading-tight">{option}</span>
+											{:else if isHumanTop}
+												<span class="text-sm font-bold text-emerald-600 leading-tight">{option}</span>
+											{:else}
+												<span class="text-sm text-gray-700 leading-tight">{option}</span>
+											{/if}
+										</div>
+										<!-- Human bar (left-aligned, grows right) -->
+										<div class="flex-1 flex items-center gap-2">
+											<div class="w-32 sm:w-48 h-6 bg-gray-100 rounded-r overflow-hidden">
+												<div
+													class="h-full bg-emerald-500 rounded-r transition-all"
+													style="width: {(humanPct / maxPercentage) * 100}%"
+												></div>
+											</div>
+											<span class="text-xs tabular-nums w-10 {isHumanTop ? 'text-emerald-600 font-semibold' : 'text-gray-500'}">
+												{humanPct.toFixed(0)}%
+											</span>
 										</div>
 									</div>
 								{/each}
 							</div>
-						</div>
+						{:else}
+							<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+								<!-- AI Results (fallback) -->
+								<div>
+									<div class="flex items-center gap-2 mb-4">
+										<div class="w-3 h-3 rounded-full bg-blue-500"></div>
+										<span class="font-medium text-gray-700">AI Models</span>
+										<span class="text-xs text-gray-500">({data.totalResponses} models)</span>
+									</div>
+									<div class="space-y-3">
+										{#each data.aggregateResults as result}
+											<div>
+												<div class="flex justify-between text-sm mb-1">
+													<span class="text-gray-700 truncate pr-2">
+														{getAnswerLabel(result.answer)}
+													</span>
+													<span class="text-gray-500 flex-shrink-0">
+														{result.percentage.toFixed(0)}%
+													</span>
+												</div>
+												<div class="h-5 bg-gray-100 rounded overflow-hidden">
+													<div
+														class="h-full bg-blue-500 rounded transition-all"
+														style="width: {result.percentage}%"
+													></div>
+												</div>
+											</div>
+										{/each}
+									</div>
+								</div>
 
-						<!-- Human Results -->
-						<div>
-							<div class="flex items-center gap-2 mb-4">
-								<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
-								<span class="font-medium text-gray-700">Humans</span>
-								{#if data.humanDistribution}
-									<span class="text-xs text-gray-500">({data.humanDistribution.sample_size.toLocaleString()} respondents)</span>
-								{/if}
-							</div>
-							{#if humanResults.length > 0}
-								<div class="space-y-3">
-									{#each humanResults as result}
-										<div>
-											<div class="flex justify-between text-sm mb-1">
-												<span class="text-gray-700 truncate pr-2">{result.label}</span>
-												<span class="text-gray-500 flex-shrink-0">
-													{result.percentage.toFixed(0)}%
-												</span>
-											</div>
-											<div class="h-5 bg-gray-100 rounded overflow-hidden">
-												<div
-													class="h-full bg-emerald-500 rounded transition-all"
-													style="width: {result.percentage}%"
-												></div>
-											</div>
+								<!-- Human Results -->
+								<div>
+									<div class="flex items-center gap-2 mb-4">
+										<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+										<span class="font-medium text-gray-700">Humans</span>
+										{#if data.humanDistribution}
+											<span class="text-xs text-gray-500">({data.humanDistribution.sample_size.toLocaleString()} respondents)</span>
+										{/if}
+									</div>
+									{#if humanResults.length > 0}
+										<div class="space-y-3">
+											{#each humanResults as result}
+												<div>
+													<div class="flex justify-between text-sm mb-1">
+														<span class="text-gray-700 truncate pr-2">{result.label}</span>
+														<span class="text-gray-500 flex-shrink-0">
+															{result.percentage.toFixed(0)}%
+														</span>
+													</div>
+													<div class="h-5 bg-gray-100 rounded overflow-hidden">
+														<div
+															class="h-full bg-emerald-500 rounded transition-all"
+															style="width: {result.percentage}%"
+														></div>
+													</div>
+												</div>
+											{/each}
 										</div>
-									{/each}
+									{:else}
+										<div class="text-center py-8 text-gray-400 text-sm">
+											No human data for this filter combination
+										</div>
+									{/if}
 								</div>
-							{:else}
-								<div class="text-center py-8 text-gray-400 text-sm">
-									No human data for this filter combination
-								</div>
-							{/if}
-						</div>
-					</div>
-					{/if}
-				{:else}
-					<div class="text-center py-8 text-gray-500">
-						No response data available yet.
+							</div>
+						{/if}
 					</div>
 				{/if}
 
-				<div class="mt-6 pt-4 border-t text-xs text-gray-400">
-					Human data from {data.benchmarkSource.name}
-					{#if data.benchmarkSource.year_range}
-						({data.benchmarkSource.year_range})
-					{/if}
-					{#if data.benchmarkSource.url}
-						· <a href={data.benchmarkSource.url} target="_blank" rel="noopener" class="text-blue-500 hover:underline">Source</a>
-					{/if}
-				</div>
+				<!-- Score bars footer -->
+				{#if data.totalResponses > 0}
+					<div class="flex border-t border-slate-100">
+						<ScoreBadge score={data.humanAiScore} label="Alignment" type="humanSimilarity" />
+						<div class="w-px bg-slate-100"></div>
+						<ScoreBadge score={data.aiConsensusScore} label="Consensus" type="aiConsensus" />
+						<div class="w-px bg-slate-100"></div>
+						<ScoreBadge score={avgSelfConsistency} label="Confidence" type="aiConfidence" />
+					</div>
+				{/if}
 			</div>
-		{:else if data.totalResponses > 0}
+		{/if}
+
+		{#if !data.benchmarkSource && data.totalResponses > 0}
 			<!-- Standard View: No human comparison -->
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
 				<div class="bg-white rounded-xl border border-slate-200 p-6">
