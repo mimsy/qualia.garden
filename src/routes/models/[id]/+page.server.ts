@@ -48,19 +48,24 @@ interface OtherModelResponseRow {
 	parsed_answer: string;
 }
 
-interface QuestionWithScore {
+interface QuestionWithScores {
 	id: string;
 	text: string;
 	category: string | null;
-	humanAiScore: number;
+	humanAlignment: number | null;
+	aiConsensus: number | null;
+	selfConsistency: number | null;
 	modelAnswer: string;
 	humanMode: string | null;
+	aiMode: string | null;
 	options: string[];
 }
 
-interface CategoryScore {
+interface CategoryScores {
 	category: string;
-	score: number;
+	humanAlignment: number | null;
+	aiConsensus: number | null;
+	selfConsistency: number | null;
 	questionCount: number;
 }
 
@@ -135,12 +140,21 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		return {
 			model: { ...model, supports_reasoning: Boolean(model.supports_reasoning), active: Boolean(model.active) },
 			questionCount: 0,
+			questionsWithHumanData: 0,
 			overallHumanAlignment: null,
+			overallAiConsensus: null,
 			overallSelfConsistency: null,
 			categoryScores: [],
 			mostSimilar: [],
 			mostDifferent: [],
-			biggestDisagreements: []
+			notableQuestions: {
+				highAlignment: [],
+				lowAlignment: [],
+				highConsensus: [],
+				lowConsensus: [],
+				highConfidence: [],
+				lowConfidence: []
+			}
 		};
 	}
 
@@ -223,24 +237,22 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		: null;
 
 	// Compute per-question human alignment scores using model's full distribution
-	const questionScores: QuestionWithScore[] = [];
-	for (const [qId, answer] of Object.entries(modelResponses)) {
-		if (!answer) continue;
+	const questionHumanAlignment: Record<string, number> = {};
+	const questionHumanMode: Record<string, string | null> = {};
+
+	for (const [qId] of responsesByQuestion) {
 		const q = questionMap.get(qId);
 		if (!q) continue;
 
 		const humanDist = humanDistMap.get(qId);
 		const modelDist = modelDistributions[qId];
 		const options = q.options ? JSON.parse(q.options) as string[] : [];
-		let humanAiScore = 0;
 		let humanMode: string | null = null;
 
 		if (humanDist && modelDist && options.length > 0) {
 			if (q.response_type === 'ordinal') {
-				// Use model's full distribution for EMD comparison
-				humanAiScore = ordinalAgreementScore(humanDist, modelDist, options);
+				questionHumanAlignment[qId] = ordinalAgreementScore(humanDist, modelDist, options);
 			} else {
-				// Convert both distributions to labels for comparison
 				const humanDistLabeled: Record<string, number> = {};
 				for (const [key, count] of Object.entries(humanDist)) {
 					const hIdx = parseInt(key, 10) - 1;
@@ -256,7 +268,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 				}
 
 				humanMode = distributionMode(humanDistLabeled);
-				humanAiScore = nominalAgreementScore(humanDistLabeled, modelDistLabeled);
+				questionHumanAlignment[qId] = nominalAgreementScore(humanDistLabeled, modelDistLabeled);
 			}
 		}
 
@@ -270,47 +282,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			}
 			humanMode = distributionMode(humanDistLabeled);
 		}
-
-		// Convert model answer to label
-		const idx = parseInt(answer, 10) - 1;
-		const modelAnswerLabel = (idx >= 0 && idx < options.length) ? options[idx] : answer;
-
-		questionScores.push({
-			id: qId,
-			text: q.text,
-			category: q.category,
-			humanAiScore,
-			modelAnswer: modelAnswerLabel,
-			humanMode,
-			options
-		});
+		questionHumanMode[qId] = humanMode;
 	}
-
-	// Compute overall human alignment (only for questions with human data)
-	const questionsWithHumanData = questionScores.filter(q => humanDistMap.has(q.id));
-	const overallHumanAlignment = questionsWithHumanData.length > 0
-		? Math.round((questionsWithHumanData.reduce((sum, q) => sum + q.humanAiScore, 0) / questionsWithHumanData.length) * 10) / 10
-		: null;
-
-	// Compute per-category scores
-	const categoryMap = new Map<string, { total: number; count: number }>();
-	for (const q of questionsWithHumanData) {
-		const cat = q.category || 'Uncategorized';
-		if (!categoryMap.has(cat)) {
-			categoryMap.set(cat, { total: 0, count: 0 });
-		}
-		const entry = categoryMap.get(cat)!;
-		entry.total += q.humanAiScore;
-		entry.count++;
-	}
-
-	const categoryScores: CategoryScore[] = [...categoryMap.entries()]
-		.map(([category, { total, count }]) => ({
-			category,
-			score: Math.round((total / count) * 10) / 10,
-			questionCount: count
-		}))
-		.sort((a, b) => b.score - a.score);
 
 	// Get other models' responses for similarity calculation
 	const otherModelsResult = await db
@@ -366,6 +339,113 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		model.byQuestion.get(r.question_id)!.answers.push(r.parsed_answer);
 	}
 
+	// Build aggregate AI distribution per question (all other models combined)
+	const aggregateAiDistributions: Record<string, Record<string, number>> = {};
+	for (const [qId] of responsesByQuestion) {
+		const aggDist: Record<string, number> = {};
+		for (const [, otherData] of otherModels) {
+			const qData = otherData.byQuestion.get(qId);
+			if (qData) {
+				for (const ans of qData.answers) {
+					aggDist[ans] = (aggDist[ans] || 0) + 1;
+				}
+			}
+		}
+		if (Object.keys(aggDist).length > 0) {
+			aggregateAiDistributions[qId] = aggDist;
+		}
+	}
+
+	// Compute per-question AI consensus (this model vs aggregate AI)
+	const questionAiConsensus: Record<string, number> = {};
+	for (const [qId, modelDist] of Object.entries(modelDistributions)) {
+		const aggDist = aggregateAiDistributions[qId];
+		const q = questionMap.get(qId);
+		if (!aggDist || !q) continue;
+
+		const options = q.options ? JSON.parse(q.options) as string[] : [];
+		if (options.length === 0) continue;
+
+		const score = q.response_type === 'ordinal'
+			? ordinalAgreementScore(aggDist, modelDist, options)
+			: nominalAgreementScore(aggDist, modelDist);
+		questionAiConsensus[qId] = score;
+	}
+
+	const aiConsensusValues = Object.values(questionAiConsensus);
+	const overallAiConsensus = aiConsensusValues.length > 0
+		? Math.round((aiConsensusValues.reduce((a, b) => a + b, 0) / aiConsensusValues.length) * 10) / 10
+		: null;
+
+	// Build full question scores with all three metrics
+	const questionScores: QuestionWithScores[] = [];
+	for (const [qId] of responsesByQuestion) {
+		const q = questionMap.get(qId);
+		if (!q) continue;
+
+		const options = q.options ? JSON.parse(q.options) as string[] : [];
+
+		// Compute AI mode from aggregate distribution
+		let aiMode: string | null = null;
+		const aggDist = aggregateAiDistributions[qId];
+		if (aggDist && options.length > 0) {
+			aiMode = distributionMode(aggDist);
+		}
+
+		questionScores.push({
+			id: qId,
+			text: q.text,
+			category: q.category,
+			humanAlignment: questionHumanAlignment[qId] ?? null,
+			aiConsensus: questionAiConsensus[qId] ?? null,
+			selfConsistency: questionSelfConsistency[qId] ?? null,
+			modelAnswer: modelResponses[qId] ?? '',
+			humanMode: questionHumanMode[qId] ?? null,
+			aiMode,
+			options
+		});
+	}
+
+	// Compute overall human alignment
+	const questionsWithHumanData = questionScores.filter(q => q.humanAlignment !== null);
+	const overallHumanAlignment = questionsWithHumanData.length > 0
+		? Math.round((questionsWithHumanData.reduce((sum, q) => sum + q.humanAlignment!, 0) / questionsWithHumanData.length) * 10) / 10
+		: null;
+
+	// Compute per-category scores (all three metrics)
+	const categoryMap = new Map<string, QuestionWithScores[]>();
+	for (const q of questionScores) {
+		const cat = q.category || 'Uncategorized';
+		if (!categoryMap.has(cat)) {
+			categoryMap.set(cat, []);
+		}
+		categoryMap.get(cat)!.push(q);
+	}
+
+	const categoryScores: CategoryScores[] = [];
+	for (const [category, questions] of categoryMap) {
+		const withAlignment = questions.filter(q => q.humanAlignment !== null);
+		const withConsensus = questions.filter(q => q.aiConsensus !== null);
+		const withConfidence = questions.filter(q => q.selfConsistency !== null);
+
+		categoryScores.push({
+			category,
+			humanAlignment: withAlignment.length > 0
+				? Math.round((withAlignment.reduce((sum, q) => sum + q.humanAlignment!, 0) / withAlignment.length) * 10) / 10
+				: null,
+			aiConsensus: withConsensus.length > 0
+				? Math.round((withConsensus.reduce((sum, q) => sum + q.aiConsensus!, 0) / withConsensus.length) * 10) / 10
+				: null,
+			selfConsistency: withConfidence.length > 0
+				? Math.round((withConfidence.reduce((sum, q) => sum + q.selfConsistency!, 0) / withConfidence.length) * 10) / 10
+				: null,
+			questionCount: questions.length
+		});
+	}
+
+	// Sort categories by question count
+	categoryScores.sort((a, b) => b.questionCount - a.questionCount);
+
 	// Aggregate other models' responses and compute similarity
 	const similarities: ModelSimilarity[] = [];
 	for (const [otherId, otherData] of otherModels) {
@@ -391,25 +471,42 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		}
 	}
 
-	// Sort to find most similar and most different
+	// Sort to find most similar and most different (limit to 3 each)
 	similarities.sort((a, b) => b.agreement - a.agreement);
-	const mostSimilar = similarities.slice(0, 5);
-	const mostDifferent = [...similarities].sort((a, b) => a.agreement - b.agreement).slice(0, 5);
+	const mostSimilar = similarities.slice(0, 3);
+	const mostDifferent = [...similarities].sort((a, b) => a.agreement - b.agreement).slice(0, 3);
 
-	// Find biggest disagreements (lowest human alignment scores)
-	const biggestDisagreements = questionsWithHumanData
-		.sort((a, b) => a.humanAiScore - b.humanAiScore)
-		.slice(0, 5);
+	// Create notable questions lists for each axis (3 per list)
+	const sortByAlignment = (a: QuestionWithScores, b: QuestionWithScores) =>
+		(b.humanAlignment ?? -1) - (a.humanAlignment ?? -1);
+	const sortByConsensus = (a: QuestionWithScores, b: QuestionWithScores) =>
+		(b.aiConsensus ?? -1) - (a.aiConsensus ?? -1);
+	const sortByConfidence = (a: QuestionWithScores, b: QuestionWithScores) =>
+		(b.selfConsistency ?? -1) - (a.selfConsistency ?? -1);
+
+	const questionsWithAlignment = questionScores.filter(q => q.humanAlignment !== null);
+	const questionsWithConsensus = questionScores.filter(q => q.aiConsensus !== null);
+	const questionsWithConfidence = questionScores.filter(q => q.selfConsistency !== null);
+
+	const notableQuestions = {
+		highAlignment: [...questionsWithAlignment].sort(sortByAlignment).slice(0, 3),
+		lowAlignment: [...questionsWithAlignment].sort(sortByAlignment).reverse().slice(0, 3),
+		highConsensus: [...questionsWithConsensus].sort(sortByConsensus).slice(0, 3),
+		lowConsensus: [...questionsWithConsensus].sort(sortByConsensus).reverse().slice(0, 3),
+		highConfidence: [...questionsWithConfidence].sort(sortByConfidence).slice(0, 3),
+		lowConfidence: [...questionsWithConfidence].sort(sortByConfidence).reverse().slice(0, 3)
+	};
 
 	return {
 		model: { ...model, supports_reasoning: Boolean(model.supports_reasoning), active: Boolean(model.active) },
 		questionCount: questionIds.length,
 		questionsWithHumanData: questionsWithHumanData.length,
 		overallHumanAlignment,
+		overallAiConsensus,
 		overallSelfConsistency,
 		categoryScores,
 		mostSimilar,
 		mostDifferent,
-		biggestDisagreements
+		notableQuestions
 	};
 };

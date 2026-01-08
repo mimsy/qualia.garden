@@ -136,7 +136,7 @@
 	const description = $derived(label ? info.descriptions[context][label] : null);
 
 	// Color classes
-	const colorClasses = $derived({
+	const colorMap = {
 		emerald: {
 			bg: 'bg-emerald-50',
 			border: 'border-emerald-200',
@@ -158,7 +158,8 @@
 			score: 'text-violet-600',
 			label: 'bg-violet-100 text-violet-700'
 		}
-	}[info.color]);
+	} as const;
+	const colorClasses = $derived(colorMap[info.color as keyof typeof colorMap]);
 </script>
 
 <div

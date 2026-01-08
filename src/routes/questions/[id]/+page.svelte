@@ -95,7 +95,7 @@
 			: [...data.responses];
 
 		// Sort responses
-		responses.sort((a, b) => {
+		responses.sort((a: ResponseType, b: ResponseType) => {
 			let comparison = 0;
 			switch (sortBy) {
 				case 'name':
