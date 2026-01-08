@@ -3,8 +3,8 @@
 	// ABOUTME: Displays AI vs Human distribution comparison for each question.
 
 	import type { PageData } from './$types';
-	import { getScoreLabel } from '$lib/alignment';
 	import QuestionCard from '$lib/components/QuestionCard.svelte';
+	import ScoreBadge from '$lib/components/ScoreBadge.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -49,63 +49,26 @@
 	</header>
 
 	<main class="max-w-6xl mx-auto px-6 py-8">
-		<!-- Breadcrumb -->
-		<div class="mb-8">
-			<a href="/questions" class="text-slate-500 hover:text-slate-700 text-sm flex items-center gap-1.5 transition-colors">
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-				</svg>
-				All Questions
-			</a>
-		</div>
-
-		<!-- Category Header -->
-		<div class="bg-white rounded-xl border border-slate-200 p-6 mb-8">
-			<div class="flex items-start justify-between gap-6">
-				<div class="flex-1">
-					<h1 class="text-2xl font-bold text-slate-900 tracking-tight mb-2">{data.category}</h1>
-					<p class="text-slate-500">
-						{data.questionCount} question{data.questionCount === 1 ? '' : 's'}
-					</p>
-				</div>
-				{#if data.overallHumanSimilarity !== null || data.overallAiConsensus !== null || data.overallAiConfidence !== null}
-					<div class="flex gap-4 shrink-0">
-						{#if data.overallHumanSimilarity !== null}
-							<div class="text-center p-3 rounded-lg bg-emerald-50/50 border border-emerald-100">
-								<div class="text-xs text-emerald-600 font-medium uppercase tracking-wide mb-1">Alignment</div>
-								<div class="text-2xl font-bold text-emerald-600">
-									{data.overallHumanSimilarity}
-								</div>
-								<div class="text-xs text-emerald-500/70 font-medium">
-									{getScoreLabel(data.overallHumanSimilarity)}
-								</div>
-							</div>
-						{/if}
-						{#if data.overallAiConsensus !== null}
-							<div class="text-center p-3 rounded-lg bg-blue-50/50 border border-blue-100">
-								<div class="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">Consensus</div>
-								<div class="text-2xl font-bold text-blue-600">
-									{data.overallAiConsensus}
-								</div>
-								<div class="text-xs text-blue-500/70 font-medium">
-									{getScoreLabel(data.overallAiConsensus)}
-								</div>
-							</div>
-						{/if}
-						{#if data.overallAiConfidence !== null}
-							<div class="text-center p-3 rounded-lg bg-violet-50/50 border border-violet-100">
-								<div class="text-xs text-violet-600 font-medium uppercase tracking-wide mb-1">Confidence</div>
-								<div class="text-2xl font-bold text-violet-600">
-									{data.overallAiConfidence}
-								</div>
-								<div class="text-xs text-violet-500/70 font-medium">
-									{getScoreLabel(data.overallAiConfidence)}
-								</div>
-							</div>
-						{/if}
-					</div>
-				{/if}
+		<!-- Category Header Card -->
+		<div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-8">
+			<!-- Body -->
+			<div class="px-6 pt-5 pb-4">
+				<h1 class="text-2xl font-bold text-slate-900 tracking-tight mb-2">{data.category}</h1>
+				<p class="text-slate-500">
+					{data.questionCount} question{data.questionCount === 1 ? '' : 's'}
+				</p>
 			</div>
+
+			<!-- Score bars footer -->
+			{#if data.overallHumanSimilarity !== null || data.overallAiConsensus !== null || data.overallAiConfidence !== null}
+				<div class="flex border-t border-slate-100">
+					<ScoreBadge score={data.overallHumanSimilarity} label="Alignment" type="humanSimilarity" />
+					<div class="w-px bg-slate-100"></div>
+					<ScoreBadge score={data.overallAiConsensus} label="Consensus" type="aiConsensus" />
+					<div class="w-px bg-slate-100"></div>
+					<ScoreBadge score={data.overallAiConfidence} label="Confidence" type="aiConfidence" />
+				</div>
+			{/if}
 		</div>
 
 		<!-- Controls -->
@@ -114,7 +77,7 @@
 				<span class="text-sm text-slate-500">Sort by</span>
 				<select
 					bind:value={sortBy}
-					class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200"
+					class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 				>
 					<option value="default">Default</option>
 					<option value="humanSimilarity">Lowest Alignment</option>
@@ -139,11 +102,4 @@
 			</div>
 		{/if}
 	</main>
-
-	<footer class="border-t border-slate-200 py-8 px-6 mt-12">
-		<div class="max-w-6xl mx-auto flex items-center justify-between text-sm text-slate-500">
-			<span>Qualia Garden</span>
-			<span>Exploring AI values alignment</span>
-		</div>
-	</footer>
 </div>
