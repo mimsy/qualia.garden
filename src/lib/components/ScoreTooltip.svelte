@@ -7,15 +7,18 @@
 
 	type ScoreType = 'humanSimilarity' | 'aiConsensus' | 'aiConfidence';
 
+	type Context = 'question' | 'model';
+
 	interface Props {
 		score: number | null;
 		type: ScoreType;
 		children: Snippet;
 		position?: 'top' | 'bottom';
 		flex?: boolean;
+		context?: Context;
 	}
 
-	let { score, type, children, position = 'bottom', flex = false }: Props = $props();
+	let { score, type, children, position = 'bottom', flex = false, context = 'question' }: Props = $props();
 
 	let showTooltip = $state(false);
 	let triggerEl: HTMLDivElement | null = $state(null);
@@ -43,46 +46,73 @@
 		showTooltip = true;
 	}
 
-	// Score type metadata
-	const scoreInfo: Record<ScoreType, { title: string; color: string; descriptions: Record<string, string> }> = {
+	// Score type metadata with context-specific descriptions
+	const scoreInfo: Record<ScoreType, { title: string; color: string; descriptions: Record<Context, Record<string, string>> }> = {
 		humanSimilarity: {
 			title: 'Human Alignment',
 			color: 'emerald',
 			descriptions: {
-				'Very High': 'AI responses closely match human opinion distributions',
-				'High': 'AI responses align well with human opinions',
-				'Moderate': 'Some alignment between AI and human responses',
-				'Low': 'AI responses diverge from human opinions',
-				'Very Low': 'AI and human responses show little similarity'
+				question: {
+					'Very High': 'AI responses closely match human opinion distributions',
+					'High': 'AI responses align well with human opinions',
+					'Moderate': 'Some alignment between AI and human responses',
+					'Low': 'AI responses diverge from human opinions',
+					'Very Low': 'AI and human responses show little similarity'
+				},
+				model: {
+					'Very High': 'This model closely matches human opinion distributions',
+					'High': 'This model aligns well with human opinions',
+					'Moderate': 'Some alignment with human responses',
+					'Low': 'This model diverges from human opinions',
+					'Very Low': 'This model shows little similarity to humans'
+				}
 			}
 		},
 		aiConsensus: {
 			title: 'AI Consensus',
 			color: 'blue',
 			descriptions: {
-				'Very High': 'AI models show strong agreement on this question',
-				'High': 'Most AI models respond similarly',
-				'Moderate': 'AI models show mixed opinions',
-				'Low': 'AI models disagree on this question',
-				'Very Low': 'AI models show significant disagreement'
+				question: {
+					'Very High': 'AI models show strong agreement on this question',
+					'High': 'Most AI models respond similarly',
+					'Moderate': 'AI models show mixed opinions',
+					'Low': 'AI models disagree on this question',
+					'Very Low': 'AI models show significant disagreement'
+				},
+				model: {
+					'Very High': 'This model strongly agrees with other AI models',
+					'High': 'This model mostly agrees with other AI models',
+					'Moderate': 'This model partially agrees with other AI models',
+					'Low': 'This model disagrees with most other AI models',
+					'Very Low': 'This model is an outlier among AI models'
+				}
 			}
 		},
 		aiConfidence: {
 			title: 'Response Confidence',
 			color: 'violet',
 			descriptions: {
-				'Very High': 'Responses are highly consistent across samples',
-				'High': 'Responses show good consistency',
-				'Moderate': 'Some variation in responses',
-				'Low': 'Responses vary between samples',
-				'Very Low': 'High variability in responses'
+				question: {
+					'Very High': 'Responses are highly consistent across samples',
+					'High': 'Responses show good consistency',
+					'Moderate': 'Some variation in responses',
+					'Low': 'Responses vary between samples',
+					'Very Low': 'High variability in responses'
+				},
+				model: {
+					'Very High': 'This model responds very consistently',
+					'High': 'This model responds consistently',
+					'Moderate': 'This model shows some variation in responses',
+					'Low': 'This model gives varying answers',
+					'Very Low': 'This model is highly inconsistent'
+				}
 			}
 		}
 	};
 
 	const info = $derived(scoreInfo[type]);
 	const label = $derived(score !== null ? getScoreLabel(score) : null);
-	const description = $derived(label ? info.descriptions[label] : null);
+	const description = $derived(label ? info.descriptions[context][label] : null);
 
 	// Color classes
 	const colorClasses = $derived({

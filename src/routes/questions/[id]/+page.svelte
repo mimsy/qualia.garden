@@ -776,7 +776,7 @@
 								<div class="flex gap-1.5 shrink-0">
 									<!-- Human alignment circle (emerald) -->
 									{#if ha !== undefined && ha !== null}
-										<ScoreTooltip score={ha} type="humanSimilarity" position="bottom">
+										<ScoreTooltip score={ha} type="humanSimilarity" position="bottom" context="model">
 											<div class="relative w-9 h-9 cursor-help">
 												<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
 													<circle
@@ -803,7 +803,7 @@
 
 									<!-- AI consensus circle (blue) -->
 									{#if ac !== undefined && ac !== null}
-										<ScoreTooltip score={ac} type="aiConsensus" position="bottom">
+										<ScoreTooltip score={ac} type="aiConsensus" position="bottom" context="model">
 											<div class="relative w-9 h-9 cursor-help">
 												<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
 													<circle
@@ -830,7 +830,7 @@
 
 									<!-- Self-consistency circle (violet) -->
 									{#if sc !== undefined && sc !== null}
-										<ScoreTooltip score={sc} type="aiConfidence" position="bottom">
+										<ScoreTooltip score={sc} type="aiConfidence" position="bottom" context="model">
 											<div class="relative w-9 h-9 cursor-help">
 												<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
 													<circle
