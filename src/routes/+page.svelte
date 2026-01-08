@@ -86,7 +86,7 @@
 								<div class="flex gap-6 mb-4">
 									<div class="flex-1">
 										<div class="flex items-center justify-between mb-1">
-											<span class="text-xs text-slate-500">AI-Human</span>
+											<span class="text-xs text-slate-500">Human Similarity</span>
 											<span class="text-sm font-semibold {getScoreColor(source.humanAiScore)}">{Math.round(source.humanAiScore)}</span>
 										</div>
 										<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -188,7 +188,7 @@
 								<div class="flex gap-4 mb-3">
 									<div class="flex-1">
 										<div class="flex items-center justify-between mb-1">
-											<span class="text-xs text-slate-500">AI-Human</span>
+											<span class="text-xs text-slate-500">Human Similarity</span>
 											<span class="text-sm font-semibold {getScoreColor(category.humanAiScore)}">{Math.round(category.humanAiScore)}</span>
 										</div>
 										<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">

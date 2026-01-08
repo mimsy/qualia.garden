@@ -1,19 +1,9 @@
 // ABOUTME: Questions browse page data loader.
-// ABOUTME: Fetches questions with optional category, status, and source filters.
+// ABOUTME: Fetches questions with full statistics, category, status, and source filters.
 
 import type { PageServerLoad } from './$types';
 import type { QuestionStatus } from '$lib/db/types';
-
-interface QuestionWithResponseCount {
-	id: string;
-	text: string;
-	category: string | null;
-	response_type: string;
-	status: QuestionStatus;
-	response_count: number;
-	benchmark_source_id: string | null;
-	source_short_name: string | null;
-}
+import { loadQuestionsWithStats } from '$lib/db/question-stats';
 
 interface BenchmarkSource {
 	id: string;
@@ -25,7 +15,14 @@ export const load: PageServerLoad = async ({ url, platform, parent }) => {
 	const { isAdmin } = await parent();
 
 	if (!platform?.env?.DB) {
-		return { questions: [], categories: [], sources: [], selectedCategory: null, selectedSource: null, selectedStatus: 'published' };
+		return {
+			questions: [],
+			categories: [],
+			sources: [],
+			selectedCategory: null,
+			selectedSource: null,
+			selectedStatus: 'published'
+		};
 	}
 
 	const db = platform.env.DB;
@@ -36,52 +33,12 @@ export const load: PageServerLoad = async ({ url, platform, parent }) => {
 	// Non-admins always see published only
 	const effectiveStatus = isAdmin ? selectedStatus : 'published';
 
-	// Build query based on filters
-	const conditions: string[] = [];
-	const bindings: string[] = [];
-
-	if (effectiveStatus !== 'all') {
-		conditions.push('q.status = ?');
-		bindings.push(effectiveStatus);
-	}
-
-	if (selectedCategory) {
-		conditions.push('q.category = ?');
-		bindings.push(selectedCategory);
-	}
-
-	if (selectedSource === 'none') {
-		conditions.push('q.benchmark_source_id IS NULL');
-	} else if (selectedSource) {
-		conditions.push('q.benchmark_source_id = ?');
-		bindings.push(selectedSource);
-	}
-
-	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-	const questionsQuery = `
-		SELECT
-			q.id,
-			q.text,
-			q.category,
-			q.response_type,
-			q.status,
-			q.benchmark_source_id,
-			bs.short_name as source_short_name,
-			COUNT(CASE WHEN p.status = 'complete' THEN 1 END) as response_count
-		FROM questions q
-		LEFT JOIN polls p ON q.id = p.question_id
-		LEFT JOIN benchmark_sources bs ON q.benchmark_source_id = bs.id
-		${whereClause}
-		GROUP BY q.id
-		ORDER BY q.category, q.created_at DESC
-	`;
-
-	const questionsStmt = db.prepare(questionsQuery);
-	const questionsResult =
-		bindings.length > 0
-			? await questionsStmt.bind(...bindings).all<QuestionWithResponseCount>()
-			: await questionsStmt.all<QuestionWithResponseCount>();
+	// Load questions with full statistics
+	const questions = await loadQuestionsWithStats(db, {
+		category: selectedCategory,
+		sourceId: selectedSource === 'none' ? null : selectedSource || undefined,
+		status: effectiveStatus === 'all' ? undefined : effectiveStatus
+	});
 
 	// Get categories - for admins, include all; for public, only from published questions
 	const categoriesQuery = isAdmin
@@ -95,7 +52,7 @@ export const load: PageServerLoad = async ({ url, platform, parent }) => {
 		.all<BenchmarkSource>();
 
 	return {
-		questions: questionsResult.results,
+		questions,
 		categories: categoriesResult.results.map((r) => r.category),
 		sources: sourcesResult.results,
 		selectedCategory,

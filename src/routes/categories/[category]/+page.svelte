@@ -4,19 +4,25 @@
 
 	import type { PageData } from './$types';
 	import { getScoreLabel, getScoreColor } from '$lib/alignment';
+	import QuestionCard from '$lib/components/QuestionCard.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
-	type SortKey = 'default' | 'humanAiScore' | 'aiAgreementScore';
+	type SortKey = 'default' | 'humanSimilarity' | 'aiConsensus' | 'aiConfidence';
 	let sortBy = $state<SortKey>('default');
 
 	const sortedQuestions = $derived.by(() => {
-		if (sortBy === 'humanAiScore') {
-			return [...data.questions].sort((a, b) => a.humanAiScore - b.humanAiScore);
-		} else if (sortBy === 'aiAgreementScore') {
-			return [...data.questions].sort((a, b) => a.aiAgreementScore - b.aiAgreementScore);
+		if (sortBy === 'default') {
+			return data.questions;
 		}
-		return data.questions;
+		return [...data.questions].sort((a, b) => {
+			const aVal = a[sortBy];
+			const bVal = b[sortBy];
+			if (aVal === null && bVal === null) return 0;
+			if (aVal === null) return 1;
+			if (bVal === null) return -1;
+			return aVal - bVal;
+		});
 	});
 </script>
 
@@ -62,27 +68,38 @@
 						{data.questionCount} question{data.questionCount === 1 ? '' : 's'}
 					</p>
 				</div>
-				{#if data.overallHumanAiScore !== null || data.overallAiAgreement !== null}
+				{#if data.overallHumanSimilarity !== null || data.overallAiConsensus !== null || data.overallAiConfidence !== null}
 					<div class="flex gap-6 shrink-0">
-						{#if data.overallHumanAiScore !== null}
+						{#if data.overallHumanSimilarity !== null}
 							<div class="text-center">
-								<div class="text-xs text-slate-500 mb-1">AI-Human</div>
-								<div class="text-2xl font-bold {getScoreColor(data.overallHumanAiScore)}">
-									{data.overallHumanAiScore}
+								<div class="text-xs text-slate-500 mb-1">Human Similarity</div>
+								<div class="text-2xl font-bold {getScoreColor(data.overallHumanSimilarity)}">
+									{data.overallHumanSimilarity}
 								</div>
-								<div class="text-xs {getScoreColor(data.overallHumanAiScore)} font-medium">
-									{getScoreLabel(data.overallHumanAiScore)}
+								<div class="text-xs {getScoreColor(data.overallHumanSimilarity)} font-medium">
+									{getScoreLabel(data.overallHumanSimilarity)}
 								</div>
 							</div>
 						{/if}
-						{#if data.overallAiAgreement !== null}
+						{#if data.overallAiConsensus !== null}
 							<div class="text-center">
 								<div class="text-xs text-slate-500 mb-1">AI Consensus</div>
-								<div class="text-2xl font-bold {getScoreColor(data.overallAiAgreement)}">
-									{data.overallAiAgreement}
+								<div class="text-2xl font-bold {getScoreColor(data.overallAiConsensus)}">
+									{data.overallAiConsensus}
 								</div>
-								<div class="text-xs {getScoreColor(data.overallAiAgreement)} font-medium">
-									{getScoreLabel(data.overallAiAgreement)}
+								<div class="text-xs {getScoreColor(data.overallAiConsensus)} font-medium">
+									{getScoreLabel(data.overallAiConsensus)}
+								</div>
+							</div>
+						{/if}
+						{#if data.overallAiConfidence !== null}
+							<div class="text-center">
+								<div class="text-xs text-slate-500 mb-1">AI Confidence</div>
+								<div class="text-2xl font-bold {getScoreColor(data.overallAiConfidence)}">
+									{data.overallAiConfidence}
+								</div>
+								<div class="text-xs {getScoreColor(data.overallAiConfidence)} font-medium">
+									{getScoreLabel(data.overallAiConfidence)}
 								</div>
 							</div>
 						{/if}
@@ -100,8 +117,9 @@
 					class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200"
 				>
 					<option value="default">Default</option>
-					<option value="humanAiScore">Lowest Human Similarity</option>
-					<option value="aiAgreementScore">Lowest AI Consensus</option>
+					<option value="humanSimilarity">Lowest Human Similarity</option>
+					<option value="aiConsensus">Lowest AI Consensus</option>
+					<option value="aiConfidence">Lowest AI Confidence</option>
 				</select>
 			</div>
 			<div class="text-sm text-slate-400 ml-auto">
@@ -111,72 +129,8 @@
 
 		<!-- Questions with Full Results -->
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-			{#each sortedQuestions as question}
-				<div class="bg-white rounded-xl border border-slate-200 p-5">
-					<!-- Question Header -->
-					<div class="mb-4">
-						<a href="/questions/{question.id}" class="text-slate-800 hover:text-blue-600 transition-colors font-medium leading-relaxed text-sm">
-							{question.text}
-						</a>
-						<div class="mt-2 flex items-center gap-3 text-xs text-slate-500">
-							<span>{question.modelCount} model{question.modelCount === 1 ? '' : 's'}</span>
-							{#if question.humanResults.length > 0}
-								<span class="font-medium {getScoreColor(question.humanAiScore)}">AI-Human: {Math.round(question.humanAiScore)}</span>
-							{/if}
-							{#if question.modelCount >= 2}
-								<span class="font-medium {getScoreColor(question.aiAgreementScore)}">AI Agree: {Math.round(question.aiAgreementScore)}</span>
-							{/if}
-						</div>
-					</div>
-
-					<!-- Results Comparison - Butterfly Chart -->
-					{#if question.modelCount > 0 && question.options.length > 0}
-						{@const maxPct = Math.max(
-							...question.aiResults.map((r: { percentage: number }) => r.percentage),
-							...question.humanResults.map((r: { percentage: number }) => r.percentage),
-							1
-						)}
-						{@const aiMaxPct = Math.max(...question.aiResults.map((r: { percentage: number }) => r.percentage), 0)}
-						{@const humanMaxPct = Math.max(...question.humanResults.map((r: { percentage: number }) => r.percentage), 0)}
-						<div class="space-y-1">
-							{#each question.options as option, i}
-								{@const optionKey = String(i + 1)}
-								{@const aiResult = question.aiResults.find((r: { answer: string }) => r.answer === optionKey)}
-								{@const humanResult = question.humanResults.find((r: { answer: string; label: string }) => r.answer === optionKey || r.label === option)}
-								{@const aiPct = aiResult?.percentage ?? 0}
-								{@const humanPct = humanResult?.percentage ?? 0}
-								{@const isAiMode = aiPct > 0 && aiPct === aiMaxPct}
-								{@const isHumanMode = humanPct > 0 && humanPct === humanMaxPct}
-								<div class="flex items-center text-xs">
-									<span class="w-3 shrink-0">{#if isAiMode}<span class="text-blue-500">●</span>{/if}</span>
-									<span class="w-7 text-right tabular-nums shrink-0 {isAiMode ? 'text-blue-600 font-medium' : 'text-slate-400'}">{aiPct > 0 ? `${aiPct.toFixed(0)}%` : ''}</span>
-									<div class="flex-1 h-2 bg-slate-100 rounded-l overflow-hidden flex justify-end">
-										<div class="h-full bg-blue-500 rounded-l" style="width: {(aiPct / maxPct) * 100}%"></div>
-									</div>
-									<div class="w-24 text-center text-slate-600 truncate px-1 shrink-0" title={option}>{option}</div>
-									<div class="flex-1 h-2 bg-slate-100 rounded-r overflow-hidden">
-										<div class="h-full bg-emerald-500 rounded-r" style="width: {(humanPct / maxPct) * 100}%"></div>
-									</div>
-									<span class="w-7 tabular-nums shrink-0 {isHumanMode ? 'text-emerald-600 font-medium' : 'text-slate-400'}">{humanPct > 0 ? `${humanPct.toFixed(0)}%` : ''}</span>
-									<span class="w-3 shrink-0">{#if isHumanMode}<span class="text-emerald-500">●</span>{/if}</span>
-								</div>
-							{/each}
-						</div>
-						<div class="flex justify-center gap-4 mt-2 text-xs text-slate-500">
-							<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> AI</span>
-							<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Human</span>
-						</div>
-					{:else if question.modelCount > 0}
-						<!-- Fallback for questions without options -->
-						<div class="text-xs text-slate-400 py-2 text-center">
-							Results available on detail page
-						</div>
-					{:else}
-						<div class="text-xs text-slate-400 py-4 text-center">
-							No AI responses yet
-						</div>
-					{/if}
-				</div>
+			{#each sortedQuestions as question (question.id)}
+				<QuestionCard {question} />
 			{/each}
 		</div>
 		{#if sortedQuestions.length === 0}
