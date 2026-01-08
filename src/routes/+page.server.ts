@@ -121,28 +121,55 @@ function computeSourceConfidence(
 	return Math.round(selfConsistencies.reduce((a, b) => a + b, 0) / selfConsistencies.length);
 }
 
-// Find the "most interesting" question - the one with the most extreme score across metrics
-// Priority for ties: alignment → consensus (furthest from 50)
+// Find the "most interesting" question - the one with the most extreme score relative to the dataset
+// Extremity is measured as distance from the midpoint of observed min/max range
+// Priority for ties: alignment → consensus
 function findMostInteresting(
 	stats: QuestionStats[],
 	questionTextMap: Map<string, string>
 ): ExtremeQuestion | null {
-	let best: { stat: QuestionStats; metric: MetricType; distance: number; score: number } | null = null;
+	if (stats.length === 0) return null;
+
+	// Calculate min/max for each metric
+	let alignmentMin = 100, alignmentMax = 0;
+	let consensusMin = 100, consensusMax = 0;
 
 	for (const q of stats) {
-		// Check alignment (humanAiScore)
 		if (q.humanAiScore > 0) {
-			const alignmentDist = Math.abs(q.humanAiScore - 50);
-			if (!best || alignmentDist > best.distance || (alignmentDist === best.distance && best.metric !== 'alignment')) {
-				best = { stat: q, metric: 'alignment', distance: alignmentDist, score: q.humanAiScore };
+			alignmentMin = Math.min(alignmentMin, q.humanAiScore);
+			alignmentMax = Math.max(alignmentMax, q.humanAiScore);
+		}
+		if (q.aiAgreementScore > 0) {
+			consensusMin = Math.min(consensusMin, q.aiAgreementScore);
+			consensusMax = Math.max(consensusMax, q.aiAgreementScore);
+		}
+	}
+
+	// Calculate midpoints
+	const alignmentMid = (alignmentMin + alignmentMax) / 2;
+	const consensusMid = (consensusMin + consensusMax) / 2;
+	const alignmentRange = alignmentMax - alignmentMin;
+	const consensusRange = consensusMax - consensusMin;
+
+	let best: { stat: QuestionStats; metric: MetricType; normalizedDist: number; score: number } | null = null;
+
+	for (const q of stats) {
+		// Check alignment - normalize distance to 0-1 scale based on range
+		if (q.humanAiScore > 0 && alignmentRange > 0) {
+			const dist = Math.abs(q.humanAiScore - alignmentMid);
+			const normalizedDist = dist / (alignmentRange / 2); // 1.0 = at min or max
+			if (!best || normalizedDist > best.normalizedDist ||
+				(normalizedDist === best.normalizedDist && best.metric !== 'alignment')) {
+				best = { stat: q, metric: 'alignment', normalizedDist, score: q.humanAiScore };
 			}
 		}
 
-		// Check consensus (aiAgreementScore)
-		if (q.aiAgreementScore > 0) {
-			const consensusDist = Math.abs(q.aiAgreementScore - 50);
-			if (!best || consensusDist > best.distance) {
-				best = { stat: q, metric: 'consensus', distance: consensusDist, score: q.aiAgreementScore };
+		// Check consensus
+		if (q.aiAgreementScore > 0 && consensusRange > 0) {
+			const dist = Math.abs(q.aiAgreementScore - consensusMid);
+			const normalizedDist = dist / (consensusRange / 2);
+			if (!best || normalizedDist > best.normalizedDist) {
+				best = { stat: q, metric: 'consensus', normalizedDist, score: q.aiAgreementScore };
 			}
 		}
 	}
@@ -152,12 +179,17 @@ function findMostInteresting(
 	const text = questionTextMap.get(best.stat.questionId);
 	if (!text) return null;
 
+	// Determine if high or low relative to the metric's midpoint
+	const isHigh = best.metric === 'alignment'
+		? best.score > alignmentMid
+		: best.score > consensusMid;
+
 	return {
 		id: best.stat.questionId,
 		text,
 		score: best.score,
 		metric: best.metric,
-		isHigh: best.score > 50
+		isHigh
 	};
 }
 
