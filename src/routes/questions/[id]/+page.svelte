@@ -759,12 +759,13 @@
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 					{#each filteredResponses as response}
 						{@const sc = data.modelSelfConsistency[response.model_id]}
+						{@const ha = data.modelHumanAlignment[response.model_id]}
 						{@const justification = getRepresentativeJustification(response)}
 						<button
 							onclick={() => (modalResponse = response)}
 							class="bg-white rounded-xl border border-slate-200 p-5 text-left hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/50 transition-all group"
 						>
-							<!-- Header: Model name, family, confidence circle -->
+							<!-- Header: Model name, family, score circles -->
 							<div class="flex items-start justify-between gap-3 mb-4">
 								<div class="min-w-0 flex-1">
 									<div class="font-medium text-slate-900 truncate group-hover:text-slate-700">
@@ -773,30 +774,58 @@
 									<div class="text-xs text-slate-400 capitalize">{response.model_family}</div>
 								</div>
 
-								<!-- Confidence circle -->
-								{#if sc !== undefined && sc !== null}
-									<div class="relative w-11 h-11 shrink-0" title="Confidence: {Math.round(sc)}%">
-										<svg class="w-11 h-11 -rotate-90" viewBox="0 0 36 36">
-											<circle
-												cx="18" cy="18" r="14"
-												fill="none"
-												stroke-width="3"
-												class="stroke-violet-100"
-											/>
-											<circle
-												cx="18" cy="18" r="14"
-												fill="none"
-												stroke-width="3"
-												stroke-linecap="round"
-												class="stroke-violet-500"
-												stroke-dasharray={getCircleDasharray(sc)}
-											/>
-										</svg>
-										<span class="absolute inset-0 flex items-center justify-center text-xs font-semibold text-violet-600">
-											{Math.round(sc)}
-										</span>
-									</div>
-								{/if}
+								<!-- Score circles -->
+								<div class="flex gap-2 shrink-0">
+									<!-- Alignment circle (emerald) -->
+									{#if ha !== undefined && ha !== null}
+										<div class="relative w-10 h-10" title="Alignment: {Math.round(ha)}%">
+											<svg class="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+												<circle
+													cx="18" cy="18" r="14"
+													fill="none"
+													stroke-width="3"
+													class="stroke-emerald-100"
+												/>
+												<circle
+													cx="18" cy="18" r="14"
+													fill="none"
+													stroke-width="3"
+													stroke-linecap="round"
+													class="stroke-emerald-500"
+													stroke-dasharray={getCircleDasharray(ha)}
+												/>
+											</svg>
+											<span class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-emerald-600">
+												{Math.round(ha)}
+											</span>
+										</div>
+									{/if}
+
+									<!-- Confidence circle (violet) -->
+									{#if sc !== undefined && sc !== null}
+										<div class="relative w-10 h-10" title="Confidence: {Math.round(sc)}%">
+											<svg class="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+												<circle
+													cx="18" cy="18" r="14"
+													fill="none"
+													stroke-width="3"
+													class="stroke-violet-100"
+												/>
+												<circle
+													cx="18" cy="18" r="14"
+													fill="none"
+													stroke-width="3"
+													stroke-linecap="round"
+													class="stroke-violet-500"
+													stroke-dasharray={getCircleDasharray(sc)}
+												/>
+											</svg>
+											<span class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-violet-600">
+												{Math.round(sc)}
+											</span>
+										</div>
+									{/if}
+								</div>
 							</div>
 
 							<!-- Answer -->
@@ -1015,6 +1044,7 @@
 <!-- Sample details modal -->
 {#if modalResponse}
 	{@const sc = data.modelSelfConsistency[modalResponse.model_id]}
+	{@const ha = data.modelHumanAlignment[modalResponse.model_id]}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -1031,8 +1061,11 @@
 			<div class="px-6 py-5 border-b border-slate-200 flex items-start justify-between gap-4">
 				<div class="flex-1 min-w-0">
 					<h3 class="text-lg font-semibold text-slate-900 truncate">{modalResponse.model_name}</h3>
-					<div class="flex items-center gap-3 mt-1">
+					<div class="flex items-center gap-3 mt-1 flex-wrap">
 						<span class="text-sm text-slate-500 capitalize">{modalResponse.model_family}</span>
+						{#if ha !== undefined && ha !== null}
+							<span class="text-sm text-emerald-600 font-medium">{Math.round(ha)}% alignment</span>
+						{/if}
 						{#if sc !== undefined && sc !== null}
 							<span class="text-sm text-violet-600 font-medium">{Math.round(sc)}% confidence</span>
 						{/if}

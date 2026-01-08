@@ -249,6 +249,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 	let humanAiScore: number | null = null;
 	let aiConsensusScore: number | null = null;
 	const modelSelfConsistency: Record<string, number> = {};
+	const modelHumanAlignment: Record<string, number> = {};
 
 	if (options && respondedModels.length > 0) {
 		// Get all aggregated answers for AI consensus
@@ -316,6 +317,43 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 						: nominalConsensusScore(answers);
 			}
 		}
+
+		// Compute per-model human alignment scores
+		if (overallHumanDist) {
+			const humanDist = JSON.parse(overallHumanDist.distribution) as Record<string, number>;
+
+			for (const response of aggregatedResponses) {
+				if (!response.aggregated_answer) continue;
+
+				// Create a single-answer "distribution" for this model
+				const modelDist: Record<string, number> = { [response.aggregated_answer]: 1 };
+
+				if (question.response_type === 'ordinal') {
+					modelHumanAlignment[response.model_id] = ordinalAgreementScore(
+						humanDist,
+						modelDist,
+						options
+					);
+				} else {
+					// Nominal: convert to labels
+					const idx = parseInt(response.aggregated_answer, 10) - 1;
+					const label =
+						idx >= 0 && idx < options.length ? options[idx] : response.aggregated_answer;
+					const modelDistLabeled: Record<string, number> = { [label]: 1 };
+
+					const humanDistLabeled: Record<string, number> = {};
+					for (const [key, count] of Object.entries(humanDist)) {
+						const keyIdx = parseInt(key, 10) - 1;
+						const keyLabel = keyIdx >= 0 && keyIdx < options.length ? options[keyIdx] : key;
+						humanDistLabeled[keyLabel] = (humanDistLabeled[keyLabel] || 0) + count;
+					}
+					modelHumanAlignment[response.model_id] = nominalAgreementScore(
+						humanDistLabeled,
+						modelDistLabeled
+					);
+				}
+			}
+		}
 	}
 
 	// For admins: load all polls (for history) and active models (for poll trigger)
@@ -371,6 +409,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		humanAiScore,
 		aiConsensusScore,
 		modelSelfConsistency,
+		modelHumanAlignment,
 		allPolls,
 		availableModels,
 		categories
