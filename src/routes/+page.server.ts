@@ -124,7 +124,7 @@ function computeQuestionConfidence(
 				const optionCount = questionOptionsMap.get(questionId) ?? 5;
 				sc = responseType === 'ordinal'
 					? ordinalConsensusScore(answers, optionCount)
-					: nominalConsensusScore(answers);
+					: nominalConsensusScore(answers, optionCount);
 			}
 
 			if (!questionConfidences.has(questionId)) {
@@ -604,7 +604,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 					const optionCount = q?.options.length ?? 5;
 					const sc = responseType === 'ordinal'
 						? ordinalConsensusScore(answers, optionCount)
-						: nominalConsensusScore(answers);
+						: nominalConsensusScore(answers, optionCount);
 					consistencies.push(sc);
 				}
 			}

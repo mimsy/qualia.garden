@@ -262,9 +262,10 @@ export function ordinalAgreementScoreMeanBased(humanMean: number, aiMean: number
 
 // Calculate internal agreement score (0-100) for ordinal questions
 // Measures how much a group of responses agree with each other
-// Blends mode dominance (unanimity) with spread penalty
+// Blends baseline-normalized unanimity with spread penalty
 export function ordinalInternalAgreement(answers: string[], optionCount: number): number {
 	if (answers.length < 2) return 100; // Perfect agreement if only one answer
+	if (optionCount < 2) return 100; // Single option means perfect agreement
 
 	// Mode dominance (unanimity) - what percentage chose the most common answer
 	const counts = new Map<string, number>();
@@ -274,12 +275,16 @@ export function ordinalInternalAgreement(answers: string[], optionCount: number)
 	const maxCount = Math.max(...counts.values());
 	const unanimity = maxCount / answers.length;
 
+	// Baseline-normalized unanimity
+	const baseline = 1 / optionCount;
+	const normalizedUnanimity = Math.max(0, (unanimity - baseline) / (1 - baseline));
+
 	// Spread penalty based on normalized std dev
 	const normalizedStdDev = arrayStdDevNormalized(answers, optionCount);
 	const spreadScore = 1 - Math.min(1, normalizedStdDev);
 
-	// Blend: 70% unanimity, 30% spread
-	const blended = unanimity * 0.7 + spreadScore * 0.3;
+	// Blend: 70% normalized unanimity, 30% spread
+	const blended = normalizedUnanimity * 0.7 + spreadScore * 0.3;
 	return Math.round(blended * 100);
 }
 
@@ -345,16 +350,24 @@ export function nominalAgreementScore(
 }
 
 // Calculate internal agreement score (0-100) for nominal questions
-// Based on how concentrated the answers are (unanimity)
-export function nominalInternalAgreement(answers: string[]): number {
+// Uses baseline normalization: (unanimity - 1/n) / (1 - 1/n)
+// This accounts for the fact that random chance would give 1/n agreement
+export function nominalInternalAgreement(answers: string[], optionCount: number): number {
 	if (answers.length < 2) return 100; // Perfect agreement if only one answer
+	if (optionCount < 2) return 100; // Single option means perfect agreement
+
 	const counts = new Map<string, number>();
 	for (const a of answers) {
 		counts.set(a, (counts.get(a) || 0) + 1);
 	}
 	const maxCount = Math.max(...counts.values());
 	const unanimity = maxCount / answers.length;
-	return Math.round(unanimity * 100);
+
+	// Baseline normalization: score = (unanimity - 1/n) / (1 - 1/n)
+	const baseline = 1 / optionCount;
+	const normalized = (unanimity - baseline) / (1 - baseline);
+
+	return Math.round(Math.max(0, normalized) * 100);
 }
 
 // Calculate internal agreement from a distribution (0-100)
@@ -362,6 +375,7 @@ export function nominalInternalAgreement(answers: string[]): number {
 export function distributionInternalAgreement(dist: Record<string, number>, optionCount: number, isOrdinal: boolean): number {
 	const total = Object.values(dist).reduce((a, b) => a + b, 0);
 	if (total === 0) return 0;
+	if (optionCount < 2) return 100;
 
 	if (isOrdinal) {
 		// For ordinal: use the same unanimity + spread formula
@@ -374,9 +388,12 @@ export function distributionInternalAgreement(dist: Record<string, number>, opti
 		}
 		return ordinalInternalAgreement(answers, optionCount);
 	} else {
-		// For nominal: pure unanimity
+		// For nominal: baseline-normalized unanimity
 		const maxCount = Math.max(...Object.values(dist));
-		return Math.round((maxCount / total) * 100);
+		const unanimity = maxCount / total;
+		const baseline = 1 / optionCount;
+		const normalized = (unanimity - baseline) / (1 - baseline);
+		return Math.round(Math.max(0, normalized) * 100);
 	}
 }
 
@@ -458,7 +475,7 @@ export function computeQuestionStats(
 			}
 
 			humanAiScore = nominalAgreementScore(humanDistLabeled, aiDist);
-			aiAgreementScore = nominalInternalAgreement(aiAnswersLabeled);
+			aiAgreementScore = nominalInternalAgreement(aiAnswersLabeled, q.options.length);
 
 			// Compute human internal agreement
 			if (humanDistLabeled) {

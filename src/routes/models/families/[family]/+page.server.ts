@@ -220,7 +220,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 				const sc =
 					q.response_type === 'ordinal'
 						? ordinalConsensusScore(answers, options.length)
-						: nominalConsensusScore(answers);
+						: nominalConsensusScore(answers, options.length);
 				selfConsistencyScores.push(sc);
 			} else if (answers.length === 1) {
 				selfConsistencyScores.push(100);

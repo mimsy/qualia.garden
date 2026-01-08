@@ -464,21 +464,30 @@ describe('nominalAgreementScore', () => {
 describe('nominalInternalAgreement', () => {
 	it('returns 100 for unanimous answers', () => {
 		const answers = ['Yes', 'Yes', 'Yes'];
-		expect(nominalInternalAgreement(answers)).toBe(100);
+		// 3/3 = 100%, baseline = 50%, normalized = (1.0 - 0.5) / 0.5 = 100
+		expect(nominalInternalAgreement(answers, 2)).toBe(100);
 	});
 
 	it('returns 100 for single answer', () => {
-		expect(nominalInternalAgreement(['Yes'])).toBe(100);
+		expect(nominalInternalAgreement(['Yes'], 2)).toBe(100);
 	});
 
-	it('returns 50 for evenly split answers', () => {
+	it('returns 0 for evenly split answers (at baseline)', () => {
 		const answers = ['Yes', 'No'];
-		expect(nominalInternalAgreement(answers)).toBe(50);
+		// 1/2 = 50%, baseline = 50%, normalized = (0.5 - 0.5) / 0.5 = 0
+		expect(nominalInternalAgreement(answers, 2)).toBe(0);
 	});
 
-	it('returns 67 for 2:1 split', () => {
+	it('returns 33 for 2:1 split on binary question', () => {
 		const answers = ['Yes', 'Yes', 'No'];
-		expect(nominalInternalAgreement(answers)).toBe(67);
+		// 2/3 = 67%, baseline = 50%, normalized = (0.67 - 0.5) / 0.5 = 0.33 = 33
+		expect(nominalInternalAgreement(answers, 2)).toBe(33);
+	});
+
+	it('returns higher score for same split with more options', () => {
+		const answers = ['A', 'A', 'B'];
+		// 2/3 = 67%, baseline = 25% (4 options), normalized = (0.67 - 0.25) / 0.75 = 0.56 = 56
+		expect(nominalInternalAgreement(answers, 4)).toBe(56);
 	});
 });
 

@@ -263,7 +263,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 			aiConsensusScore =
 				question.response_type === 'ordinal'
 					? ordinalConsensusScore(allAggregatedAnswers, options.length)
-					: nominalConsensusScore(allAggregatedAnswers);
+					: nominalConsensusScore(allAggregatedAnswers, options.length);
 		} else if (allAggregatedAnswers.length === 1) {
 			aiConsensusScore = 100; // Perfect agreement with only one model
 		}
@@ -315,7 +315,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 				modelSelfConsistency[response.model_id] =
 					question.response_type === 'ordinal'
 						? ordinalConsensusScore(answers, options.length)
-						: nominalConsensusScore(answers);
+						: nominalConsensusScore(answers, options.length);
 			}
 		}
 

@@ -240,7 +240,7 @@ export async function loadQuestionsWithStats(
 					const selfConsistency =
 						data.responseType === 'ordinal'
 							? ordinalConsensusScore(data.answers, options.length)
-							: nominalConsensusScore(data.answers);
+							: nominalConsensusScore(data.answers, options.length);
 					modelSelfConsistencies.push(selfConsistency);
 				} else if (data.answers.length === 1) {
 					// Perfect consistency with only one sample
@@ -308,7 +308,7 @@ export async function loadQuestionsWithStats(
 			aiConsensus =
 				q.response_type === 'ordinal'
 					? ordinalConsensusScore(aggregatedAnswers, options.length)
-					: nominalConsensusScore(aggregatedAnswers);
+					: nominalConsensusScore(aggregatedAnswers, options.length);
 		} else if (modelCount === 1) {
 			aiConsensus = 100; // Perfect agreement with only one model
 		}

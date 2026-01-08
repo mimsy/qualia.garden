@@ -210,7 +210,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		if (answers.length >= 2 && options.length > 0) {
 			questionSelfConsistency[qId] = q.response_type === 'ordinal'
 				? ordinalConsensusScore(answers, options.length)
-				: nominalConsensusScore(answers);
+				: nominalConsensusScore(answers, options.length);
 		} else if (answers.length === 1) {
 			questionSelfConsistency[qId] = 100; // Perfect consistency with one sample
 		}
