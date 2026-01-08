@@ -7,6 +7,7 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import { getScoreLabel } from '$lib/alignment';
 	import ScoreBadge from '$lib/components/ScoreBadge.svelte';
+	import ScoreTooltip from '$lib/components/ScoreTooltip.svelte';
 
 	let { data, form } = $props<{ data: PageData; form: ActionData }>();
 
@@ -775,77 +776,83 @@
 								<div class="flex gap-1.5 shrink-0">
 									<!-- Human alignment circle (emerald) -->
 									{#if ha !== undefined && ha !== null}
-										<div class="relative w-9 h-9" title="Human: How closely this model's response distribution matches human responses">
-											<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
-												<circle
-													cx="18" cy="18" r="14"
-													fill="none"
-													stroke-width="3"
-													class="stroke-emerald-100"
-												/>
-												<circle
-													cx="18" cy="18" r="14"
-													fill="none"
-													stroke-width="3"
-													stroke-linecap="round"
-													class="stroke-emerald-500"
-													stroke-dasharray={getCircleDasharray(ha)}
-												/>
-											</svg>
-											<span class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-emerald-600">
-												{Math.round(ha)}
-											</span>
-										</div>
+										<ScoreTooltip score={ha} type="humanSimilarity" position="bottom">
+											<div class="relative w-9 h-9 cursor-help">
+												<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
+													<circle
+														cx="18" cy="18" r="14"
+														fill="none"
+														stroke-width="3"
+														class="stroke-emerald-100"
+													/>
+													<circle
+														cx="18" cy="18" r="14"
+														fill="none"
+														stroke-width="3"
+														stroke-linecap="round"
+														class="stroke-emerald-500"
+														stroke-dasharray={getCircleDasharray(ha)}
+													/>
+												</svg>
+												<span class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-emerald-600">
+													{Math.round(ha)}
+												</span>
+											</div>
+										</ScoreTooltip>
 									{/if}
 
 									<!-- AI consensus circle (blue) -->
 									{#if ac !== undefined && ac !== null}
-										<div class="relative w-9 h-9" title="AI: How closely this model's response distribution matches other AI models">
-											<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
-												<circle
-													cx="18" cy="18" r="14"
-													fill="none"
-													stroke-width="3"
-													class="stroke-blue-100"
-												/>
-												<circle
-													cx="18" cy="18" r="14"
-													fill="none"
-													stroke-width="3"
-													stroke-linecap="round"
-													class="stroke-blue-500"
-													stroke-dasharray={getCircleDasharray(ac)}
-												/>
-											</svg>
-											<span class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-blue-600">
-												{Math.round(ac)}
-											</span>
-										</div>
+										<ScoreTooltip score={ac} type="aiConsensus" position="bottom">
+											<div class="relative w-9 h-9 cursor-help">
+												<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
+													<circle
+														cx="18" cy="18" r="14"
+														fill="none"
+														stroke-width="3"
+														class="stroke-blue-100"
+													/>
+													<circle
+														cx="18" cy="18" r="14"
+														fill="none"
+														stroke-width="3"
+														stroke-linecap="round"
+														class="stroke-blue-500"
+														stroke-dasharray={getCircleDasharray(ac)}
+													/>
+												</svg>
+												<span class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-blue-600">
+													{Math.round(ac)}
+												</span>
+											</div>
+										</ScoreTooltip>
 									{/if}
 
 									<!-- Self-consistency circle (violet) -->
 									{#if sc !== undefined && sc !== null}
-										<div class="relative w-9 h-9" title="Confidence: How consistently this model gives the same answer across samples">
-											<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
-												<circle
-													cx="18" cy="18" r="14"
-													fill="none"
-													stroke-width="3"
-													class="stroke-violet-100"
-												/>
-												<circle
-													cx="18" cy="18" r="14"
-													fill="none"
-													stroke-width="3"
-													stroke-linecap="round"
-													class="stroke-violet-500"
-													stroke-dasharray={getCircleDasharray(sc)}
-												/>
-											</svg>
-											<span class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-violet-600">
-												{Math.round(sc)}
-											</span>
-										</div>
+										<ScoreTooltip score={sc} type="aiConfidence" position="bottom">
+											<div class="relative w-9 h-9 cursor-help">
+												<svg class="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
+													<circle
+														cx="18" cy="18" r="14"
+														fill="none"
+														stroke-width="3"
+														class="stroke-violet-100"
+													/>
+													<circle
+														cx="18" cy="18" r="14"
+														fill="none"
+														stroke-width="3"
+														stroke-linecap="round"
+														class="stroke-violet-500"
+														stroke-dasharray={getCircleDasharray(sc)}
+													/>
+												</svg>
+												<span class="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-violet-600">
+													{Math.round(sc)}
+												</span>
+											</div>
+										</ScoreTooltip>
 									{/if}
 								</div>
 							</div>

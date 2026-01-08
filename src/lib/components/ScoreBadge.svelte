@@ -1,6 +1,8 @@
 <script lang="ts">
 	// ABOUTME: Horizontal progress bar component for displaying metric scores.
-	// ABOUTME: Shows label, score value, and colored progress bar.
+	// ABOUTME: Shows label, score value, and colored progress bar with rich tooltip.
+
+	import ScoreTooltip from './ScoreTooltip.svelte';
 
 	type ScoreType = 'humanSimilarity' | 'aiConsensus' | 'aiConfidence';
 
@@ -44,16 +46,18 @@
 	const width = $derived(score !== null ? `${score}%` : '0%');
 </script>
 
-<div class="flex-1 px-3 py-2" title="{label}: {score !== null ? Math.round(score) : 'N/A'}">
-	<div class="flex items-center justify-between mb-1">
-		<span class="text-[10px] text-slate-500 uppercase tracking-wide">{label}</span>
-		<span class="text-xs font-semibold {score !== null ? colors.text : 'text-slate-400'}">
-			{score !== null ? Math.round(score) : '—'}
-		</span>
+<ScoreTooltip {score} type={scoreType}>
+	<div class="flex-1 px-3 py-2 cursor-help">
+		<div class="flex items-center justify-between mb-1">
+			<span class="text-[10px] text-slate-500 uppercase tracking-wide">{label}</span>
+			<span class="text-xs font-semibold {score !== null ? colors.text : 'text-slate-400'}">
+				{score !== null ? Math.round(score) : '—'}
+			</span>
+		</div>
+		<div class="h-1.5 rounded-full {colors.bg} overflow-hidden">
+			{#if score !== null}
+				<div class="h-full rounded-full {colors.bar} transition-all" style="width: {width}"></div>
+			{/if}
+		</div>
 	</div>
-	<div class="h-1.5 rounded-full {colors.bg} overflow-hidden">
-		{#if score !== null}
-			<div class="h-full rounded-full {colors.bar} transition-all" style="width: {width}"></div>
-		{/if}
-	</div>
-</div>
+</ScoreTooltip>
