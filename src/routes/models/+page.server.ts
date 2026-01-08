@@ -4,7 +4,7 @@
 import type { PageServerLoad, Actions } from './$types';
 import { fail } from '@sveltejs/kit';
 import { dev } from '$app/environment';
-import { updateModel } from '$lib/db/queries';
+import { updateModel, createModel, getModel } from '$lib/db/queries';
 import { computeMedian, computeMode } from '$lib/db/types';
 import {
 	ordinalAgreementScore,
@@ -362,5 +362,41 @@ export const actions: Actions = {
 		await updateModel(platform.env.DB, id, { active: !active });
 
 		return { success: true };
+	},
+
+	create: async ({ request, platform, locals, url }) => {
+		const isPreview = url.host.includes('.pages.dev') && url.host !== 'qualia-garden.pages.dev';
+		const isAdmin = dev || isPreview || locals.user?.isAdmin;
+
+		if (!isAdmin) {
+			return fail(403, { error: 'Admin access required' });
+		}
+
+		if (!platform?.env?.DB) {
+			return fail(500, { error: 'Database not available' });
+		}
+
+		const formData = await request.formData();
+		const name = (formData.get('name') as string)?.trim();
+		const family = (formData.get('family') as string)?.trim();
+		const openrouter_id = (formData.get('openrouter_id') as string)?.trim();
+		const supports_reasoning = formData.get('supports_reasoning') === 'true';
+
+		if (!name || !family || !openrouter_id) {
+			return fail(400, { error: 'Name, family, and OpenRouter ID are required' });
+		}
+
+		// Use openrouter_id as the model id
+		const id = openrouter_id;
+
+		// Check if model ID already exists
+		const existing = await getModel(platform.env.DB, id);
+		if (existing) {
+			return fail(400, { error: 'A model with this ID already exists' });
+		}
+
+		await createModel(platform.env.DB, { name, family, openrouter_id, supports_reasoning });
+
+		return { success: true, created: true };
 	}
 };
