@@ -765,9 +765,13 @@
 							<!-- Header: Model name, family, score circles -->
 							<div class="flex items-start justify-between gap-3 mb-4">
 								<div class="min-w-0 flex-1">
-									<div class="font-medium text-slate-900 truncate group-hover:text-slate-700">
+									<a
+										href="/models/{response.model_id}"
+										onclick={(e: MouseEvent) => e.stopPropagation()}
+										class="font-medium text-slate-900 truncate group-hover:text-slate-700 hover:text-blue-600 hover:underline block"
+									>
 										{response.model_name}
-									</div>
+									</a>
 									<div class="text-xs text-slate-400 capitalize">{response.model_family}</div>
 								</div>
 
