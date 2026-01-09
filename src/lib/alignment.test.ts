@@ -789,11 +789,7 @@ describe('setCachedSourceStats', () => {
 		const data = { alignment: 75, consensus: 80 };
 
 		await setCachedSourceStats(kv, 'test-key', data as never);
-		expect(kv.put).toHaveBeenCalledWith(
-			'test-key',
-			JSON.stringify(data),
-			expect.objectContaining({ expirationTtl: expect.any(Number) })
-		);
+		expect(kv.put).toHaveBeenCalledWith('test-key', JSON.stringify(data));
 	});
 
 	it('ignores errors', async () => {
@@ -998,11 +994,7 @@ describe('setCachedAlignment', () => {
 		};
 
 		await setCachedAlignment(kv, 'test-key', data);
-		expect(kv.put).toHaveBeenCalledWith(
-			'test-key',
-			JSON.stringify(data),
-			expect.objectContaining({ expirationTtl: expect.any(Number) })
-		);
+		expect(kv.put).toHaveBeenCalledWith('test-key', JSON.stringify(data));
 	});
 
 	it('ignores errors', async () => {

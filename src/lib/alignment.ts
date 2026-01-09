@@ -3,8 +3,6 @@
 
 import { computeMedian, computeMode } from './db/types';
 
-const CACHE_TTL_SECONDS = 3600; // 1 hour
-
 export interface QuestionMeta {
 	id: string;
 	options: string[];
@@ -627,7 +625,7 @@ export async function setCachedSourceStats(
 ): Promise<void> {
 	if (!kv) return;
 	try {
-		await kv.put(cacheKey, JSON.stringify(data), { expirationTtl: CACHE_TTL_SECONDS });
+		await kv.put(cacheKey, JSON.stringify(data));
 	} catch {
 		// Ignore cache write failures
 	}
@@ -712,7 +710,7 @@ export async function setCachedAlignment(
 ): Promise<void> {
 	if (!kv) return;
 	try {
-		await kv.put(cacheKey, JSON.stringify(data), { expirationTtl: CACHE_TTL_SECONDS });
+		await kv.put(cacheKey, JSON.stringify(data));
 	} catch {
 		// Ignore cache write failures
 	}
