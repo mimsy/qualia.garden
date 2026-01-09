@@ -689,43 +689,44 @@ export const load: PageServerLoad = async ({ platform }) => {
 		}
 	}
 
-	// Get all model responses (not aggregated) for computing per-model scores
+	// Get all model responses and build distributions for computing per-model scores
 	for (const [, sourceResponses] of responsesBySource) {
 		for (const [modelId, modelData] of sourceResponses) {
-			// Aggregate this model's responses to single answers per question
-			const aggregatedResponses: Record<string, string | null> = {};
+			// Build distributions from all samples (not single-point distributions)
 			for (const [questionId, { answers, responseType }] of modelData.byQuestion) {
-				aggregatedResponses[questionId] = responseType === 'ordinal' ? computeMedian(answers) : computeMode(answers);
-			}
-
-			// Compute alignment score for this model
-			for (const [questionId, answer] of Object.entries(aggregatedResponses)) {
-				if (!answer) continue;
+				if (answers.length === 0) continue;
 				const humanDist = allHumanDist.get(questionId);
 				if (!humanDist) continue;
 
 				const q = allBenchmarkedQuestions.find((x) => x.id === questionId);
 				if (!q) continue;
 
-				let score: number;
-				if (q.responseType === 'ordinal') {
-					// Build single-answer AI distribution for overlap calculation
-					const aiDist: Record<string, number> = { [answer]: 1 };
-					score = ordinalAgreementScore(humanDist, aiDist, q.options);
-				} else {
-					// Nominal: convert AI answer to label and compute overlap
-					const idx = parseInt(answer, 10) - 1;
-					const label = idx >= 0 && idx < q.options.length ? q.options[idx] : answer;
-					const aiDist: Record<string, number> = { [label]: 1 };
+				// Build full distribution from all samples
+				const modelDist: Record<string, number> = {};
+				for (const ans of answers) {
+					modelDist[ans] = (modelDist[ans] || 0) + 1;
+				}
 
-					// Convert human distribution keys to labels
+				let score: number;
+				if (responseType === 'ordinal') {
+					score = ordinalAgreementScore(humanDist, modelDist, q.options);
+				} else {
+					// Nominal: convert keys to labels for both distributions
 					const humanDistLabeled: Record<string, number> = {};
 					for (const [key, count] of Object.entries(humanDist)) {
 						const keyIdx = parseInt(key, 10) - 1;
 						const keyLabel = keyIdx >= 0 && keyIdx < q.options.length ? q.options[keyIdx] : key;
 						humanDistLabeled[keyLabel] = (humanDistLabeled[keyLabel] || 0) + count;
 					}
-					score = nominalAgreementScore(humanDistLabeled, aiDist);
+
+					const modelDistLabeled: Record<string, number> = {};
+					for (const [key, count] of Object.entries(modelDist)) {
+						const keyIdx = parseInt(key, 10) - 1;
+						const keyLabel = keyIdx >= 0 && keyIdx < q.options.length ? q.options[keyIdx] : key;
+						modelDistLabeled[keyLabel] = (modelDistLabeled[keyLabel] || 0) + count;
+					}
+
+					score = nominalAgreementScore(humanDistLabeled, modelDistLabeled);
 				}
 
 				if (!modelAlignmentData.has(modelId)) {
