@@ -57,6 +57,9 @@ jobs:
       - name: Build application
         run: bun run build
 
+      - name: Apply database migrations
+        run: bun run db:migrate
+
       - name: Run E2E tests
         run: bun run test:e2e
 

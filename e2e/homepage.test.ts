@@ -24,8 +24,8 @@ test.describe('Homepage', () => {
 test.describe('Navigation', () => {
 	test('can navigate to questions page', async ({ page }) => {
 		await page.goto('/');
-		// Look for a link to questions and click it
-		const questionsLink = page.getByRole('link', { name: /questions/i });
+		// Look for the Questions link in the navigation bar (exact match)
+		const questionsLink = page.getByRole('navigation').getByRole('link', { name: 'Questions', exact: true });
 		if (await questionsLink.isVisible()) {
 			await questionsLink.click();
 			await expect(page).toHaveURL(/questions/);
@@ -34,8 +34,8 @@ test.describe('Navigation', () => {
 
 	test('can navigate to models page', async ({ page }) => {
 		await page.goto('/');
-		// Look for a link to models and click it
-		const modelsLink = page.getByRole('link', { name: /models/i });
+		// Look for the Models link in the navigation bar (exact match)
+		const modelsLink = page.getByRole('navigation').getByRole('link', { name: 'Models', exact: true });
 		if (await modelsLink.isVisible()) {
 			await modelsLink.click();
 			await expect(page).toHaveURL(/models/);
@@ -57,9 +57,10 @@ test.describe('Models Page', () => {
 	});
 });
 
-test.describe('Categories Page', () => {
-	test('loads categories page', async ({ page }) => {
-		await page.goto('/categories');
+test.describe('Category Page', () => {
+	test('loads a specific category page', async ({ page }) => {
+		// Test loading a specific category page (no /categories index exists)
+		await page.goto('/categories/Ethics%20%26%20Values');
 		await expect(page.locator('main')).toBeVisible();
 	});
 });
