@@ -554,12 +554,13 @@ export const actions: Actions = {
 		const family = (formData.get('family') as string)?.trim();
 		const openrouter_id = (formData.get('openrouter_id') as string)?.trim();
 		const supports_reasoning = formData.get('supports_reasoning') === 'true';
+		const description = (formData.get('description') as string)?.trim() || null;
 
 		if (!name || !family || !openrouter_id) {
 			return fail(400, { error: 'Name, family, and OpenRouter ID are required' });
 		}
 
-		await updateModel(platform.env.DB, params.id, { name, family, openrouter_id, supports_reasoning });
+		await updateModel(platform.env.DB, params.id, { name, family, openrouter_id, supports_reasoning, description });
 
 		return { success: true };
 	},

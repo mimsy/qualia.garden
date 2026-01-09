@@ -24,6 +24,9 @@
 	let changingModel = $state(false);
 	let confirmDelete = $state(false);
 
+	// Modal state
+	let showEditModal = $state(false);
+
 	// Form state - editable values synced with data.model
 	// Using $derived.by for the initial sync, then allowing user edits
 	const initialFormState = $derived({
@@ -31,7 +34,8 @@
 		displayName: data.model.name,
 		family: data.model.family,
 		supportsReasoning: data.model.supports_reasoning,
-		reasoningEnabled: data.model.supports_reasoning
+		reasoningEnabled: data.model.supports_reasoning,
+		description: data.model.description || ''
 	});
 
 	// Track form state separately for user editing
@@ -40,7 +44,8 @@
 		displayName: '',
 		family: '',
 		supportsReasoning: false,
-		reasoningEnabled: false
+		reasoningEnabled: false,
+		description: ''
 	});
 
 	// Sync form state with initial values when data changes (e.g., after successful save)
@@ -50,6 +55,7 @@
 		formState.family = initialFormState.family;
 		formState.supportsReasoning = initialFormState.supportsReasoning;
 		formState.reasoningEnabled = initialFormState.reasoningEnabled;
+		formState.description = initialFormState.description;
 	});
 
 	const filteredModels = $derived(
@@ -172,33 +178,42 @@
 	</header>
 
 	<main class="max-w-6xl mx-auto px-6 py-8">
-		<!-- Breadcrumb -->
-		<div class="mb-8">
-			<a href="/models" class="text-slate-500 hover:text-slate-700 text-sm flex items-center gap-1.5 transition-colors">
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-				</svg>
-				All Models
-			</a>
-		</div>
-
 		<!-- Model Header Card -->
 		<div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-8">
 			<!-- Body -->
 			<div class="px-6 pt-5 pb-4">
-				<div class="flex items-center gap-3 flex-wrap mb-3">
-					<h1 class="text-2xl font-bold text-slate-900 tracking-tight">{data.model.name}</h1>
-					<a
-						href="/models/families/{encodeURIComponent(data.model.family)}"
-						class="px-2.5 py-1 bg-slate-100 text-slate-600 text-sm rounded-lg capitalize font-medium hover:bg-slate-200 transition-colors"
-					>
-						{data.model.family}
-					</a>
-					{#if data.model.supports_reasoning}
-						<span class="text-xs text-violet-600 bg-violet-50 px-2 py-1 rounded-md font-medium"> reasoning </span>
-					{/if}
-					{#if !data.model.active}
-						<span class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-md"> inactive </span>
+				<div class="flex items-center justify-between gap-3 mb-3">
+					<div class="flex items-center gap-3 flex-wrap">
+						<h1 class="text-2xl font-bold text-slate-900 tracking-tight">{data.model.name}</h1>
+						<a
+							href="/models/families/{encodeURIComponent(data.model.family)}"
+							class="px-2.5 py-1 bg-slate-100 text-slate-600 text-sm rounded-lg capitalize font-medium hover:bg-slate-200 transition-colors"
+						>
+							{data.model.family}
+						</a>
+						{#if data.model.supports_reasoning}
+							<span class="text-xs text-violet-600 bg-violet-50 px-2 py-1 rounded-md font-medium"> reasoning </span>
+						{/if}
+						{#if !data.model.active}
+							<span class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-md"> inactive </span>
+						{/if}
+					</div>
+					{#if data.isAdmin}
+						<button
+							type="button"
+							onclick={() => (showEditModal = true)}
+							class="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1.5"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+								/>
+							</svg>
+							Edit
+						</button>
 					{/if}
 				</div>
 				<p class="text-slate-500">
@@ -231,196 +246,16 @@
 			{/if}
 		</div>
 
-		<!-- Admin Controls Section -->
-		{#if data.isAdmin}
-			<section class="mb-8">
-				<!-- Success/Error Messages -->
-				{#if form?.success}
-					<div class="bg-emerald-50 text-emerald-700 px-4 py-3 rounded-lg mb-4 border border-emerald-200">
-						Model updated successfully.
-					</div>
-				{/if}
-				{#if form?.error}
-					<div class="bg-red-50 text-red-700 px-4 py-3 rounded-lg mb-4 border border-red-200">
-						{form.error}
-					</div>
-				{/if}
-
-				<details class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-					<summary class="px-6 py-4 cursor-pointer hover:bg-slate-50 flex items-center justify-between">
-						<h2 class="text-lg font-semibold text-slate-900">Edit Model</h2>
-						<svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-						</svg>
-					</summary>
-
-					<div class="px-6 pb-6 border-t border-slate-100">
-						<form method="POST" action="?/update" class="pt-6 space-y-6">
-							<!-- OpenRouter Model ID -->
-							<div>
-								<span class="block text-sm font-medium text-slate-700 mb-2">OpenRouter Model</span>
-								{#if !changingModel}
-									<div
-										class="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-3 border border-slate-200"
-									>
-										<div>
-											<div class="font-medium text-slate-900">{formState.openrouterId}</div>
-											<div class="text-sm text-slate-500">{formState.family}</div>
-										</div>
-										<button
-											type="button"
-											onclick={() => (changingModel = true)}
-											class="text-sm text-blue-600 hover:text-blue-700 font-medium"
-										>
-											Change
-										</button>
-									</div>
-								{:else}
-									<div class="relative">
-										<input
-											type="text"
-											bind:value={searchQuery}
-											onfocus={() => (showDropdown = true)}
-											onblur={handleInputBlur}
-											disabled={loading}
-											class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-											placeholder={loading ? 'Loading models...' : 'Search by name or ID...'}
-											autocomplete="off"
-										/>
-
-										{#if showDropdown && filteredModels.length > 0}
-											<div
-												class="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-lg max-h-80 overflow-auto"
-											>
-												{#each filteredModels as model (model.id)}
-													<button
-														type="button"
-														onclick={() => selectNewModel(model)}
-														class="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-slate-100 last:border-b-0 transition-colors"
-													>
-														<div class="flex justify-between items-start">
-															<div class="flex-1 min-w-0">
-																<div class="font-medium text-slate-900 truncate">{model.name}</div>
-																<div class="text-sm text-slate-500 truncate">{model.id}</div>
-															</div>
-															<div class="text-right text-sm text-slate-500 ml-4 flex-shrink-0">
-																<div>{(model.context_length / 1000).toFixed(0)}k ctx</div>
-																<div class="text-xs">{formatPrice(model.pricing.prompt)}</div>
-															</div>
-														</div>
-													</button>
-												{/each}
-											</div>
-										{/if}
-
-										{#if showDropdown && searchQuery.length >= 2 && filteredModels.length === 0 && !loading}
-											<div
-												class="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-lg p-4 text-slate-500"
-											>
-												No models found matching "{searchQuery}"
-											</div>
-										{/if}
-									</div>
-									<div class="mt-2 flex items-center gap-2">
-										<button
-											type="button"
-											onclick={() => (changingModel = false)}
-											class="text-sm text-slate-500 hover:text-slate-700"
-										>
-											Cancel
-										</button>
-										{#if searchQuery.length > 0 && searchQuery.length < 2}
-											<span class="text-sm text-slate-400">Type at least 2 characters to search...</span>
-										{/if}
-									</div>
-								{/if}
-							</div>
-
-							<!-- Hidden inputs for form submission -->
-							<input type="hidden" name="openrouter_id" value={formState.openrouterId} />
-							<input type="hidden" name="family" value={formState.family} />
-							<input type="hidden" name="supports_reasoning" value={formState.reasoningEnabled} />
-
-							<!-- Display Name -->
-							<div>
-								<label for="name" class="block text-sm font-medium text-slate-700 mb-2">Display Name</label>
-								<input
-									id="name"
-									name="name"
-									type="text"
-									bind:value={formState.displayName}
-									required
-									class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-								/>
-								<p class="text-sm text-slate-500 mt-1">How this model appears in the UI</p>
-							</div>
-
-							<!-- Reasoning Toggle (only show if model supports it) -->
-							{#if formState.supportsReasoning}
-								<div class="flex items-center gap-3">
-									<input
-										id="reasoning"
-										type="checkbox"
-										bind:checked={formState.reasoningEnabled}
-										class="h-4 w-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-									/>
-									<label for="reasoning" class="text-sm text-slate-700">Enable extended thinking/reasoning</label>
-								</div>
-								<p class="text-xs text-slate-500 -mt-4 ml-7">
-									When enabled, the model will show its reasoning process in responses.
-								</p>
-							{/if}
-
-							<!-- Save Button -->
-							<div class="pt-2">
-								<button
-									type="submit"
-									class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
-								>
-									Save Changes
-								</button>
-							</div>
-						</form>
-
-						<!-- Danger Zone -->
-						<div class="mt-8 pt-6 border-t border-slate-200">
-							<h3 class="text-sm font-semibold text-red-600 mb-4">Danger Zone</h3>
-							{#if !confirmDelete}
-								<button
-									type="button"
-									onclick={() => (confirmDelete = true)}
-									class="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 font-medium transition-colors"
-								>
-									Delete Model
-								</button>
-							{:else}
-								<div class="bg-red-50 border border-red-200 rounded-lg p-4">
-									<p class="text-sm text-red-700 mb-4">
-										Are you sure you want to delete <strong>{data.model.name}</strong>? This action cannot be undone.
-									</p>
-									<div class="flex gap-3">
-										<form method="POST" action="?/delete">
-											<button
-												type="submit"
-												class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors"
-											>
-												Yes, Delete
-											</button>
-										</form>
-										<button
-											type="button"
-											onclick={() => (confirmDelete = false)}
-											class="px-4 py-2 text-slate-600 hover:text-slate-900 font-medium"
-										>
-											Cancel
-										</button>
-									</div>
-								</div>
-							{/if}
-						</div>
-					</div>
-				</details>
-			</section>
+		<!-- Admin Status Messages -->
+		{#if form?.success}
+			<div class="bg-emerald-50 text-emerald-700 px-4 py-3 rounded-lg mb-4 border border-emerald-200">
+				Model updated successfully.
+			</div>
+		{/if}
+		{#if form?.error}
+			<div class="bg-red-50 text-red-700 px-4 py-3 rounded-lg mb-4 border border-red-200">
+				{form.error}
+			</div>
 		{/if}
 
 		{#if data.questionCount === 0}
@@ -1314,3 +1149,226 @@
 		</div>
 	</footer>
 </div>
+
+<!-- Edit Model Modal -->
+{#if showEditModal && data.isAdmin}
+	<!-- svelte-ignore a11y_interactive_supports_focus -->
+	<div
+		class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="edit-modal-title"
+		onclick={(e) => {
+			if (e.target === e.currentTarget) {
+				showEditModal = false;
+				changingModel = false;
+				confirmDelete = false;
+			}
+		}}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') {
+				showEditModal = false;
+				changingModel = false;
+				confirmDelete = false;
+			}
+		}}
+	>
+		<div
+			class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 {changingModel
+				? 'overflow-visible'
+				: 'max-h-[90vh] overflow-auto'}"
+		>
+			<!-- Modal Header -->
+			<div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+				<h2 id="edit-modal-title" class="text-lg font-semibold text-slate-900">Edit Model</h2>
+				<button
+					type="button"
+					aria-label="Close modal"
+					onclick={() => {
+						showEditModal = false;
+						changingModel = false;
+						confirmDelete = false;
+					}}
+					class="text-slate-400 hover:text-slate-600 transition-colors"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+				</button>
+			</div>
+
+			<!-- Modal Body -->
+			<form method="POST" action="?/update" class="p-6 space-y-6">
+				<!-- OpenRouter Model ID -->
+				<div>
+					<span class="block text-sm font-medium text-slate-700 mb-2">OpenRouter Model</span>
+					{#if !changingModel}
+						<div class="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-3 border border-slate-200">
+							<div>
+								<div class="font-medium text-slate-900">{formState.openrouterId}</div>
+								<div class="text-sm text-slate-500">{formState.family}</div>
+							</div>
+							<button
+								type="button"
+								onclick={() => (changingModel = true)}
+								class="text-sm text-blue-600 hover:text-blue-700 font-medium"
+							>
+								Change
+							</button>
+						</div>
+					{:else}
+						<div class="relative">
+							<input
+								type="text"
+								bind:value={searchQuery}
+								onfocus={() => (showDropdown = true)}
+								onblur={handleInputBlur}
+								disabled={loading}
+								class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+								placeholder={loading ? 'Loading models...' : 'Search by name or ID...'}
+								autocomplete="off"
+							/>
+
+							{#if showDropdown && filteredModels.length > 0}
+								<div
+									class="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-lg max-h-80 overflow-auto"
+								>
+									{#each filteredModels as model (model.id)}
+										<button
+											type="button"
+											onclick={() => selectNewModel(model)}
+											class="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-slate-100 last:border-b-0 transition-colors"
+										>
+											<div class="flex justify-between items-start">
+												<div class="flex-1 min-w-0">
+													<div class="font-medium text-slate-900 truncate">{model.name}</div>
+													<div class="text-sm text-slate-500 truncate">{model.id}</div>
+												</div>
+												<div class="text-right text-sm text-slate-500 ml-4 flex-shrink-0">
+													<div>{(model.context_length / 1000).toFixed(0)}k ctx</div>
+													<div class="text-xs">{formatPrice(model.pricing.prompt)}</div>
+												</div>
+											</div>
+										</button>
+									{/each}
+								</div>
+							{/if}
+
+							{#if showDropdown && searchQuery.length >= 2 && filteredModels.length === 0 && !loading}
+								<div
+									class="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-lg p-4 text-slate-500"
+								>
+									No models found matching "{searchQuery}"
+								</div>
+							{/if}
+						</div>
+						<div class="mt-2 flex items-center gap-2">
+							<button
+								type="button"
+								onclick={() => (changingModel = false)}
+								class="text-sm text-slate-500 hover:text-slate-700"
+							>
+								Cancel
+							</button>
+							{#if searchQuery.length > 0 && searchQuery.length < 2}
+								<span class="text-sm text-slate-400">Type at least 2 characters to search...</span>
+							{/if}
+						</div>
+					{/if}
+				</div>
+
+				<!-- Hidden inputs for form submission -->
+				<input type="hidden" name="openrouter_id" value={formState.openrouterId} />
+				<input type="hidden" name="family" value={formState.family} />
+				<input type="hidden" name="supports_reasoning" value={formState.reasoningEnabled} />
+
+				<!-- Display Name -->
+				<div>
+					<label for="modal-name" class="block text-sm font-medium text-slate-700 mb-2">Display Name</label>
+					<input
+						id="modal-name"
+						name="name"
+						type="text"
+						bind:value={formState.displayName}
+						required
+						class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+					/>
+					<p class="text-sm text-slate-500 mt-1">How this model appears in the UI</p>
+				</div>
+
+				<!-- Description -->
+				<div>
+					<label for="modal-description" class="block text-sm font-medium text-slate-700 mb-2">Description</label>
+					<textarea
+						id="modal-description"
+						name="description"
+						bind:value={formState.description}
+						rows="3"
+						class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+						placeholder="Brief description of this model..."
+					></textarea>
+				</div>
+
+				<!-- Reasoning Toggle (only show if model supports it) -->
+				{#if formState.supportsReasoning}
+					<div class="flex items-center gap-3">
+						<input
+							id="modal-reasoning"
+							type="checkbox"
+							bind:checked={formState.reasoningEnabled}
+							class="h-4 w-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+						/>
+						<label for="modal-reasoning" class="text-sm text-slate-700">Enable extended thinking/reasoning</label>
+					</div>
+				{/if}
+
+				<!-- Save Button -->
+				<div class="pt-2">
+					<button
+						type="submit"
+						class="w-full px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+					>
+						Save Changes
+					</button>
+				</div>
+			</form>
+
+			<!-- Danger Zone -->
+			<div class="px-6 pb-6 pt-2 border-t border-slate-200">
+				<h3 class="text-sm font-semibold text-red-600 mb-4">Danger Zone</h3>
+				{#if !confirmDelete}
+					<button
+						type="button"
+						onclick={() => (confirmDelete = true)}
+						class="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 font-medium transition-colors"
+					>
+						Delete Model
+					</button>
+				{:else}
+					<div class="bg-red-50 border border-red-200 rounded-lg p-4">
+						<p class="text-sm text-red-700 mb-4">
+							Are you sure you want to delete <strong>{data.model.name}</strong>? This action cannot be undone.
+						</p>
+						<div class="flex gap-3">
+							<form method="POST" action="?/delete">
+								<button
+									type="submit"
+									class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors"
+								>
+									Yes, Delete
+								</button>
+							</form>
+							<button
+								type="button"
+								onclick={() => (confirmDelete = false)}
+								class="px-4 py-2 text-slate-600 hover:text-slate-900 font-medium"
+							>
+								Cancel
+							</button>
+						</div>
+					</div>
+				{/if}
+			</div>
+		</div>
+	</div>
+{/if}
