@@ -27,4 +27,9 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+
+# Playwright test artifacts
+playwright-report/
+test-results/
+
 .dev.vars
