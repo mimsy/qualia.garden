@@ -208,7 +208,15 @@
 							· {data.questionsWithHumanData} with human benchmark data
 						</span>
 					{/if}
+					{#if data.model.release_date}
+						<span class="text-slate-400">
+							· Released {data.model.release_date}
+						</span>
+					{/if}
 				</p>
+				{#if data.model.description}
+					<p class="text-sm text-slate-500 mt-3 leading-relaxed">{data.model.description}</p>
+				{/if}
 			</div>
 
 			<!-- Score bars footer -->

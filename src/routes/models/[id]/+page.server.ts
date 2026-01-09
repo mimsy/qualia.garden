@@ -22,6 +22,8 @@ interface Model {
 	openrouter_id: string;
 	supports_reasoning: boolean;
 	active: boolean;
+	release_date: string | null;
+	description: string | null;
 }
 
 interface QuestionRow {
@@ -91,7 +93,9 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 
 	// Get model metadata
 	const model = await db
-		.prepare('SELECT id, name, family, openrouter_id, supports_reasoning, active FROM models WHERE id = ?')
+		.prepare(
+			'SELECT id, name, family, openrouter_id, supports_reasoning, active, release_date, description FROM models WHERE id = ?'
+		)
 		.bind(modelId)
 		.first<Model>();
 
