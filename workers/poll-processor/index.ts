@@ -94,14 +94,14 @@ async function processJob(job: PollJob, env: Env, langfuse: LangfuseClient, tag:
 	if (!question) {
 		const error = `Question not found: ${question_id}`;
 		console.error(`${tag} ${error}`);
-		await storeError(env.DB, poll_id, error);
+		await storeErrorResponse(env.DB, poll_id, error);
 		return;
 	}
 
 	if (!model) {
 		const error = `Model not found: ${model_id}`;
 		console.error(`${tag} ${error}`);
-		await storeError(env.DB, poll_id, error);
+		await storeErrorResponse(env.DB, poll_id, error);
 		return;
 	}
 
@@ -596,7 +596,20 @@ async function callAIFollowUp(
 	}
 }
 
-async function storeError(db: D1Database, pollId: string, error: string): Promise<void> {
+export async function invalidateAlignmentCache(kv: KVNamespace, sourceId: string, tag: string): Promise<void> {
+	try {
+		const prefix = `alignment:source:${sourceId}:`;
+		const list = await kv.list({ prefix });
+		if (list.keys.length > 0) {
+			console.log(`${tag} Invalidating ${list.keys.length} cache entries for source ${sourceId}`);
+			await Promise.all(list.keys.map((key) => kv.delete(key.name)));
+		}
+	} catch (err) {
+		console.error(`${tag} Failed to invalidate cache: ${err}`);
+	}
+}
+
+export async function storeErrorResponse(db: D1Database, pollId: string, error: string): Promise<void> {
 	const responseId = generateId();
 	await db
 		.prepare(
@@ -611,15 +624,6 @@ async function storeError(db: D1Database, pollId: string, error: string): Promis
 		.run();
 }
 
-async function invalidateAlignmentCache(kv: KVNamespace, sourceId: string, tag: string): Promise<void> {
-	try {
-		const prefix = `alignment:source:${sourceId}:`;
-		const list = await kv.list({ prefix });
-		if (list.keys.length > 0) {
-			console.log(`${tag} Invalidating ${list.keys.length} cache entries for source ${sourceId}`);
-			await Promise.all(list.keys.map((key) => kv.delete(key.name)));
-		}
-	} catch (err) {
-		console.error(`${tag} Failed to invalidate cache: ${err}`);
-	}
-}
+// Export for testing
+export { SYSTEM_PROMPT, processJob, callAI, callAIText, callAIFollowUp };
+export type { AIResult, PollJob };
