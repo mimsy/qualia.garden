@@ -422,5 +422,33 @@ describe('loadQuestionsWithStats', () => {
 			expect(result[0].responseType).toBe('nominal');
 			expect(result[0].modelCount).toBe(2);
 		});
+
+		it('computes human similarity for nominal questions with human data', async () => {
+			const db = createMockDb({
+				questions: [
+					{
+						id: 'q-1',
+						text: 'Yes or no?',
+						category: 'Test',
+						response_type: 'nominal',
+						options: '["Yes", "No"]',
+						benchmark_source_id: 'wvs-7',
+						source_short_name: 'WVS',
+						created_at: '2024-01-01'
+					}
+				],
+				responses: [
+					{ model_id: 'm-1', question_id: 'q-1', response_type: 'nominal', parsed_answer: '1' },
+					{ model_id: 'm-2', question_id: 'q-1', response_type: 'nominal', parsed_answer: '1' }
+				],
+				humanDistributions: [{ question_id: 'q-1', distribution: '{"1": 70, "2": 30}', sample_size: 500 }]
+			});
+
+			const result = await loadQuestionsWithStats(db, {});
+
+			expect(result[0].responseType).toBe('nominal');
+			expect(result[0].humanSimilarity).not.toBeNull();
+			expect(result[0].humanSampleSize).toBe(500);
+		});
 	});
 });

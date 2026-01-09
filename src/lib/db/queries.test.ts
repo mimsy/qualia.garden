@@ -27,6 +27,8 @@ import {
 	getResponse,
 	createResponse,
 	getCategories,
+	getCategoriesWithDescriptions,
+	getCategoryDescription,
 	getUserCount,
 	isFirstUser,
 	setUserAdmin,
@@ -209,6 +211,36 @@ describe('Model Queries', () => {
 
 			// Should call getModel but not UPDATE
 			expect(db.prepare).toHaveBeenCalledWith('SELECT * FROM models WHERE id = ?');
+		});
+
+		it('updates release_date field', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'test-id' });
+			await updateModel(db, 'test-id', { release_date: '2024-01-15' });
+
+			expect(db.prepare).toHaveBeenCalledWith('UPDATE models SET release_date = ? WHERE id = ?');
+			expect(mockStatement.bind).toHaveBeenCalledWith('2024-01-15', 'test-id');
+		});
+
+		it('updates description field', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'test-id' });
+			await updateModel(db, 'test-id', { description: 'A powerful AI model' });
+
+			expect(db.prepare).toHaveBeenCalledWith('UPDATE models SET description = ? WHERE id = ?');
+			expect(mockStatement.bind).toHaveBeenCalledWith('A powerful AI model', 'test-id');
+		});
+
+		it('updates multiple fields including description', async () => {
+			mockStatement.first.mockResolvedValue({ id: 'test-id' });
+			await updateModel(db, 'test-id', {
+				name: 'New Name',
+				description: 'Updated description',
+				release_date: '2024-06-01'
+			});
+
+			expect(db.prepare).toHaveBeenCalledWith(
+				'UPDATE models SET name = ?, release_date = ?, description = ? WHERE id = ?'
+			);
+			expect(mockStatement.bind).toHaveBeenCalledWith('New Name', '2024-06-01', 'Updated description', 'test-id');
 		});
 	});
 
@@ -609,6 +641,44 @@ describe('Aggregation Queries', () => {
 			mockStatement.all.mockResolvedValue({ results: [] });
 			const result = await getCategories(db);
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('getCategoriesWithDescriptions', () => {
+		it('returns categories with descriptions', async () => {
+			mockStatement.all.mockResolvedValue({
+				results: [
+					{ name: 'Ethics', description: 'Questions about ethics', display_order: 1 },
+					{ name: 'Consciousness', description: 'Questions about consciousness', display_order: 2 }
+				]
+			});
+			const result = await getCategoriesWithDescriptions(db);
+			expect(result).toHaveLength(2);
+			expect(result[0].name).toBe('Ethics');
+			expect(result[0].description).toBe('Questions about ethics');
+			expect(result[1].display_order).toBe(2);
+		});
+
+		it('returns empty array when no categories', async () => {
+			mockStatement.all.mockResolvedValue({ results: [] });
+			const result = await getCategoriesWithDescriptions(db);
+			expect(result).toEqual([]);
+		});
+	});
+
+	describe('getCategoryDescription', () => {
+		it('returns description when found', async () => {
+			mockStatement.first.mockResolvedValue({ description: 'Questions about ethics and values' });
+			const result = await getCategoryDescription(db, 'Ethics');
+			expect(db.prepare).toHaveBeenCalledWith('SELECT description FROM categories WHERE name = ?');
+			expect(mockStatement.bind).toHaveBeenCalledWith('Ethics');
+			expect(result).toBe('Questions about ethics and values');
+		});
+
+		it('returns null when not found', async () => {
+			mockStatement.first.mockResolvedValue(null);
+			const result = await getCategoryDescription(db, 'Nonexistent');
+			expect(result).toBeNull();
 		});
 	});
 

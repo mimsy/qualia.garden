@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	getOptionsSchema,
+	getSchema,
 	parseAnswer,
 	parseAnswerValue,
 	extractAnswerFromText,
@@ -12,6 +13,7 @@ import {
 	formatPromptWithJsonRequest,
 	formatFollowUpPrompt,
 	generateId,
+	extractReasoningText,
 	type Question
 } from './helpers';
 
@@ -262,5 +264,83 @@ describe('generateId', () => {
 	it('only uses alphanumeric characters', () => {
 		const id = generateId();
 		expect(id).toMatch(/^[A-Za-z0-9]+$/);
+	});
+});
+
+describe('getSchema', () => {
+	it('parses options and returns schema', () => {
+		const question = createQuestion('["Yes", "No", "Maybe"]');
+		const schema = getSchema(question);
+		expect(schema.safeParse({ justification: 'Test', response: 'A' }).success).toBe(true);
+		expect(schema.safeParse({ justification: 'Test', response: 'C' }).success).toBe(true);
+		expect(schema.safeParse({ justification: 'Test', response: 'D' }).success).toBe(false);
+	});
+
+	it('defaults to 4 options when options is null', () => {
+		const question = createQuestion(null);
+		const schema = getSchema(question);
+		expect(schema.safeParse({ justification: 'Test', response: 'A' }).success).toBe(true);
+		expect(schema.safeParse({ justification: 'Test', response: 'D' }).success).toBe(true);
+		expect(schema.safeParse({ justification: 'Test', response: 'E' }).success).toBe(false);
+	});
+
+	it('defaults to 4 options when options is empty array', () => {
+		const question = createQuestion('[]');
+		const schema = getSchema(question);
+		expect(schema.safeParse({ justification: 'Test', response: 'D' }).success).toBe(true);
+		expect(schema.safeParse({ justification: 'Test', response: 'E' }).success).toBe(false);
+	});
+});
+
+describe('extractReasoningText', () => {
+	it('returns reasoningText when provided', () => {
+		const result = extractReasoningText('direct reasoning', undefined);
+		expect(result).toBe('direct reasoning');
+	});
+
+	it('returns reasoningText over reasoning array when both provided', () => {
+		const result = extractReasoningText('direct', [{ type: 'reasoning', text: 'from array' }]);
+		expect(result).toBe('direct');
+	});
+
+	it('returns null when neither provided', () => {
+		const result = extractReasoningText(undefined, undefined);
+		expect(result).toBeNull();
+	});
+
+	it('returns null when reasoning array is empty', () => {
+		const result = extractReasoningText(undefined, []);
+		expect(result).toBeNull();
+	});
+
+	it('extracts text from reasoning array', () => {
+		const reasoning = [
+			{ type: 'reasoning', text: 'First thought' },
+			{ type: 'reasoning', text: 'Second thought' }
+		];
+		const result = extractReasoningText(undefined, reasoning);
+		expect(result).toBe('First thought\nSecond thought');
+	});
+
+	it('filters out non-reasoning blocks', () => {
+		const reasoning = [
+			{ type: 'text', text: 'Not reasoning' },
+			{ type: 'reasoning', text: 'Actual reasoning' },
+			{ type: 'other' }
+		];
+		const result = extractReasoningText(undefined, reasoning);
+		expect(result).toBe('Actual reasoning');
+	});
+
+	it('returns null when no reasoning blocks have text', () => {
+		const reasoning = [{ type: 'text', text: 'Not reasoning' }, { type: 'other' }];
+		const result = extractReasoningText(undefined, reasoning);
+		expect(result).toBeNull();
+	});
+
+	it('handles reasoning blocks without text property', () => {
+		const reasoning = [{ type: 'reasoning' }, { type: 'reasoning', text: 'Has text' }];
+		const result = extractReasoningText(undefined, reasoning);
+		expect(result).toBe('Has text');
 	});
 });

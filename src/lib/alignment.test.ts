@@ -565,6 +565,34 @@ describe('computeQuestionStats', () => {
 		expect(stats[0].humanAiScore).toBe(0);
 	});
 
+	it('handles nominal questions without human distributions', () => {
+		const questions = [{ id: 'q1', options: ['Yes', 'No', 'Maybe'], responseType: 'nominal' }];
+		const modelResponses = new Map([
+			['m1', { name: 'Model 1', responses: { q1: '1' } }],
+			['m2', { name: 'Model 2', responses: { q1: '2' } }]
+		]);
+		const humanDistributions = new Map<string, Record<string, number>>();
+
+		const stats = computeQuestionStats(questions, modelResponses, humanDistributions);
+
+		expect(stats[0].humanMode).toBeNull();
+		expect(stats[0].humanAgreementScore).toBeNull();
+		expect(stats[0].humanAiScore).toBe(0);
+		expect(stats[0].aiMode).toBe('Yes'); // First response converted to label
+	});
+
+	it('handles human distribution with out-of-range keys', () => {
+		const questions = [{ id: 'q1', options: ['Yes', 'No'], responseType: 'nominal' }];
+		const modelResponses = new Map([['m1', { name: 'Model 1', responses: { q1: '1' } }]]);
+		// Key '99' is out of range for a 2-option question
+		const humanDistributions = new Map([['q1', { '1': 50, '99': 30 }]]);
+
+		const stats = computeQuestionStats(questions, modelResponses, humanDistributions);
+
+		// Should still compute stats, falling back to key for out-of-range
+		expect(stats[0].humanAiScore).toBeGreaterThan(0);
+	});
+
 	it('handles empty questions array', () => {
 		const stats = computeQuestionStats([], new Map(), new Map());
 		expect(stats).toHaveLength(0);
