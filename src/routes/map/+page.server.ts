@@ -3,6 +3,7 @@
 
 import type { PageServerLoad } from './$types';
 import { computeMedian, computeMode } from '$lib/db/types';
+import { getLatestPollFilter } from '$lib/db/queries';
 
 interface Question {
 	id: string;
@@ -131,25 +132,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 			WHERE p.status = 'complete'
 				AND r.parsed_answer IS NOT NULL
 				AND q.status = 'published'
-				AND (
-					(p.batch_id IS NOT NULL AND p.batch_id = (
-						SELECT p2.batch_id FROM polls p2
-						WHERE p2.question_id = p.question_id
-							AND p2.model_id = p.model_id
-							AND p2.batch_id IS NOT NULL
-						ORDER BY p2.created_at DESC
-						LIMIT 1
-					))
-					OR
-					(p.batch_id IS NULL AND p.id = (
-						SELECT p3.id FROM polls p3
-						WHERE p3.question_id = p.question_id
-							AND p3.model_id = p.model_id
-							AND p3.batch_id IS NULL
-						ORDER BY p3.created_at DESC
-						LIMIT 1
-					))
-				)
+				${getLatestPollFilter()}
 		`
 		)
 		.all<ModelResponseRow>();

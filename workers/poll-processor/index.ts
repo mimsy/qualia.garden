@@ -12,7 +12,8 @@ import {
 	formatPrompt,
 	formatPromptWithJsonRequest,
 	formatFollowUpPrompt,
-	generateId
+	generateId,
+	extractReasoningText
 } from './helpers';
 
 interface Env {
@@ -219,18 +220,7 @@ async function callAI(
 			console.log(`${tag} Provider metadata: ${JSON.stringify(providerMetadata.openrouter)}`);
 		}
 
-		// Try to extract reasoning from the reasoning array if reasoningText is empty
-		let reasoningStr: string | null = null;
-		if (reasoningText) {
-			reasoningStr = reasoningText;
-		} else if (reasoning && reasoning.length > 0) {
-			// Extract text from reasoning array items (type is 'reasoning', has 'text' property)
-			reasoningStr = reasoning
-				.filter((r): r is { type: 'reasoning'; text: string } => r.type === 'reasoning' && 'text' in r)
-				.map((r) => r.text)
-				.join('\n');
-			if (!reasoningStr) reasoningStr = null;
-		}
+		const reasoningStr = extractReasoningText(reasoningText, reasoning);
 
 		if (reasoningStr) {
 			console.log(`${tag} Model reasoning: "${reasoningStr.substring(0, 100)}..."`);
@@ -396,17 +386,7 @@ async function callAIText(
 			console.log(`${tag} Text fallback provider metadata: ${JSON.stringify(providerMetadata.openrouter)}`);
 		}
 
-		// Try to extract reasoning from the reasoning array if reasoningText is empty
-		let reasoningStr: string | null = null;
-		if (reasoningText) {
-			reasoningStr = reasoningText;
-		} else if (reasoning && reasoning.length > 0) {
-			reasoningStr = reasoning
-				.filter((r): r is { type: 'reasoning'; text: string } => r.type === 'reasoning' && 'text' in r)
-				.map((r) => r.text)
-				.join('\n');
-			if (!reasoningStr) reasoningStr = null;
-		}
+		const reasoningStr = extractReasoningText(reasoningText, reasoning);
 
 		if (reasoningStr) {
 			console.log(`${tag} Model reasoning: "${reasoningStr.substring(0, 100)}..."`);
@@ -637,9 +617,7 @@ async function invalidateAlignmentCache(kv: KVNamespace, sourceId: string, tag: 
 		const list = await kv.list({ prefix });
 		if (list.keys.length > 0) {
 			console.log(`${tag} Invalidating ${list.keys.length} cache entries for source ${sourceId}`);
-			for (const key of list.keys) {
-				await kv.delete(key.name);
-			}
+			await Promise.all(list.keys.map((key) => kv.delete(key.name)));
 		}
 	} catch (err) {
 		console.error(`${tag} Failed to invalidate cache: ${err}`);

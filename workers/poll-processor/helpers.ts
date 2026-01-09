@@ -153,3 +153,18 @@ export function generateId(): string {
 	}
 	return result;
 }
+
+// Extract reasoning text from AI SDK response
+// Handles both direct reasoningText and reasoning array with content blocks
+export function extractReasoningText(
+	reasoningText: string | undefined,
+	reasoning: Array<{ type: string; text?: string }> | undefined
+): string | null {
+	if (reasoningText) return reasoningText;
+	if (!reasoning?.length) return null;
+	const text = reasoning
+		.filter((r): r is { type: 'reasoning'; text: string } => r.type === 'reasoning' && 'text' in r)
+		.map((r) => r.text)
+		.join('\n');
+	return text || null;
+}

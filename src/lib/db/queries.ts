@@ -4,6 +4,31 @@
 import { nanoid } from 'nanoid';
 import type { Model, Question, Poll, Response, PollStatus, QuestionStatus, Category } from './types';
 
+// SQL filter for getting only the latest poll per model/question combination
+// Handles both batched polls (multiple samples) and legacy single polls
+export function getLatestPollFilter(pollAlias = 'p'): string {
+	return `
+		AND (
+			(${pollAlias}.batch_id IS NOT NULL AND ${pollAlias}.batch_id = (
+				SELECT p2.batch_id FROM polls p2
+				WHERE p2.question_id = ${pollAlias}.question_id
+					AND p2.model_id = ${pollAlias}.model_id
+					AND p2.batch_id IS NOT NULL
+				ORDER BY p2.created_at DESC
+				LIMIT 1
+			))
+			OR
+			(${pollAlias}.batch_id IS NULL AND ${pollAlias}.id = (
+				SELECT p3.id FROM polls p3
+				WHERE p3.question_id = ${pollAlias}.question_id
+					AND p3.model_id = ${pollAlias}.model_id
+					AND p3.batch_id IS NULL
+				ORDER BY p3.created_at DESC
+				LIMIT 1
+			))
+		)`;
+}
+
 // Models
 export async function getModels(db: D1Database, activeOnly = true): Promise<Model[]> {
 	const query = activeOnly
@@ -99,26 +124,13 @@ export async function getFamilies(db: D1Database): Promise<string[]> {
 // Questions
 export interface GetQuestionsOptions {
 	status?: QuestionStatus | 'all';
-	activeOnly?: boolean; // Deprecated: use status instead
 }
 
 export async function getQuestions(
 	db: D1Database,
-	options: GetQuestionsOptions | boolean = { status: 'published' }
+	options: GetQuestionsOptions = { status: 'published' }
 ): Promise<Question[]> {
-	// Handle legacy boolean parameter
-	if (typeof options === 'boolean') {
-		options = { activeOnly: options };
-	}
-
-	let whereClause = '';
-	if (options.status && options.status !== 'all') {
-		whereClause = `WHERE status = '${options.status}'`;
-	} else if (options.activeOnly !== undefined) {
-		// Legacy support
-		whereClause = options.activeOnly ? 'WHERE active = 1' : '';
-	}
-
+	const whereClause = options.status && options.status !== 'all' ? `WHERE status = '${options.status}'` : '';
 	const query = `SELECT * FROM questions ${whereClause} ORDER BY category, created_at DESC`;
 	const result = await db.prepare(query).all<Question>();
 	return result.results;

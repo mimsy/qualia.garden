@@ -3,14 +3,14 @@
 
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
-import { getModels, updateQuestion, createPollBatch } from '$lib/db/queries';
+import { getModels, updateQuestion, createPollBatch, getLatestPollFilter } from '$lib/db/queries';
 import type { QuestionStatus, Model, AggregatedResponse } from '$lib/db/types';
 import { computeMedian, computeMode } from '$lib/db/types';
 import {
 	ordinalAgreementScore,
 	nominalAgreementScore,
-	ordinalConsensusScore,
-	nominalConsensusScore
+	ordinalInternalAgreement,
+	nominalInternalAgreement
 } from '$lib/alignment';
 
 interface PollResponseRow {
@@ -107,27 +107,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		JOIN models m ON p.model_id = m.id
 		LEFT JOIN responses r ON p.id = r.poll_id
 		WHERE p.question_id = ?
-			AND (
-				-- For batched polls: get all polls from the latest batch per model
-				(p.batch_id IS NOT NULL AND p.batch_id = (
-					SELECT p2.batch_id FROM polls p2
-					WHERE p2.question_id = p.question_id
-						AND p2.model_id = p.model_id
-						AND p2.batch_id IS NOT NULL
-					ORDER BY p2.created_at DESC
-					LIMIT 1
-				))
-				OR
-				-- For legacy single polls: get the latest poll where batch_id is NULL
-				(p.batch_id IS NULL AND p.id = (
-					SELECT p3.id FROM polls p3
-					WHERE p3.question_id = p.question_id
-						AND p3.model_id = p.model_id
-						AND p3.batch_id IS NULL
-					ORDER BY p3.created_at DESC
-					LIMIT 1
-				))
-			)
+			${getLatestPollFilter()}
 		ORDER BY m.family, m.name, p.created_at
 	`
 		)
@@ -253,8 +233,8 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		if (allAggregatedAnswers.length >= 2) {
 			aiConsensusScore =
 				question.response_type === 'ordinal'
-					? ordinalConsensusScore(allAggregatedAnswers, options.length)
-					: nominalConsensusScore(allAggregatedAnswers, options.length);
+					? ordinalInternalAgreement(allAggregatedAnswers, options.length)
+					: nominalInternalAgreement(allAggregatedAnswers, options.length);
 		} else if (allAggregatedAnswers.length === 1) {
 			aiConsensusScore = 100; // Perfect agreement with only one model
 		}
@@ -303,8 +283,8 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 			} else {
 				modelSelfConsistency[response.model_id] =
 					question.response_type === 'ordinal'
-						? ordinalConsensusScore(answers, options.length)
-						: nominalConsensusScore(answers, options.length);
+						? ordinalInternalAgreement(answers, options.length)
+						: nominalInternalAgreement(answers, options.length);
 			}
 		}
 

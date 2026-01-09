@@ -4,13 +4,13 @@
 import type { PageServerLoad, Actions } from './$types';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { dev } from '$app/environment';
-import { updateModel, deleteModel } from '$lib/db/queries';
+import { updateModel, deleteModel, getLatestPollFilter } from '$lib/db/queries';
 import { computeMedian, computeMode } from '$lib/db/types';
 import {
 	ordinalAgreementScore,
 	nominalAgreementScore,
-	ordinalConsensusScore,
-	nominalConsensusScore,
+	ordinalInternalAgreement,
+	nominalInternalAgreement,
 	distributionMode,
 	computeAgreement
 } from '$lib/alignment';
@@ -113,25 +113,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 			WHERE p.model_id = ?
 				AND p.status = 'complete'
 				AND r.parsed_answer IS NOT NULL
-				AND (
-					(p.batch_id IS NOT NULL AND p.batch_id = (
-						SELECT p2.batch_id FROM polls p2
-						WHERE p2.question_id = p.question_id
-							AND p2.model_id = p.model_id
-							AND p2.batch_id IS NOT NULL
-						ORDER BY p2.created_at DESC
-						LIMIT 1
-					))
-					OR
-					(p.batch_id IS NULL AND p.id = (
-						SELECT p3.id FROM polls p3
-						WHERE p3.question_id = p.question_id
-							AND p3.model_id = p.model_id
-							AND p3.batch_id IS NULL
-						ORDER BY p3.created_at DESC
-						LIMIT 1
-					))
-				)
+				${getLatestPollFilter()}
 		`
 		)
 		.bind(modelId)
@@ -236,8 +218,8 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		if (answers.length >= 2 && options.length > 0) {
 			questionSelfConsistency[qId] =
 				q.response_type === 'ordinal'
-					? ordinalConsensusScore(answers, options.length)
-					: nominalConsensusScore(answers, options.length);
+					? ordinalInternalAgreement(answers, options.length)
+					: nominalInternalAgreement(answers, options.length);
 		} else if (answers.length === 1) {
 			questionSelfConsistency[qId] = 100; // Perfect consistency with one sample
 		}
@@ -318,25 +300,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 				AND m.id != ?
 				AND q.status = 'published'
 				AND p.question_id IN (${questionIds.map(() => '?').join(',')})
-				AND (
-					(p.batch_id IS NOT NULL AND p.batch_id = (
-						SELECT p2.batch_id FROM polls p2
-						WHERE p2.question_id = p.question_id
-							AND p2.model_id = p.model_id
-							AND p2.batch_id IS NOT NULL
-						ORDER BY p2.created_at DESC
-						LIMIT 1
-					))
-					OR
-					(p.batch_id IS NULL AND p.id = (
-						SELECT p3.id FROM polls p3
-						WHERE p3.question_id = p.question_id
-							AND p3.model_id = p.model_id
-							AND p3.batch_id IS NULL
-						ORDER BY p3.created_at DESC
-						LIMIT 1
-					))
-				)
+				${getLatestPollFilter()}
 		`
 		)
 		.bind(modelId, ...questionIds)

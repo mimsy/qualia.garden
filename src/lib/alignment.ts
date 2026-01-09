@@ -162,37 +162,6 @@ export function arrayStdDevNormalized(answers: string[], optionCount: number): n
 	return stdDev / maxStdDev;
 }
 
-// Legacy: Calculate mean from a distribution (1-based keys) - kept for map page
-export function distributionMean(distribution: Record<string, number>): number | null {
-	let total = 0;
-	let count = 0;
-	for (const [key, n] of Object.entries(distribution)) {
-		const val = parseInt(key, 10);
-		if (!isNaN(val) && n > 0) {
-			total += val * n;
-			count += n;
-		}
-	}
-	return count > 0 ? total / count : null;
-}
-
-// Legacy: Calculate mean from an array of 1-based string keys - kept for map page
-export function arrayMean(answers: string[]): number | null {
-	if (answers.length === 0) return null;
-	const nums = answers.map((a) => parseInt(a, 10)).filter((n) => !isNaN(n));
-	if (nums.length === 0) return null;
-	return nums.reduce((a, b) => a + b, 0) / nums.length;
-}
-
-// Legacy: Calculate standard deviation - kept for reference
-export function arrayStdDev(answers: string[]): number {
-	const nums = answers.map((a) => parseInt(a, 10)).filter((n) => !isNaN(n));
-	if (nums.length < 2) return 0;
-	const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
-	const variance = nums.reduce((sum, n) => sum + (n - mean) ** 2, 0) / nums.length;
-	return Math.sqrt(variance);
-}
-
 // Get mode (most common answer) from a distribution
 export function distributionMode(distribution: Record<string, number>): string | null {
 	let maxCount = 0;
@@ -251,15 +220,6 @@ export function ordinalAgreementScore(
 	// Blend 50% EMD + 50% overlap
 	const blended = emdSimilarity * 0.5 + overlapSimilarity * 0.5;
 	return Math.round(blended * 100);
-}
-
-// Legacy mean-based ordinal agreement (kept for reference, not used)
-export function ordinalAgreementScoreMeanBased(humanMean: number, aiMean: number, optionCount: number): number {
-	const diff = Math.abs(humanMean - aiMean);
-	if (optionCount <= 2) {
-		return Math.round(Math.max(0, 1 - diff * 2) * 100);
-	}
-	return Math.round(Math.pow(1 - diff, 1.5) * 100);
 }
 
 // Calculate internal agreement score (0-100) for ordinal questions
@@ -527,29 +487,13 @@ export function computeOverallScores(questionStats: QuestionStats[]): {
 	};
 }
 
-// Legacy: Compute overall score only (for backwards compatibility)
-export function computeOverallScore(questionStats: QuestionStats[]): number {
-	if (questionStats.length === 0) return 0;
-	const totalScore = questionStats.reduce((sum, q) => sum + q.humanAiScore, 0);
-	return Math.round(totalScore / questionStats.length);
-}
-
 // Aggregate multiple raw answers into a single representative answer
 export function aggregateResponses(answers: string[], responseType: string): string | null {
 	if (answers.length === 0) return null;
 	return responseType === 'ordinal' ? computeMedian(answers) : computeMode(answers);
 }
 
-// Legacy function for backwards compatibility with map page
-export function getPluralityAnswer(
-	optionCount: number,
-	distribution: Record<string, number> | undefined
-): string | null {
-	if (!distribution) return null;
-	return distributionMode(distribution);
-}
-
-// Legacy function for backwards compatibility with map page
+// Compute agreement score between two sets of responses (0-100)
 export function computeAgreement(
 	responses1: Record<string, string | null>,
 	responses2: Record<string, string | null>,
@@ -571,18 +515,6 @@ export function computeAgreement(
 	}
 
 	return comparisons > 0 ? Math.round((agreements / comparisons) * 100) : 0;
-}
-
-// Legacy function for backwards compatibility
-export function buildHumanResponses(
-	distributions: Map<string, Record<string, number>>,
-	questions: QuestionMeta[]
-): Record<string, string | null> {
-	const responses: Record<string, string | null> = {};
-	for (const q of questions) {
-		responses[q.id] = getPluralityAnswer(q.options.length, distributions.get(q.id));
-	}
-	return responses;
 }
 
 // Cache key builders
@@ -642,76 +574,5 @@ export async function invalidateSourceCache(kv: KVNamespace | undefined, sourceI
 		}
 	} catch {
 		// Ignore cache invalidation failures
-	}
-}
-
-// ---- Backward compatibility aliases ----
-// These map old function names to new ones during migration
-
-export const ordinalConsensusScore = ordinalInternalAgreement;
-export const nominalConsensusScore = nominalInternalAgreement;
-
-// ---- Legacy exports for backwards compatibility ----
-// These are used by the map page and will be removed once it's updated
-
-export interface AlignmentScore {
-	id: string;
-	name: string;
-	score: number;
-	type: 'model' | 'human';
-}
-
-export interface SourceAlignmentData {
-	rankings: AlignmentScore[];
-	topModel: AlignmentScore | null;
-	questionCount: number;
-	modelCount: number;
-	computedAt: string;
-}
-
-export function computeAlignmentRankings(
-	modelResponses: Map<string, { name: string; responses: Record<string, string | null> }>,
-	humanResponses: Record<string, string | null>,
-	questionIds: string[]
-): AlignmentScore[] {
-	const rankings: AlignmentScore[] = [];
-
-	for (const [modelId, data] of modelResponses) {
-		const score = computeAgreement(data.responses, humanResponses, questionIds);
-		rankings.push({
-			id: modelId,
-			name: data.name,
-			score,
-			type: 'model'
-		});
-	}
-
-	rankings.sort((a, b) => b.score - a.score);
-	return rankings;
-}
-
-export async function getCachedAlignment(
-	kv: KVNamespace | undefined,
-	cacheKey: string
-): Promise<SourceAlignmentData | null> {
-	if (!kv) return null;
-	try {
-		const cached = await kv.get(cacheKey, 'json');
-		return cached as SourceAlignmentData | null;
-	} catch {
-		return null;
-	}
-}
-
-export async function setCachedAlignment(
-	kv: KVNamespace | undefined,
-	cacheKey: string,
-	data: SourceAlignmentData
-): Promise<void> {
-	if (!kv) return;
-	try {
-		await kv.put(cacheKey, JSON.stringify(data));
-	} catch {
-		// Ignore cache write failures
 	}
 }

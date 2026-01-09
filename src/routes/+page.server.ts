@@ -3,6 +3,7 @@
 
 import type { PageServerLoad } from './$types';
 import { computeMedian, computeMode } from '$lib/db/types';
+import { getLatestPollFilter } from '$lib/db/queries';
 import {
 	computeQuestionStats,
 	computeOverallScores,
@@ -12,8 +13,8 @@ import {
 	CACHE_VERSION,
 	ordinalAgreementScore,
 	nominalAgreementScore,
-	ordinalConsensusScore,
-	nominalConsensusScore,
+	ordinalInternalAgreement,
+	nominalInternalAgreement,
 	type QuestionMeta,
 	type QuestionStats,
 	type SourceStats
@@ -125,8 +126,8 @@ function computeQuestionConfidence(
 				const optionCount = questionOptionsMap.get(questionId) ?? 5;
 				sc =
 					responseType === 'ordinal'
-						? ordinalConsensusScore(answers, optionCount)
-						: nominalConsensusScore(answers, optionCount);
+						? ordinalInternalAgreement(answers, optionCount)
+						: nominalInternalAgreement(answers, optionCount);
 			}
 
 			if (!questionConfidences.has(questionId)) {
@@ -355,25 +356,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 				AND r.parsed_answer IS NOT NULL
 				AND q.status = 'published'
 				AND q.benchmark_source_id IS NOT NULL
-				AND (
-					(p.batch_id IS NOT NULL AND p.batch_id = (
-						SELECT p2.batch_id FROM polls p2
-						WHERE p2.question_id = p.question_id
-							AND p2.model_id = p.model_id
-							AND p2.batch_id IS NOT NULL
-						ORDER BY p2.created_at DESC
-						LIMIT 1
-					))
-					OR
-					(p.batch_id IS NULL AND p.id = (
-						SELECT p3.id FROM polls p3
-						WHERE p3.question_id = p.question_id
-							AND p3.model_id = p.model_id
-							AND p3.batch_id IS NULL
-						ORDER BY p3.created_at DESC
-						LIMIT 1
-					))
-				)
+				${getLatestPollFilter()}
 		`
 		)
 		.all<ModelResponseRow>();
@@ -578,7 +561,6 @@ export const load: PageServerLoad = async ({ platform }) => {
 			totalHumanAiScore: number;
 			totalAiAgreementScore: number;
 			count: number;
-			modelIds: Set<string>;
 			stats: QuestionStats[];
 		}
 	>();
@@ -592,7 +574,6 @@ export const load: PageServerLoad = async ({ platform }) => {
 				totalHumanAiScore: 0,
 				totalAiAgreementScore: 0,
 				count: 0,
-				modelIds: new Set(),
 				stats: []
 			});
 		}
@@ -603,55 +584,43 @@ export const load: PageServerLoad = async ({ platform }) => {
 		agg.stats.push(stat);
 	}
 
-	// Get model counts per category
-	const categoryModelCounts = await db
-		.prepare(
-			`
-			SELECT
-				q.category,
-				COUNT(DISTINCT m.id) as model_count
-			FROM questions q
-			JOIN polls p ON q.id = p.question_id
-			JOIN models m ON p.model_id = m.id
-			WHERE q.status = 'published'
-				AND q.benchmark_source_id IS NOT NULL
-				AND q.category IS NOT NULL
-				AND p.status = 'complete'
-			GROUP BY q.category
-		`
-		)
-		.all<{ category: string; model_count: number }>();
-
-	const modelCountByCategory = new Map<string, number>();
-	for (const row of categoryModelCounts.results) {
-		modelCountByCategory.set(row.category, row.model_count);
-	}
-
-	// Compute confidence per category from raw responses
-	const categoryConfidence = new Map<string, number>();
-	for (const [category, agg] of categoryAggregates) {
-		const questionIds = new Set(agg.stats.map((s) => s.questionId));
-		const consistencies: number[] = [];
-
-		// Get responses for questions in this category
-		for (const [, sourceResponses] of responsesBySource) {
-			for (const [, modelData] of sourceResponses) {
-				for (const [questionId, { answers, responseType }] of modelData.byQuestion) {
-					if (!questionIds.has(questionId)) continue;
-					if (answers.length < 2) {
-						consistencies.push(100);
-						continue;
-					}
-					const q = allBenchmarkedQuestions.find((x) => x.id === questionId);
-					const optionCount = q?.options.length ?? 5;
-					const sc =
-						responseType === 'ordinal'
-							? ordinalConsensusScore(answers, optionCount)
-							: nominalConsensusScore(answers, optionCount);
-					consistencies.push(sc);
+	// Pre-group responses by category once (instead of nested O(n³) loop)
+	// Also track model IDs per category (avoids separate SQL query)
+	const responsesByCategory = new Map<
+		string,
+		Array<{ answers: string[]; responseType: string; optionCount: number }>
+	>();
+	const modelIdsByCategory = new Map<string, Set<string>>();
+	for (const [, sourceResponses] of responsesBySource) {
+		for (const [modelId, modelData] of sourceResponses) {
+			for (const [questionId, { answers, responseType }] of modelData.byQuestion) {
+				const category = questionCategoryMap.get(questionId);
+				if (!category) continue;
+				if (!responsesByCategory.has(category)) {
+					responsesByCategory.set(category, []);
+					modelIdsByCategory.set(category, new Set());
 				}
+				const options = questionOptionsMap.get(questionId);
+				responsesByCategory.get(category)!.push({
+					answers,
+					responseType,
+					optionCount: options?.length ?? 5
+				});
+				modelIdsByCategory.get(category)!.add(modelId);
 			}
 		}
+	}
+
+	// Compute confidence per category from pre-grouped responses
+	const categoryConfidence = new Map<string, number>();
+	for (const [category] of categoryAggregates) {
+		const responses = responsesByCategory.get(category) || [];
+		const consistencies = responses.map(({ answers, responseType, optionCount }) => {
+			if (answers.length < 2) return 100;
+			return responseType === 'ordinal'
+				? ordinalInternalAgreement(answers, optionCount)
+				: nominalInternalAgreement(answers, optionCount);
+		});
 
 		if (consistencies.length > 0) {
 			categoryConfidence.set(category, Math.round(consistencies.reduce((a, b) => a + b, 0) / consistencies.length));
@@ -670,7 +639,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 			aiAgreementScore: Math.round(agg.totalAiAgreementScore / agg.count),
 			aiConfidenceScore: categoryConfidence.get(category) ?? null,
 			questionCount: agg.count,
-			modelCount: modelCountByCategory.get(category) ?? 0,
+			modelCount: modelIdsByCategory.get(category)?.size ?? 0,
 			extremeQuestion: findMostInteresting(
 				agg.stats,
 				questionTextMap,

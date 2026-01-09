@@ -12,13 +12,9 @@ import {
 	distributionMeanNormalized,
 	arrayMeanNormalized,
 	arrayStdDevNormalized,
-	distributionMean,
-	arrayMean,
-	arrayStdDev,
 	distributionMode,
 	arrayMode,
 	ordinalAgreementScore,
-	ordinalAgreementScoreMeanBased,
 	ordinalInternalAgreement,
 	distributionOverlap,
 	ordinalEMDSimilarity,
@@ -26,18 +22,13 @@ import {
 	nominalInternalAgreement,
 	distributionInternalAgreement,
 	computeOverallScores,
-	computeOverallScore,
 	computeQuestionStats,
 	aggregateResponses,
 	getCacheKey,
 	getCachedSourceStats,
 	setCachedSourceStats,
 	invalidateSourceCache,
-	computeAgreement,
-	buildHumanResponses,
-	computeAlignmentRankings,
-	getCachedAlignment,
-	setCachedAlignment
+	computeAgreement
 } from './alignment';
 
 describe('getScoreLabel', () => {
@@ -224,41 +215,6 @@ describe('arrayStdDevNormalized', () => {
 	});
 });
 
-describe('distributionMean (legacy)', () => {
-	it('calculates mean from 1-based distribution', () => {
-		const dist = { '1': 1, '2': 1, '3': 1, '4': 1, '5': 1 };
-		expect(distributionMean(dist)).toBe(3);
-	});
-
-	it('returns null for empty distribution', () => {
-		expect(distributionMean({})).toBeNull();
-	});
-
-	it('handles single value', () => {
-		expect(distributionMean({ '4': 10 })).toBe(4);
-	});
-});
-
-describe('arrayMean (legacy)', () => {
-	it('calculates mean from answers', () => {
-		expect(arrayMean(['1', '3', '5'])).toBe(3);
-	});
-
-	it('returns null for empty array', () => {
-		expect(arrayMean([])).toBeNull();
-	});
-});
-
-describe('arrayStdDev (legacy)', () => {
-	it('returns 0 for uniform values', () => {
-		expect(arrayStdDev(['3', '3', '3'])).toBe(0);
-	});
-
-	it('returns 0 for single value', () => {
-		expect(arrayStdDev(['3'])).toBe(0);
-	});
-});
-
 describe('distributionMode', () => {
 	it('returns most frequent value', () => {
 		const dist = { '1': 10, '2': 50, '3': 30 };
@@ -331,36 +287,6 @@ describe('ordinalAgreementScore', () => {
 		// No options - should infer max is 3
 		const score = ordinalAgreementScore(humanDist, aiDist);
 		expect(score).toBe(0);
-	});
-});
-
-describe('ordinalAgreementScoreMeanBased', () => {
-	it('returns 100 for identical means', () => {
-		expect(ordinalAgreementScoreMeanBased(0.5, 0.5, 5)).toBe(100);
-	});
-
-	it('returns 0 for extreme opposite means', () => {
-		expect(ordinalAgreementScoreMeanBased(0, 1, 5)).toBe(0);
-	});
-
-	it('handles 2-option questions differently', () => {
-		// Binary questions use linear scaling
-		const score = ordinalAgreementScoreMeanBased(0.5, 0.75, 2);
-		expect(score).toBeGreaterThan(0);
-		expect(score).toBeLessThan(100);
-	});
-
-	it('uses power scaling for larger option counts', () => {
-		// Non-binary uses power 1.5 scaling
-		const score = ordinalAgreementScoreMeanBased(0.3, 0.7, 5);
-		expect(score).toBeGreaterThan(0);
-		expect(score).toBeLessThan(100);
-	});
-
-	it('handles edge case of 1 option (weird but valid)', () => {
-		// 1 option should still work (binary path)
-		const score = ordinalAgreementScoreMeanBased(0.5, 0.5, 1);
-		expect(score).toBe(100);
 	});
 });
 
@@ -663,29 +589,6 @@ describe('computeQuestionStats', () => {
 	});
 });
 
-describe('computeOverallScore', () => {
-	it('computes average of humanAiScores', () => {
-		const stats = [{ humanAiScore: 80 }, { humanAiScore: 60 }] as Parameters<typeof computeOverallScore>[0];
-
-		const result = computeOverallScore(stats);
-		expect(result).toBe(70);
-	});
-
-	it('returns 0 for empty array', () => {
-		const result = computeOverallScore([]);
-		expect(result).toBe(0);
-	});
-
-	it('rounds to nearest integer', () => {
-		const stats = [{ humanAiScore: 80 }, { humanAiScore: 60 }, { humanAiScore: 70 }] as Parameters<
-			typeof computeOverallScore
-		>[0];
-
-		const result = computeOverallScore(stats);
-		expect(result).toBe(70);
-	});
-});
-
 describe('aggregateResponses', () => {
 	it('uses median for ordinal responses', () => {
 		const answers = ['1', '2', '3', '4', '5'];
@@ -880,129 +783,5 @@ describe('computeAgreement', () => {
 		const r2 = { q1: '1' };
 		const result = computeAgreement(r1, r2, []);
 		expect(result).toBe(0);
-	});
-});
-
-describe('buildHumanResponses', () => {
-	it('builds responses from distributions', () => {
-		const distributions = new Map<string, Record<string, number>>([
-			['q1', { '1': 60, '2': 40 }],
-			['q2', { '1': 30, '2': 70 }]
-		]);
-		const questions = [
-			{ id: 'q1', options: ['A', 'B'] },
-			{ id: 'q2', options: ['A', 'B'] }
-		];
-
-		const result = buildHumanResponses(distributions, questions as never);
-
-		expect(result.q1).toBe('1'); // plurality answer
-		expect(result.q2).toBe('2'); // plurality answer
-	});
-
-	it('handles missing distributions', () => {
-		const distributions = new Map<string, Record<string, number>>();
-		const questions = [{ id: 'q1', options: ['A', 'B'] }];
-
-		const result = buildHumanResponses(distributions, questions as never);
-
-		expect(result.q1).toBeNull();
-	});
-});
-
-describe('computeAlignmentRankings', () => {
-	it('computes rankings for multiple models', () => {
-		const modelResponses = new Map([
-			['m1', { name: 'Model 1', responses: { q1: '1', q2: '1' } }],
-			['m2', { name: 'Model 2', responses: { q1: '1', q2: '2' } }]
-		]);
-		const humanResponses = { q1: '1', q2: '1' };
-		const questionIds = ['q1', 'q2'];
-
-		const result = computeAlignmentRankings(modelResponses, humanResponses, questionIds);
-
-		expect(result).toHaveLength(2);
-		expect(result[0].id).toBe('m1'); // 100% agreement
-		expect(result[0].score).toBe(100);
-		expect(result[1].id).toBe('m2'); // 50% agreement
-		expect(result[1].score).toBe(50);
-	});
-
-	it('sorts by score descending', () => {
-		const modelResponses = new Map([
-			['m1', { name: 'Low', responses: { q1: '2' } }],
-			['m2', { name: 'High', responses: { q1: '1' } }]
-		]);
-		const humanResponses = { q1: '1' };
-
-		const result = computeAlignmentRankings(modelResponses, humanResponses, ['q1']);
-
-		expect(result[0].name).toBe('High');
-		expect(result[1].name).toBe('Low');
-	});
-
-	it('handles empty model list', () => {
-		const result = computeAlignmentRankings(new Map(), { q1: '1' }, ['q1']);
-		expect(result).toHaveLength(0);
-	});
-});
-
-describe('getCachedAlignment', () => {
-	it('returns null when kv is undefined', async () => {
-		const result = await getCachedAlignment(undefined, 'test-key');
-		expect(result).toBeNull();
-	});
-
-	it('returns cached data when available', async () => {
-		const mockData = {
-			rankings: [{ id: 'm1', name: 'Model 1', score: 80, type: 'model' }],
-			topModel: null,
-			questionCount: 10,
-			modelCount: 5,
-			computedAt: '2024-01-01'
-		};
-		const kv = createMockKV({ 'test-key': mockData });
-
-		const result = await getCachedAlignment(kv, 'test-key');
-		expect(result).toEqual(mockData);
-	});
-
-	it('returns null on error', async () => {
-		const kv = {
-			get: vi.fn().mockRejectedValue(new Error('KV error'))
-		} as unknown as KVNamespace;
-
-		const result = await getCachedAlignment(kv, 'test-key');
-		expect(result).toBeNull();
-	});
-});
-
-describe('setCachedAlignment', () => {
-	it('does nothing when kv is undefined', async () => {
-		await setCachedAlignment(undefined, 'test-key', {} as never);
-		// Should not throw
-	});
-
-	it('stores data in cache', async () => {
-		const kv = createMockKV();
-		const data = {
-			rankings: [],
-			topModel: null,
-			questionCount: 10,
-			modelCount: 5,
-			computedAt: '2024-01-01'
-		};
-
-		await setCachedAlignment(kv, 'test-key', data);
-		expect(kv.put).toHaveBeenCalledWith('test-key', JSON.stringify(data));
-	});
-
-	it('ignores errors', async () => {
-		const kv = {
-			put: vi.fn().mockRejectedValue(new Error('KV error'))
-		} as unknown as KVNamespace;
-
-		// Should not throw
-		await setCachedAlignment(kv, 'test-key', {} as never);
 	});
 });

@@ -258,11 +258,6 @@ describe('Question Queries', () => {
 			await getQuestions(db, { status: 'all' });
 			expect(db.prepare).toHaveBeenCalledWith(expect.not.stringContaining('WHERE'));
 		});
-
-		it('handles legacy boolean parameter', async () => {
-			await getQuestions(db, true);
-			expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('WHERE active = 1'));
-		});
 	});
 
 	describe('getQuestion', () => {

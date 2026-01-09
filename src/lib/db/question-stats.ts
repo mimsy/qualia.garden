@@ -2,11 +2,12 @@
 // ABOUTME: Computes AI distributions, human distributions, and all three core scores.
 
 import { computeMedian, computeMode } from './types';
+import { getLatestPollFilter } from './queries';
 import {
 	ordinalAgreementScore,
 	nominalAgreementScore,
-	ordinalConsensusScore,
-	nominalConsensusScore,
+	ordinalInternalAgreement,
+	nominalInternalAgreement,
 	normalizeDistributionKeys
 } from '$lib/alignment';
 
@@ -145,25 +146,7 @@ export async function loadQuestionsWithStats(
 			WHERE p.status = 'complete'
 				AND r.parsed_answer IS NOT NULL
 				AND p.question_id IN (${questionSubquery})
-				AND (
-					(p.batch_id IS NOT NULL AND p.batch_id = (
-						SELECT p2.batch_id FROM polls p2
-						WHERE p2.question_id = p.question_id
-							AND p2.model_id = p.model_id
-							AND p2.batch_id IS NOT NULL
-						ORDER BY p2.created_at DESC
-						LIMIT 1
-					))
-					OR
-					(p.batch_id IS NULL AND p.id = (
-						SELECT p3.id FROM polls p3
-						WHERE p3.question_id = p.question_id
-							AND p3.model_id = p.model_id
-							AND p3.batch_id IS NULL
-						ORDER BY p3.created_at DESC
-						LIMIT 1
-					))
-				)
+				${getLatestPollFilter()}
 		`
 		)
 		.bind(...params)
@@ -230,8 +213,8 @@ export async function loadQuestionsWithStats(
 				if (data.answers.length >= 2) {
 					const selfConsistency =
 						data.responseType === 'ordinal'
-							? ordinalConsensusScore(data.answers, options.length)
-							: nominalConsensusScore(data.answers, options.length);
+							? ordinalInternalAgreement(data.answers, options.length)
+							: nominalInternalAgreement(data.answers, options.length);
 					modelSelfConsistencies.push(selfConsistency);
 				} else if (data.answers.length === 1) {
 					// Perfect consistency with only one sample
@@ -298,8 +281,8 @@ export async function loadQuestionsWithStats(
 		if (modelCount >= 2) {
 			aiConsensus =
 				q.response_type === 'ordinal'
-					? ordinalConsensusScore(aggregatedAnswers, options.length)
-					: nominalConsensusScore(aggregatedAnswers, options.length);
+					? ordinalInternalAgreement(aggregatedAnswers, options.length)
+					: nominalInternalAgreement(aggregatedAnswers, options.length);
 		} else if (modelCount === 1) {
 			aiConsensus = 100; // Perfect agreement with only one model
 		}

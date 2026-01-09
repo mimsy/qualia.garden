@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 	}
 
 	const [questions, models] = await Promise.all([
-		getQuestions(platform.env.DB, true),
+		getQuestions(platform.env.DB, { status: 'published' }),
 		getModels(platform.env.DB, true)
 	]);
 

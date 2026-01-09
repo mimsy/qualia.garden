@@ -4,11 +4,12 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { computeMedian, computeMode } from '$lib/db/types';
+import { getLatestPollFilter } from '$lib/db/queries';
 import {
 	ordinalAgreementScore,
 	nominalAgreementScore,
-	ordinalConsensusScore,
-	nominalConsensusScore
+	ordinalInternalAgreement,
+	nominalInternalAgreement
 } from '$lib/alignment';
 
 interface ModelRow {
@@ -78,25 +79,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 				AND p.status = 'complete'
 				AND r.parsed_answer IS NOT NULL
 				AND q.status = 'published'
-				AND (
-					(p.batch_id IS NOT NULL AND p.batch_id = (
-						SELECT p2.batch_id FROM polls p2
-						WHERE p2.question_id = p.question_id
-							AND p2.model_id = p.model_id
-							AND p2.batch_id IS NOT NULL
-						ORDER BY p2.created_at DESC
-						LIMIT 1
-					))
-					OR
-					(p.batch_id IS NULL AND p.id = (
-						SELECT p3.id FROM polls p3
-						WHERE p3.question_id = p.question_id
-							AND p3.model_id = p.model_id
-							AND p3.batch_id IS NULL
-						ORDER BY p3.created_at DESC
-						LIMIT 1
-					))
-				)
+				${getLatestPollFilter()}
 		`
 		)
 		.bind(...modelIds)
@@ -222,8 +205,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			if (answers.length >= 2) {
 				const sc =
 					q.response_type === 'ordinal'
-						? ordinalConsensusScore(answers, options.length)
-						: nominalConsensusScore(answers, options.length);
+						? ordinalInternalAgreement(answers, options.length)
+						: nominalInternalAgreement(answers, options.length);
 				selfConsistencyScores.push(sc);
 			} else if (answers.length === 1) {
 				selfConsistencyScores.push(100);
