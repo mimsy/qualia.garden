@@ -381,6 +381,8 @@ export const actions: Actions = {
 		const family = (formData.get('family') as string)?.trim();
 		const openrouter_id = (formData.get('openrouter_id') as string)?.trim();
 		const supports_reasoning = formData.get('supports_reasoning') === 'true';
+		const release_date = (formData.get('release_date') as string)?.trim() || null;
+		const description = (formData.get('description') as string)?.trim() || null;
 
 		if (!name || !family || !openrouter_id) {
 			return fail(400, { error: 'Name, family, and OpenRouter ID are required' });
@@ -395,12 +397,12 @@ export const actions: Actions = {
 			return fail(400, { error: 'A model with this ID already exists' });
 		}
 
-		await createModel(platform.env.DB, { name, family, openrouter_id, supports_reasoning });
+		await createModel(platform.env.DB, { name, family, openrouter_id, supports_reasoning, release_date, description });
 
 		return { success: true, created: true };
 	},
 
-	syncReasoning: async ({ platform, locals, url }) => {
+	syncMetadata: async ({ platform, locals, url }) => {
 		const isPreview = url.host.includes('.pages.dev') && url.host !== 'qualia-garden.pages.dev';
 		const isAdmin = dev || isPreview || locals.user?.isAdmin;
 
@@ -414,7 +416,7 @@ export const actions: Actions = {
 
 		const db = platform.env.DB;
 
-		// Fetch current reasoning support from OpenRouter
+		// Fetch current model data from OpenRouter
 		const response = await fetch('https://openrouter.ai/api/v1/models', {
 			headers: { 'Content-Type': 'application/json' }
 		});
@@ -425,35 +427,59 @@ export const actions: Actions = {
 
 		interface OpenRouterModel {
 			id: string;
+			description?: string;
+			created?: number;
 			supported_parameters?: string[];
 		}
 
 		const apiResponse = (await response.json()) as { data: OpenRouterModel[] };
 
-		// Build map of model ID -> supports_reasoning
-		const reasoningMap = new Map<string, boolean>();
+		// Build map of model ID -> metadata
+		const metadataMap = new Map<
+			string,
+			{ supports_reasoning: boolean; release_date: string | null; description: string | null }
+		>();
 		for (const m of apiResponse.data) {
 			const supportsReasoning =
 				m.supported_parameters?.includes('reasoning') || m.supported_parameters?.includes('include_reasoning') || false;
-			reasoningMap.set(m.id, supportsReasoning);
+			const releaseDate = m.created ? new Date(m.created * 1000).toISOString().split('T')[0] : null;
+			metadataMap.set(m.id, {
+				supports_reasoning: supportsReasoning,
+				release_date: releaseDate,
+				description: m.description ?? null
+			});
 		}
 
 		// Get all models from our database
-		const modelsResult = await db.prepare('SELECT id, openrouter_id, supports_reasoning FROM models').all<{
-			id: string;
-			openrouter_id: string;
-			supports_reasoning: number;
-		}>();
+		const modelsResult = await db
+			.prepare('SELECT id, openrouter_id, supports_reasoning, release_date, description FROM models')
+			.all<{
+				id: string;
+				openrouter_id: string;
+				supports_reasoning: number;
+				release_date: string | null;
+				description: string | null;
+			}>();
 
-		// Update models where reasoning status differs
+		// Update models where metadata differs
 		let updatedCount = 0;
 		for (const model of modelsResult.results) {
 			const orId = model.openrouter_id || model.id;
-			const shouldSupport = reasoningMap.get(orId) ?? false;
-			const currentlySupports = Boolean(model.supports_reasoning);
+			const orData = metadataMap.get(orId);
+			if (!orData) continue;
 
-			if (shouldSupport !== currentlySupports) {
-				await updateModel(db, model.id, { supports_reasoning: shouldSupport });
+			const currentSupportsReasoning = Boolean(model.supports_reasoning);
+			const needsUpdate =
+				orData.supports_reasoning !== currentSupportsReasoning ||
+				orData.release_date !== model.release_date ||
+				orData.description !== model.description;
+
+			if (needsUpdate) {
+				await updateModel(db, model.id, {
+					supports_reasoning: orData.supports_reasoning,
+					release_date: orData.release_date,
+					description: orData.description
+				});
 				updatedCount++;
 			}
 		}

@@ -13,6 +13,8 @@ interface OpenRouterModelResponse {
 		completion: string;
 	};
 	supports_reasoning: boolean;
+	release_date: string | null;
+	description: string | null;
 }
 
 interface OpenRouterApiResponse {
@@ -25,6 +27,8 @@ interface OpenRouterApiResponse {
 			completion: string;
 		};
 		supported_parameters?: string[];
+		created?: number;
+		description?: string;
 	}>;
 }
 
@@ -67,7 +71,9 @@ export const GET: RequestHandler = async ({ platform }) => {
 			completion: m.pricing?.completion || '0'
 		},
 		supports_reasoning:
-			m.supported_parameters?.includes('reasoning') || m.supported_parameters?.includes('include_reasoning') || false
+			m.supported_parameters?.includes('reasoning') || m.supported_parameters?.includes('include_reasoning') || false,
+		release_date: m.created ? new Date(m.created * 1000).toISOString().split('T')[0] : null,
+		description: m.description ?? null
 	}));
 
 	// Sort by name for easier browsing

@@ -30,6 +30,8 @@
 		context_length: number;
 		pricing: { prompt: string; completion: string };
 		supports_reasoning: boolean;
+		release_date: string | null;
+		description: string | null;
 	}
 
 	const filteredOpenRouterModels = $derived(
@@ -174,46 +176,20 @@
 	</header>
 
 	<main class="max-w-6xl mx-auto px-6 py-12">
-		<!-- Sync result message -->
-		{#if form?.synced}
-			<div class="mb-6 bg-green-50 text-green-700 px-4 py-3 rounded-lg border border-green-200">
-				Synced reasoning flags from OpenRouter. {form.updatedCount} model{form.updatedCount === 1 ? '' : 's'} updated.
-			</div>
-		{/if}
-
 		<!-- Hero -->
 		<div class="mb-8">
 			<div class="flex items-center justify-between mb-3">
 				<h1 class="text-3xl font-bold text-slate-900 tracking-tight">AI Models</h1>
 				{#if data.isAdmin}
-					<div class="flex items-center gap-2">
-						<form method="POST" action="?/syncReasoning">
-							<button
-								type="submit"
-								class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-								title="Update reasoning flags from OpenRouter"
-							>
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-									/>
-								</svg>
-								Sync Reasoning
-							</button>
-						</form>
-						<button
-							onclick={() => (showAddModal = true)}
-							class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
-						>
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-							</svg>
-							Add Model
-						</button>
-					</div>
+					<button
+						onclick={() => (showAddModal = true)}
+						class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+						</svg>
+						Add Model
+					</button>
 				{/if}
 			</div>
 		</div>
@@ -351,12 +327,16 @@
 
 <!-- Add Model Modal -->
 {#if showAddModal && data.isAdmin}
-	<div class="fixed inset-0 z-50 flex items-center justify-center">
+	<div class="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]">
 		<!-- Backdrop -->
 		<button class="absolute inset-0 bg-black/50" onclick={closeModal} aria-label="Close modal"></button>
 
-		<!-- Modal content -->
-		<div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-auto">
+		<!-- Modal content - overflow visible for dropdown, but scrollable when model selected -->
+		<div
+			class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 {selectedModel
+				? 'max-h-[80vh] overflow-auto'
+				: 'overflow-visible'}"
+		>
 			<div class="p-6 border-b border-slate-100">
 				<div class="flex items-center justify-between">
 					<h2 class="text-xl font-semibold text-slate-900">Add Model</h2>
@@ -382,7 +362,7 @@
 
 			{#if !selectedModel}
 				<!-- Search State -->
-				<div class="p-6">
+				<div class="p-6 pb-8">
 					<label for="model-search" class="block text-sm font-medium text-slate-700 mb-2">
 						Search OpenRouter Models
 					</label>
@@ -401,7 +381,7 @@
 
 						{#if showDropdown && filteredOpenRouterModels.length > 0}
 							<div
-								class="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-lg max-h-64 overflow-auto"
+								class="absolute z-[60] w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-xl max-h-64 overflow-auto"
 							>
 								{#each filteredOpenRouterModels as model (model.id)}
 									<button
@@ -426,7 +406,7 @@
 
 						{#if showDropdown && searchQuery.length >= 2 && filteredOpenRouterModels.length === 0 && !loadingModels}
 							<div
-								class="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-lg p-4 text-slate-500"
+								class="absolute z-[60] w-full mt-2 bg-white border border-slate-200 rounded-lg shadow-xl p-4 text-slate-500"
 							>
 								No models found matching "{searchQuery}"
 							</div>
@@ -483,6 +463,8 @@
 					<input type="hidden" name="openrouter_id" value={selectedModel.id} />
 					<input type="hidden" name="family" value={selectedModel.id.split('/')[0]} />
 					<input type="hidden" name="supports_reasoning" value={reasoningEnabled.toString()} />
+					<input type="hidden" name="release_date" value={selectedModel.release_date ?? ''} />
+					<input type="hidden" name="description" value={selectedModel.description ?? ''} />
 
 					<!-- Display Name -->
 					<div>

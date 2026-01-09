@@ -21,8 +21,18 @@ export async function getModel(db: D1Database, id: string): Promise<Model | null
 export async function createModel(db: D1Database, data: Omit<Model, 'id' | 'created_at' | 'active'>): Promise<Model> {
 	const id = nanoid(12);
 	await db
-		.prepare('INSERT INTO models (id, name, family, openrouter_id, supports_reasoning) VALUES (?, ?, ?, ?, ?)')
-		.bind(id, data.name, data.family, data.openrouter_id, data.supports_reasoning ? 1 : 0)
+		.prepare(
+			'INSERT INTO models (id, name, family, openrouter_id, supports_reasoning, release_date, description) VALUES (?, ?, ?, ?, ?, ?, ?)'
+		)
+		.bind(
+			id,
+			data.name,
+			data.family,
+			data.openrouter_id,
+			data.supports_reasoning ? 1 : 0,
+			data.release_date ?? null,
+			data.description ?? null
+		)
 		.run();
 	return (await getModel(db, id))!;
 }
@@ -30,7 +40,9 @@ export async function createModel(db: D1Database, data: Omit<Model, 'id' | 'crea
 export async function updateModel(
 	db: D1Database,
 	id: string,
-	data: Partial<Pick<Model, 'name' | 'family' | 'openrouter_id' | 'active' | 'supports_reasoning'>>
+	data: Partial<
+		Pick<Model, 'name' | 'family' | 'openrouter_id' | 'active' | 'supports_reasoning' | 'release_date' | 'description'>
+	>
 ): Promise<Model | null> {
 	const sets: string[] = [];
 	const values: unknown[] = [];
@@ -54,6 +66,14 @@ export async function updateModel(
 	if (data.supports_reasoning !== undefined) {
 		sets.push('supports_reasoning = ?');
 		values.push(data.supports_reasoning ? 1 : 0);
+	}
+	if (data.release_date !== undefined) {
+		sets.push('release_date = ?');
+		values.push(data.release_date);
+	}
+	if (data.description !== undefined) {
+		sets.push('description = ?');
+		values.push(data.description);
 	}
 
 	if (sets.length === 0) return getModel(db, id);

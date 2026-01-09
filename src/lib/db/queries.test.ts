@@ -99,6 +99,8 @@ describe('Model Queries', () => {
 				openrouter_id: 'openai/gpt-4',
 				active: true,
 				supports_reasoning: false,
+				release_date: null,
+				description: null,
 				created_at: '2024-01-01'
 			};
 			mockStatement.first.mockResolvedValue(mockModel);
@@ -116,6 +118,8 @@ describe('Model Queries', () => {
 				openrouter_id: 'openai/gpt-4',
 				active: true,
 				supports_reasoning: true,
+				release_date: '2023-03-14',
+				description: 'GPT-4 is a large multimodal model',
 				created_at: '2024-01-01'
 			};
 			mockStatement.first.mockResolvedValue(mockModel);
@@ -124,13 +128,23 @@ describe('Model Queries', () => {
 				name: 'GPT-4',
 				family: 'OpenAI',
 				openrouter_id: 'openai/gpt-4',
-				supports_reasoning: true
+				supports_reasoning: true,
+				release_date: '2023-03-14',
+				description: 'GPT-4 is a large multimodal model'
 			});
 
 			expect(db.prepare).toHaveBeenCalledWith(
-				'INSERT INTO models (id, name, family, openrouter_id, supports_reasoning) VALUES (?, ?, ?, ?, ?)'
+				'INSERT INTO models (id, name, family, openrouter_id, supports_reasoning, release_date, description) VALUES (?, ?, ?, ?, ?, ?, ?)'
 			);
-			expect(mockStatement.bind).toHaveBeenCalledWith('test-id-1234', 'GPT-4', 'OpenAI', 'openai/gpt-4', 1);
+			expect(mockStatement.bind).toHaveBeenCalledWith(
+				'test-id-1234',
+				'GPT-4',
+				'OpenAI',
+				'openai/gpt-4',
+				1,
+				'2023-03-14',
+				'GPT-4 is a large multimodal model'
+			);
 		});
 	});
 
@@ -694,6 +708,8 @@ describe('Question Results Queries', () => {
 				openrouter_id: 'openai/gpt-4',
 				active: true,
 				supports_reasoning: false,
+				release_date: null,
+				description: null,
 				created_at: '2024-01-01'
 			};
 			const mockPoll: Poll = {

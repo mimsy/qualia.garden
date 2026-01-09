@@ -12,6 +12,8 @@ export interface Model {
 	openrouter_id: string;
 	active: boolean;
 	supports_reasoning: boolean;
+	release_date: string | null;
+	description: string | null;
 	created_at: string;
 }
 
