@@ -87,19 +87,24 @@ export const load: PageServerLoad = async ({ platform }) => {
 		humanDistributions.set(h.question_id, JSON.parse(h.distribution));
 	}
 
-	// Get question metadata for questions with human data
+	// Get question metadata using subquery to avoid large IN clause
 	const questionsResult = await db
 		.prepare(
 			`
-			SELECT id, text, options, response_type
-			FROM questions
-			WHERE status = 'published' AND id IN (${Array.from(humanQuestionIds)
-				.map(() => '?')
-				.join(',')})
-			ORDER BY id
+			SELECT q.id, q.text, q.options, q.response_type
+			FROM questions q
+			WHERE q.status = 'published'
+				AND q.id IN (
+					SELECT h.question_id
+					FROM human_response_distributions h
+					JOIN questions q2 ON h.question_id = q2.id
+					WHERE q2.status = 'published'
+						AND h.continent IS NULL
+						AND h.education_level IS NULL
+				)
+			ORDER BY q.id
 		`
 		)
-		.bind(...Array.from(humanQuestionIds))
 		.all<Question>();
 
 	const questionMeta = questionsResult.results.map((q) => ({

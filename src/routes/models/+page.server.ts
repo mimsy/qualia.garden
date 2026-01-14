@@ -25,14 +25,10 @@ interface ModelWithStats {
 	selfConsistencyScore: number | null;
 }
 
-interface ResponseRow {
+interface ResponseWithQuestionRow {
 	model_id: string;
 	question_id: string;
 	parsed_answer: string;
-}
-
-interface QuestionRow {
-	id: string;
 	response_type: string;
 	options: string | null;
 	benchmark_source_id: string | null;
@@ -77,11 +73,12 @@ export const load: PageServerLoad = async ({ platform, parent }) => {
 		question_count: number;
 	}>();
 
-	// Get all responses for all models (latest batch per model/question)
+	// Get all responses with question metadata in a single query (no IN clauses)
 	const responsesResult = await db
 		.prepare(
 			`
-			SELECT p.model_id, p.question_id, r.parsed_answer
+			SELECT p.model_id, p.question_id, r.parsed_answer,
+				   q.response_type, q.options, q.benchmark_source_id
 			FROM polls p
 			JOIN responses r ON p.id = r.poll_id
 			JOIN questions q ON p.question_id = q.id
@@ -91,10 +88,24 @@ export const load: PageServerLoad = async ({ platform, parent }) => {
 				${getLatestPollFilter()}
 		`
 		)
-		.all<ResponseRow>();
+		.all<ResponseWithQuestionRow>();
 
-	// Get question metadata for all questions with responses
-	const questionIds = [...new Set(responsesResult.results.map((r) => r.question_id))];
+	// Build question metadata map from response data
+	const questionMap = new Map<
+		string,
+		{ response_type: string; options: string | null; benchmark_source_id: string | null }
+	>();
+	for (const r of responsesResult.results) {
+		if (!questionMap.has(r.question_id)) {
+			questionMap.set(r.question_id, {
+				response_type: r.response_type,
+				options: r.options,
+				benchmark_source_id: r.benchmark_source_id
+			});
+		}
+	}
+
+	const questionIds = [...questionMap.keys()];
 	if (questionIds.length === 0) {
 		// No responses yet, return models with null scores
 		return {
@@ -108,49 +119,36 @@ export const load: PageServerLoad = async ({ platform, parent }) => {
 				humanAlignmentScore: null,
 				aiConsensusScore: null,
 				selfConsistencyScore: null
-			}))
+			})),
+			isAdmin
 		};
 	}
 
-	const questionsResult = await db
+	// Get human distributions using a subquery to avoid IN clause with many IDs
+	const humanDistMap = new Map<string, Record<string, number>>();
+	const humanResult = await db
 		.prepare(
 			`
-			SELECT id, response_type, options, benchmark_source_id
-			FROM questions
-			WHERE id IN (${questionIds.map(() => '?').join(',')})
+			SELECT hrd.question_id, hrd.distribution
+			FROM human_response_distributions hrd
+			WHERE hrd.question_id IN (
+				SELECT DISTINCT p.question_id
+				FROM polls p
+				JOIN questions q ON p.question_id = q.id
+				WHERE p.status = 'complete'
+					AND q.status = 'published'
+					AND q.benchmark_source_id IS NOT NULL
+			)
+				AND hrd.continent IS NULL
+				AND hrd.education_level IS NULL
+				AND hrd.age_group IS NULL
+				AND hrd.gender IS NULL
 		`
 		)
-		.bind(...questionIds)
-		.all<QuestionRow>();
+		.all<HumanDistRow>();
 
-	const questionMap = new Map<string, QuestionRow>();
-	for (const q of questionsResult.results) {
-		questionMap.set(q.id, q);
-	}
-
-	// Get human distributions for benchmarked questions
-	const benchmarkedIds = questionsResult.results.filter((q) => q.benchmark_source_id).map((q) => q.id);
-
-	const humanDistMap = new Map<string, Record<string, number>>();
-	if (benchmarkedIds.length > 0) {
-		const humanResult = await db
-			.prepare(
-				`
-				SELECT question_id, distribution
-				FROM human_response_distributions
-				WHERE question_id IN (${benchmarkedIds.map(() => '?').join(',')})
-					AND continent IS NULL
-					AND education_level IS NULL
-					AND age_group IS NULL
-					AND gender IS NULL
-			`
-			)
-			.bind(...benchmarkedIds)
-			.all<HumanDistRow>();
-
-		for (const d of humanResult.results) {
-			humanDistMap.set(d.question_id, JSON.parse(d.distribution));
-		}
+	for (const d of humanResult.results) {
+		humanDistMap.set(d.question_id, JSON.parse(d.distribution));
 	}
 
 	// Group responses by model and question
@@ -175,11 +173,11 @@ export const load: PageServerLoad = async ({ platform, parent }) => {
 		const responses = new Map<string, string | null>();
 
 		for (const [qId, answers] of questionAnswers) {
-			const q = questionMap.get(qId);
-			if (!q) continue;
+			const qMeta = questionMap.get(qId);
+			if (!qMeta) continue;
 
 			// Aggregate answer
-			responses.set(qId, q.response_type === 'ordinal' ? computeMedian(answers) : computeMode(answers));
+			responses.set(qId, qMeta.response_type === 'ordinal' ? computeMedian(answers) : computeMode(answers));
 
 			// Build distribution
 			const dist: Record<string, number> = {};
@@ -233,13 +231,13 @@ export const load: PageServerLoad = async ({ platform, parent }) => {
 		const consistencyScores: number[] = [];
 		if (questionAnswersMap) {
 			for (const [qId, answers] of questionAnswersMap) {
-				const q = questionMap.get(qId);
-				if (!q) continue;
+				const qMeta = questionMap.get(qId);
+				if (!qMeta) continue;
 
-				const options = q.options ? (JSON.parse(q.options) as string[]) : [];
+				const options = qMeta.options ? (JSON.parse(qMeta.options) as string[]) : [];
 				if (answers.length >= 2 && options.length > 0) {
 					const score =
-						q.response_type === 'ordinal'
+						qMeta.response_type === 'ordinal'
 							? ordinalInternalAgreement(answers, options.length)
 							: nominalInternalAgreement(answers, options.length);
 					consistencyScores.push(score);
@@ -252,17 +250,17 @@ export const load: PageServerLoad = async ({ platform, parent }) => {
 		// Compute human alignment scores per question
 		const alignmentScores: number[] = [];
 		for (const [qId, modelDist] of distributions) {
-			const q = questionMap.get(qId);
-			if (!q) continue;
+			const qMeta = questionMap.get(qId);
+			if (!qMeta) continue;
 
 			const humanDist = humanDistMap.get(qId);
 			if (!humanDist) continue;
 
-			const options = q.options ? (JSON.parse(q.options) as string[]) : [];
+			const options = qMeta.options ? (JSON.parse(qMeta.options) as string[]) : [];
 			if (options.length === 0) continue;
 
 			const score =
-				q.response_type === 'ordinal'
+				qMeta.response_type === 'ordinal'
 					? ordinalAgreementScore(humanDist, modelDist, options)
 					: nominalAgreementScore(humanDist, modelDist);
 			alignmentScores.push(score);
@@ -271,8 +269,8 @@ export const load: PageServerLoad = async ({ platform, parent }) => {
 		// Compute AI consensus scores per question (this model vs aggregate AI excluding this model)
 		const consensusScores: number[] = [];
 		for (const [qId, modelDist] of distributions) {
-			const q = questionMap.get(qId);
-			if (!q) continue;
+			const qMeta = questionMap.get(qId);
+			if (!qMeta) continue;
 
 			const aggDist = aggregateAiDistributions.get(qId);
 			if (!aggDist) continue;
@@ -289,11 +287,11 @@ export const load: PageServerLoad = async ({ platform, parent }) => {
 
 			if (Object.keys(otherAiDist).length === 0) continue;
 
-			const options = q.options ? (JSON.parse(q.options) as string[]) : [];
+			const options = qMeta.options ? (JSON.parse(qMeta.options) as string[]) : [];
 			if (options.length === 0) continue;
 
 			const score =
-				q.response_type === 'ordinal'
+				qMeta.response_type === 'ordinal'
 					? ordinalAgreementScore(otherAiDist, modelDist, options)
 					: nominalAgreementScore(otherAiDist, modelDist);
 			consensusScores.push(score);

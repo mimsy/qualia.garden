@@ -26,18 +26,14 @@ interface Model {
 	description: string | null;
 }
 
-interface QuestionRow {
-	id: string;
+interface ResponseWithQuestionRow {
+	question_id: string;
+	parsed_answer: string;
 	text: string;
 	category: string | null;
 	response_type: string;
 	options: string | null;
 	benchmark_source_id: string | null;
-}
-
-interface ResponseRow {
-	question_id: string;
-	parsed_answer: string;
 }
 
 interface HumanDistRow {
@@ -103,21 +99,47 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		return error(404, 'Model not found');
 	}
 
-	// Get this model's latest responses per question
+	// Get this model's latest responses with question metadata via JOIN
 	const responsesResult = await db
 		.prepare(
 			`
-			SELECT p.question_id, r.parsed_answer
+			SELECT p.question_id, r.parsed_answer,
+				   q.text, q.category, q.response_type, q.options, q.benchmark_source_id
 			FROM polls p
 			JOIN responses r ON p.id = r.poll_id
+			JOIN questions q ON p.question_id = q.id
 			WHERE p.model_id = ?
 				AND p.status = 'complete'
 				AND r.parsed_answer IS NOT NULL
+				AND q.status = 'published'
 				${getLatestPollFilter()}
 		`
 		)
 		.bind(modelId)
-		.all<ResponseRow>();
+		.all<ResponseWithQuestionRow>();
+
+	// Build question metadata map from response data
+	const questionMap = new Map<
+		string,
+		{
+			text: string;
+			category: string | null;
+			response_type: string;
+			options: string | null;
+			benchmark_source_id: string | null;
+		}
+	>();
+	for (const r of responsesResult.results) {
+		if (!questionMap.has(r.question_id)) {
+			questionMap.set(r.question_id, {
+				text: r.text,
+				category: r.category,
+				response_type: r.response_type,
+				options: r.options,
+				benchmark_source_id: r.benchmark_source_id
+			});
+		}
+	}
 
 	// Group responses by question (for multi-sample aggregation)
 	const responsesByQuestion = new Map<string, string[]>();
@@ -152,47 +174,33 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		};
 	}
 
-	// Get question metadata
-	const questionsResult = await db
+	// Get human distributions using subquery to avoid large IN clause
+	const humanDistMap = new Map<string, Record<string, number>>();
+	const humanResult = await db
 		.prepare(
 			`
-			SELECT id, text, category, response_type, options, benchmark_source_id
-			FROM questions
-			WHERE id IN (${questionIds.map(() => '?').join(',')})
-				AND status = 'published'
+			SELECT hrd.question_id, hrd.distribution
+			FROM human_response_distributions hrd
+			WHERE hrd.question_id IN (
+				SELECT DISTINCT p.question_id
+				FROM polls p
+				JOIN questions q ON p.question_id = q.id
+				WHERE p.model_id = ?
+					AND p.status = 'complete'
+					AND q.status = 'published'
+					AND q.benchmark_source_id IS NOT NULL
+			)
+				AND hrd.continent IS NULL
+				AND hrd.education_level IS NULL
+				AND hrd.age_group IS NULL
+				AND hrd.gender IS NULL
 		`
 		)
-		.bind(...questionIds)
-		.all<QuestionRow>();
+		.bind(modelId)
+		.all<HumanDistRow>();
 
-	const questionMap = new Map<string, QuestionRow>();
-	for (const q of questionsResult.results) {
-		questionMap.set(q.id, q);
-	}
-
-	// Get human distributions for benchmarked questions
-	const benchmarkedIds = questionsResult.results.filter((q) => q.benchmark_source_id).map((q) => q.id);
-
-	let humanDistMap = new Map<string, Record<string, number>>();
-	if (benchmarkedIds.length > 0) {
-		const humanResult = await db
-			.prepare(
-				`
-				SELECT question_id, distribution
-				FROM human_response_distributions
-				WHERE question_id IN (${benchmarkedIds.map(() => '?').join(',')})
-					AND continent IS NULL
-					AND education_level IS NULL
-					AND age_group IS NULL
-					AND gender IS NULL
-			`
-			)
-			.bind(...benchmarkedIds)
-			.all<HumanDistRow>();
-
-		for (const d of humanResult.results) {
-			humanDistMap.set(d.question_id, JSON.parse(d.distribution));
-		}
+	for (const d of humanResult.results) {
+		humanDistMap.set(d.question_id, JSON.parse(d.distribution));
 	}
 
 	// Compute this model's aggregated response and distribution per question, plus self-consistency
@@ -281,7 +289,7 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		questionHumanMode[qId] = humanMode;
 	}
 
-	// Get other models' responses for similarity calculation
+	// Get other models' responses for similarity calculation using subquery
 	const otherModelsResult = await db
 		.prepare(
 			`
@@ -299,11 +307,18 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 				AND r.parsed_answer IS NOT NULL
 				AND m.id != ?
 				AND q.status = 'published'
-				AND p.question_id IN (${questionIds.map(() => '?').join(',')})
+				AND p.question_id IN (
+					SELECT DISTINCT p2.question_id
+					FROM polls p2
+					JOIN questions q2 ON p2.question_id = q2.id
+					WHERE p2.model_id = ?
+						AND p2.status = 'complete'
+						AND q2.status = 'published'
+				)
 				${getLatestPollFilter()}
 		`
 		)
-		.bind(modelId, ...questionIds)
+		.bind(modelId, modelId)
 		.all<OtherModelResponseRow>();
 
 	// Group other models' responses

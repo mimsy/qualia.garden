@@ -19,14 +19,10 @@ interface ModelRow {
 	active: number;
 }
 
-interface ResponseRow {
+interface ResponseWithQuestionRow {
 	model_id: string;
 	question_id: string;
 	parsed_answer: string;
-}
-
-interface QuestionRow {
-	id: string;
 	response_type: string;
 	options: string | null;
 	benchmark_source_id: string | null;
@@ -65,25 +61,40 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		return error(404, 'Family not found');
 	}
 
-	const modelIds = modelsResult.results.map((m) => m.id);
-
-	// Get all responses for these models
+	// Get all responses for models in this family with question metadata via JOIN
 	const responsesResult = await db
 		.prepare(
 			`
-			SELECT p.model_id, p.question_id, r.parsed_answer
+			SELECT p.model_id, p.question_id, r.parsed_answer,
+				   q.response_type, q.options, q.benchmark_source_id
 			FROM polls p
 			JOIN responses r ON p.id = r.poll_id
 			JOIN questions q ON p.question_id = q.id
-			WHERE p.model_id IN (${modelIds.map(() => '?').join(',')})
+			JOIN models m ON p.model_id = m.id
+			WHERE m.family = ?
 				AND p.status = 'complete'
 				AND r.parsed_answer IS NOT NULL
 				AND q.status = 'published'
 				${getLatestPollFilter()}
 		`
 		)
-		.bind(...modelIds)
-		.all<ResponseRow>();
+		.bind(family)
+		.all<ResponseWithQuestionRow>();
+
+	// Build question metadata map from response data
+	const questionMap = new Map<
+		string,
+		{ response_type: string; options: string | null; benchmark_source_id: string | null }
+	>();
+	for (const r of responsesResult.results) {
+		if (!questionMap.has(r.question_id)) {
+			questionMap.set(r.question_id, {
+				response_type: r.response_type,
+				options: r.options,
+				benchmark_source_id: r.benchmark_source_id
+			});
+		}
+	}
 
 	// Group responses by model and question
 	const responsesByModel = new Map<string, Map<string, string[]>>();
@@ -98,15 +109,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		modelResponses.get(r.question_id)!.push(r.parsed_answer);
 	}
 
-	// Get all question IDs
-	const allQuestionIds = new Set<string>();
-	for (const modelResponses of responsesByModel.values()) {
-		for (const qId of modelResponses.keys()) {
-			allQuestionIds.add(qId);
-		}
-	}
-
-	if (allQuestionIds.size === 0) {
+	if (questionMap.size === 0) {
 		const modelStats: ModelStats[] = modelsResult.results.map((m) => ({
 			id: m.id,
 			name: m.name,
@@ -126,47 +129,34 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		};
 	}
 
-	// Get question metadata
-	const questionIds = [...allQuestionIds];
-	const questionsResult = await db
+	// Get human distributions using subquery to avoid large IN clause
+	const humanDistMap = new Map<string, Record<string, number>>();
+	const humanResult = await db
 		.prepare(
 			`
-			SELECT id, response_type, options, benchmark_source_id
-			FROM questions
-			WHERE id IN (${questionIds.map(() => '?').join(',')})
+			SELECT hrd.question_id, hrd.distribution
+			FROM human_response_distributions hrd
+			WHERE hrd.question_id IN (
+				SELECT DISTINCT p.question_id
+				FROM polls p
+				JOIN questions q ON p.question_id = q.id
+				JOIN models m ON p.model_id = m.id
+				WHERE m.family = ?
+					AND p.status = 'complete'
+					AND q.status = 'published'
+					AND q.benchmark_source_id IS NOT NULL
+			)
+				AND hrd.continent IS NULL
+				AND hrd.education_level IS NULL
+				AND hrd.age_group IS NULL
+				AND hrd.gender IS NULL
 		`
 		)
-		.bind(...questionIds)
-		.all<QuestionRow>();
+		.bind(family)
+		.all<HumanDistRow>();
 
-	const questionMap = new Map<string, QuestionRow>();
-	for (const q of questionsResult.results) {
-		questionMap.set(q.id, q);
-	}
-
-	// Get human distributions
-	const benchmarkedIds = questionsResult.results.filter((q) => q.benchmark_source_id).map((q) => q.id);
-
-	const humanDistMap = new Map<string, Record<string, number>>();
-	if (benchmarkedIds.length > 0) {
-		const humanResult = await db
-			.prepare(
-				`
-				SELECT question_id, distribution
-				FROM human_response_distributions
-				WHERE question_id IN (${benchmarkedIds.map(() => '?').join(',')})
-					AND continent IS NULL
-					AND education_level IS NULL
-					AND age_group IS NULL
-					AND gender IS NULL
-			`
-			)
-			.bind(...benchmarkedIds)
-			.all<HumanDistRow>();
-
-		for (const d of humanResult.results) {
-			humanDistMap.set(d.question_id, JSON.parse(d.distribution));
-		}
+	for (const d of humanResult.results) {
+		humanDistMap.set(d.question_id, JSON.parse(d.distribution));
 	}
 
 	// Compute stats for each model
@@ -192,19 +182,19 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		const selfConsistencyScores: number[] = [];
 
 		for (const [qId, answers] of modelResponses) {
-			const q = questionMap.get(qId);
-			if (!q) continue;
+			const qMeta = questionMap.get(qId);
+			if (!qMeta) continue;
 
-			const options = q.options ? (JSON.parse(q.options) as string[]) : [];
+			const options = qMeta.options ? (JSON.parse(qMeta.options) as string[]) : [];
 			if (options.length === 0) continue;
 
 			// Aggregate answer
-			const aggregatedAnswer = q.response_type === 'ordinal' ? computeMedian(answers) : computeMode(answers);
+			const aggregatedAnswer = qMeta.response_type === 'ordinal' ? computeMedian(answers) : computeMode(answers);
 
 			// Self-consistency
 			if (answers.length >= 2) {
 				const sc =
-					q.response_type === 'ordinal'
+					qMeta.response_type === 'ordinal'
 						? ordinalInternalAgreement(answers, options.length)
 						: nominalInternalAgreement(answers, options.length);
 				selfConsistencyScores.push(sc);
@@ -215,7 +205,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			// Human alignment
 			const humanDist = humanDistMap.get(qId);
 			if (humanDist && aggregatedAnswer) {
-				if (q.response_type === 'ordinal') {
+				if (qMeta.response_type === 'ordinal') {
 					// Build single-answer AI distribution for overlap calculation
 					const aiDist: Record<string, number> = { [aggregatedAnswer]: 1 };
 					humanAlignmentScores.push(ordinalAgreementScore(humanDist, aiDist, options));
