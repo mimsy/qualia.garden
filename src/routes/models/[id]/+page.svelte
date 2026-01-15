@@ -27,6 +27,9 @@
 	// Modal state
 	let showEditModal = $state(false);
 
+	// Poll all sample count
+	let pollAllSampleCount = $state(5);
+
 	// Form state - editable values synced with data.model
 	// Using $derived.by for the initial sync, then allowing user edits
 	const initialFormState = $derived({
@@ -276,7 +279,19 @@
 								{data.unpolledQuestions.length} published questions haven't been polled yet
 							</p>
 						</div>
-						<form method="POST" action="?/pollAll">
+						<form method="POST" action="?/pollAll" class="flex items-center gap-3">
+							<div class="flex items-center gap-2">
+								<label for="poll-all-sample-count" class="text-sm text-slate-600">Samples:</label>
+								<input
+									type="number"
+									id="poll-all-sample-count"
+									name="sample_count"
+									bind:value={pollAllSampleCount}
+									min="1"
+									max="10"
+									class="w-16 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+								/>
+							</div>
 							<button
 								type="submit"
 								class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"

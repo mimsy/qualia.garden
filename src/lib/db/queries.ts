@@ -265,18 +265,81 @@ export async function createPollBatch(
 	data: { question_id: string; model_id: string; sample_count: number }
 ): Promise<Poll[]> {
 	const batch_id = nanoid(12);
-	const polls: Poll[] = [];
+	const polls: Array<{ id: string; question_id: string; model_id: string; batch_id: string }> = [];
 
+	// Generate all poll IDs and data upfront
 	for (let i = 0; i < data.sample_count; i++) {
-		const poll = await createPoll(db, {
+		polls.push({
+			id: nanoid(12),
 			question_id: data.question_id,
 			model_id: data.model_id,
 			batch_id
 		});
-		polls.push(poll);
 	}
 
-	return polls;
+	// Use D1 batch to insert all polls in one round trip
+	const statements = polls.map((poll) =>
+		db
+			.prepare('INSERT INTO polls (id, question_id, model_id, batch_id) VALUES (?, ?, ?, ?)')
+			.bind(poll.id, poll.question_id, poll.model_id, poll.batch_id)
+	);
+
+	await db.batch(statements);
+
+	// Return poll objects (we know the structure since we just created them)
+	return polls.map((poll) => ({
+		id: poll.id,
+		question_id: poll.question_id,
+		model_id: poll.model_id,
+		batch_id: poll.batch_id,
+		status: 'pending' as PollStatus,
+		created_at: new Date().toISOString(),
+		completed_at: null
+	}));
+}
+
+// Create polls for multiple questions at once (optimized for bulk operations)
+export async function createPollBatchesForQuestions(
+	db: D1Database,
+	data: { questions: Array<{ id: string }>; model_id: string; sample_count: number }
+): Promise<Poll[]> {
+	const allPolls: Array<{ id: string; question_id: string; model_id: string; batch_id: string }> = [];
+
+	// Generate all poll data upfront - one batch_id per question
+	for (const question of data.questions) {
+		const batch_id = nanoid(12);
+		for (let i = 0; i < data.sample_count; i++) {
+			allPolls.push({
+				id: nanoid(12),
+				question_id: question.id,
+				model_id: data.model_id,
+				batch_id
+			});
+		}
+	}
+
+	// D1 batch has a limit of ~100 statements, so chunk the inserts
+	const BATCH_SIZE = 100;
+	for (let i = 0; i < allPolls.length; i += BATCH_SIZE) {
+		const chunk = allPolls.slice(i, i + BATCH_SIZE);
+		const statements = chunk.map((poll) =>
+			db
+				.prepare('INSERT INTO polls (id, question_id, model_id, batch_id) VALUES (?, ?, ?, ?)')
+				.bind(poll.id, poll.question_id, poll.model_id, poll.batch_id)
+		);
+		await db.batch(statements);
+	}
+
+	// Return poll objects
+	return allPolls.map((poll) => ({
+		id: poll.id,
+		question_id: poll.question_id,
+		model_id: poll.model_id,
+		batch_id: poll.batch_id,
+		status: 'pending' as PollStatus,
+		created_at: new Date().toISOString(),
+		completed_at: null
+	}));
 }
 
 export async function updatePollStatus(db: D1Database, id: string, status: PollStatus): Promise<Poll | null> {

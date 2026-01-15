@@ -468,17 +468,6 @@ describe('Poll Queries', () => {
 
 	describe('createPollBatch', () => {
 		it('creates multiple polls with same batch_id', async () => {
-			const mockPoll: Poll = {
-				id: 'test-id-1234',
-				question_id: 'q-1',
-				model_id: 'm-1',
-				status: 'pending',
-				batch_id: 'test-id-1234',
-				created_at: '2024-01-01',
-				completed_at: null
-			};
-			mockStatement.first.mockResolvedValue(mockPoll);
-
 			const result = await createPollBatch(db, {
 				question_id: 'q-1',
 				model_id: 'm-1',
@@ -486,8 +475,13 @@ describe('Poll Queries', () => {
 			});
 
 			expect(result).toHaveLength(3);
-			// All should have been called with the same batch_id
-			expect(mockStatement.bind).toHaveBeenCalledTimes(6); // 3 polls * 2 calls each (insert + select)
+			// All polls should have the same batch_id
+			const batchIds = result.map((p) => p.batch_id);
+			expect(new Set(batchIds).size).toBe(1);
+			// Should use db.batch for efficient inserts
+			expect(db.batch).toHaveBeenCalledTimes(1);
+			// Bind should be called once per poll for the batch insert
+			expect(mockStatement.bind).toHaveBeenCalledTimes(3);
 		});
 	});
 

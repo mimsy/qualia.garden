@@ -9,7 +9,7 @@ import {
 	deleteModel,
 	getLatestPollFilter,
 	getUnpolledQuestionsForModel,
-	createPoll
+	createPollBatchesForQuestions
 } from '$lib/db/queries';
 import { computeMedian, computeMode } from '$lib/db/types';
 import {
@@ -573,7 +573,7 @@ export const actions: Actions = {
 		redirect(303, '/models');
 	},
 
-	pollAll: async ({ params, platform, locals, url }) => {
+	pollAll: async ({ params, request, platform, locals, url }) => {
 		const isPreview = url.host.includes('.pages.dev') && url.host !== 'qualia-garden.pages.dev';
 		const isAdmin = dev || isPreview || locals.user?.isAdmin;
 
@@ -589,6 +589,10 @@ export const actions: Actions = {
 			return fail(500, { error: 'Queue not available' });
 		}
 
+		const formData = await request.formData();
+		const sampleCountRaw = formData.get('sample_count') as string;
+		const sampleCount = Math.max(1, Math.min(parseInt(sampleCountRaw || '5', 10) || 5, 10));
+
 		const db = platform.env.DB;
 		const queue = platform.env.POLL_QUEUE;
 		const modelId = params.id;
@@ -599,25 +603,27 @@ export const actions: Actions = {
 			return fail(400, { error: 'No unpolled questions found' });
 		}
 
-		// Create polls and queue jobs
-		const jobs: Array<{ poll_id: string; question_id: string; model_id: string }> = [];
+		// Create all polls at once using optimized batch insert
+		const polls = await createPollBatchesForQuestions(db, {
+			questions,
+			model_id: modelId,
+			sample_count: sampleCount
+		});
 
-		for (const question of questions) {
-			const poll = await createPoll(db, {
-				question_id: question.id,
-				model_id: modelId
-			});
+		// Build job list
+		const jobs = polls.map((poll) => ({
+			poll_id: poll.id,
+			question_id: poll.question_id,
+			model_id: modelId
+		}));
 
-			jobs.push({
-				poll_id: poll.id,
-				question_id: question.id,
-				model_id: modelId
-			});
+		// Send jobs to queue in batches of 100 (Cloudflare Queues limit)
+		const BATCH_SIZE = 100;
+		for (let i = 0; i < jobs.length; i += BATCH_SIZE) {
+			const batch = jobs.slice(i, i + BATCH_SIZE);
+			await queue.sendBatch(batch.map((job) => ({ body: job })));
 		}
 
-		// Send all jobs to queue
-		await queue.sendBatch(jobs.map((job) => ({ body: job })));
-
-		redirect(303, '/admin/polls');
+		redirect(303, '/responses?status=pending');
 	}
 };

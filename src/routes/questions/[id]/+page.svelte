@@ -845,9 +845,15 @@
 						{@const ha = data.modelHumanAlignment[response.model_id]}
 						{@const ac = data.modelAiConsensus[response.model_id]}
 						{@const justification = getRepresentativeJustification(response)}
-						<button
+						{@const failedCount = response.samples.filter(
+							(s: (typeof response.samples)[number]) => s.status === 'failed'
+						).length}
+						<div
 							onclick={() => (modalResponse = response)}
-							class="bg-white rounded-xl border border-slate-200 p-5 text-left hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/50 transition-all group"
+							onkeydown={(e) => e.key === 'Enter' && (modalResponse = response)}
+							tabindex="0"
+							role="button"
+							class="bg-white rounded-xl border border-slate-200 p-5 text-left hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/50 transition-all group cursor-pointer"
 						>
 							<!-- Header: Model name, family, score circles -->
 							<div class="flex items-start justify-between gap-3 mb-4">
@@ -976,17 +982,35 @@
 							<div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
 								<span class="text-xs text-slate-400">
 									{response.complete_count} sample{response.complete_count === 1 ? '' : 's'}
+									{#if failedCount > 0}
+										<span class="text-red-500">({failedCount} failed)</span>
+									{/if}
 								</span>
-								<span
-									class="text-xs text-slate-400 group-hover:text-slate-600 transition-colors flex items-center gap-1"
-								>
-									View all
-									<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-									</svg>
-								</span>
+								<div class="flex items-center gap-2">
+									{#if data.isAdmin && failedCount > 0}
+										<form method="POST" action="?/retry" use:enhance class="inline">
+											<input type="hidden" name="model_id" value={response.model_id} />
+											<input type="hidden" name="sample_count" value={failedCount} />
+											<button
+												type="submit"
+												onclick={(e: MouseEvent) => e.stopPropagation()}
+												class="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+											>
+												Retry{failedCount > 1 ? ` (${failedCount})` : ''}
+											</button>
+										</form>
+									{/if}
+									<span
+										class="text-xs text-slate-400 group-hover:text-slate-600 transition-colors flex items-center gap-1"
+									>
+										View all
+										<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+										</svg>
+									</span>
+								</div>
 							</div>
-						</button>
+						</div>
 					{:else}
 						<div class="col-span-full text-center py-12 text-slate-500">No responses from this model family.</div>
 					{/each}
@@ -1268,6 +1292,31 @@
 					{/each}
 				</div>
 			</div>
+
+			<!-- Modal footer with retry button -->
+			{#if data.isAdmin}
+				{@const modalFailedCount = modalResponse.samples.filter(
+					(s: (typeof modalResponse.samples)[number]) => s.status === 'failed'
+				).length}
+				<div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+					<span class="text-sm text-slate-500">
+						{modalResponse.complete_count}/{modalResponse.sample_count} complete
+						{#if modalFailedCount > 0}
+							<span class="text-red-500">({modalFailedCount} failed)</span>
+						{/if}
+					</span>
+					<form method="POST" action="?/retry" use:enhance class="inline">
+						<input type="hidden" name="model_id" value={modalResponse.model_id} />
+						<input type="hidden" name="sample_count" value={sampleCount} />
+						<button
+							type="submit"
+							class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+						>
+							Poll {sampleCount} more sample{sampleCount === 1 ? '' : 's'}
+						</button>
+					</form>
+				</div>
+			{/if}
 		</div>
 	</div>
 {/if}

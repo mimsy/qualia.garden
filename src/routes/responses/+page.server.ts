@@ -4,7 +4,7 @@
 import type { PageServerLoad, Actions } from './$types';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { dev } from '$app/environment';
-import { createPoll, getPoll } from '$lib/db/queries';
+import { createPollBatch } from '$lib/db/queries';
 
 interface PollRow {
 	poll_id: string;
@@ -205,38 +205,45 @@ export const actions: Actions = {
 		}
 
 		const formData = await request.formData();
-		const pollId = formData.get('poll_id') as string;
+		const questionId = formData.get('question_id') as string;
+		const modelId = formData.get('model_id') as string;
+		const sampleCount = parseInt(formData.get('sample_count') as string, 10) || 1;
+		const statusFilter = (formData.get('status_filter') as string) || 'all';
+		const currentPage = (formData.get('current_page') as string) || '1';
 
-		if (!pollId) {
-			return fail(400, { error: 'Poll ID required' });
+		if (!questionId || !modelId) {
+			return fail(400, { error: 'Question ID and Model ID required' });
 		}
 
 		const db = platform.env.DB;
 		const queue = platform.env.POLL_QUEUE;
 
-		// Get the original poll to get question_id and model_id
-		const poll = await getPoll(db, pollId);
-		if (!poll) {
-			return fail(404, { error: 'Poll not found' });
+		// Create new polls for retry (same number as failed samples)
+		const newPolls = await createPollBatch(db, {
+			question_id: questionId,
+			model_id: modelId,
+			sample_count: sampleCount
+		});
+
+		// Queue all the jobs
+		const jobs = newPolls.map((poll) => ({
+			body: {
+				poll_id: poll.id,
+				question_id: questionId,
+				model_id: modelId
+			}
+		}));
+		await queue.sendBatch(jobs);
+
+		// Build redirect URL preserving current filters
+		const redirectUrl = new URL('/responses', 'http://localhost');
+		if (statusFilter && statusFilter !== 'all') {
+			redirectUrl.searchParams.set('status', statusFilter);
+		}
+		if (currentPage && currentPage !== '1') {
+			redirectUrl.searchParams.set('page', currentPage);
 		}
 
-		// Create a new poll for retry
-		const newPoll = await createPoll(db, {
-			question_id: poll.question_id,
-			model_id: poll.model_id
-		});
-
-		// Queue the job
-		await queue.send({
-			poll_id: newPoll.id,
-			question_id: poll.question_id,
-			model_id: poll.model_id
-		});
-
-		// Preserve current page and status filter in redirect
-		const currentPage = url.searchParams.get('page') || '1';
-		const statusFilter = url.searchParams.get('status') || 'all';
-
-		redirect(303, `/responses?page=${currentPage}&status=${statusFilter}`);
+		redirect(303, redirectUrl.pathname + redirectUrl.search);
 	}
 };

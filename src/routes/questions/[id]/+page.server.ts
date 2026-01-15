@@ -196,6 +196,40 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 			.sort((a, b) => b.count - a.count);
 	}
 
+	// Calculate individual response distribution (counting all samples, not per-model aggregates)
+	const individualAnswerCounts: Record<string, number> = {};
+	let totalIndividualResponses = 0;
+
+	for (const response of aggregatedResponses) {
+		for (const sample of response.samples) {
+			if (sample.parsed_answer && sample.status === 'complete') {
+				individualAnswerCounts[sample.parsed_answer] = (individualAnswerCounts[sample.parsed_answer] || 0) + 1;
+				totalIndividualResponses++;
+			}
+		}
+	}
+
+	// Sort individual response results same as aggregate results
+	let individualResponseResults: Array<{ answer: string; count: number; percentage: number }>;
+
+	if (question.response_type === 'ordinal') {
+		individualResponseResults = Object.entries(individualAnswerCounts)
+			.map(([answer, count]) => ({
+				answer,
+				count,
+				percentage: totalIndividualResponses > 0 ? (count / totalIndividualResponses) * 100 : 0
+			}))
+			.sort((a, b) => parseInt(a.answer) - parseInt(b.answer));
+	} else {
+		individualResponseResults = Object.entries(individualAnswerCounts)
+			.map(([answer, count]) => ({
+				answer,
+				count,
+				percentage: totalIndividualResponses > 0 ? (count / totalIndividualResponses) * 100 : 0
+			}))
+			.sort((a, b) => b.count - a.count);
+	}
+
 	// Fetch benchmark data if this is a benchmark question
 	let benchmarkSource: BenchmarkSource | null = null;
 	let overallHumanDist: HumanDistribution | null = null;
@@ -416,7 +450,9 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		options,
 		responses: aggregatedResponses,
 		aggregateResults: sortedAnswers,
+		individualResponseResults,
 		totalResponses: respondedModels.length,
+		totalIndividualResponses,
 		benchmarkSource,
 		humanDistribution: overallHumanDist,
 		humanAiScore,
@@ -537,5 +573,38 @@ export const actions: Actions = {
 		}
 
 		return { success: true, polled: modelIds.length, samples: sampleCount, totalPolls };
+	},
+
+	retry: async ({ params, request, platform }) => {
+		if (!platform?.env?.DB || !platform?.env?.POLL_QUEUE) {
+			return fail(500, { error: 'Platform not available' });
+		}
+
+		const formData = await request.formData();
+		const modelId = formData.get('model_id') as string;
+		const sampleCountRaw = formData.get('sample_count') as string;
+		const sampleCount = Math.max(1, Math.min(parseInt(sampleCountRaw || '5', 10) || 5, 10));
+
+		if (!modelId) {
+			return fail(400, { error: 'Model ID required' });
+		}
+
+		// Create new poll batch and queue them
+		const polls = await createPollBatch(platform.env.DB, {
+			question_id: params.id,
+			model_id: modelId,
+			sample_count: sampleCount
+		});
+
+		// Queue each poll in the batch
+		for (const poll of polls) {
+			await platform.env.POLL_QUEUE.send({
+				poll_id: poll.id,
+				question_id: params.id,
+				model_id: modelId
+			});
+		}
+
+		return { success: true, retried: sampleCount };
 	}
 };

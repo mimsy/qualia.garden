@@ -6,6 +6,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [sveltekit()],
+	server: {
+		allowedHosts: ['dreamscape']
+	},
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}', 'workers/**/*.{test,spec}.{js,ts}'],
 		globals: true,
