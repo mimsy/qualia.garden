@@ -156,41 +156,17 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-	<header class="border-b border-slate-200/80 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-		<div class="max-w-6xl mx-auto px-6 py-4">
-			<div class="flex items-center justify-between">
-				<a href="/" class="flex items-center gap-3 group">
-					<img src="/favicon.png" alt="" class="w-9 h-9 transition-transform group-hover:scale-105" />
-					<span class="font-semibold text-slate-800 text-lg tracking-tight">Qualia Garden</span>
-				</a>
-				<nav class="flex items-center gap-1">
-					<a
-						href="/questions"
-						class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-						>Questions</a
-					>
-					<a href="/models" class="px-3 py-2 text-sm text-slate-900 font-medium bg-slate-100 rounded-lg">Models</a>
-					{#if data.isAdmin}
-						<a
-							href="/responses"
-							class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-							>Responses</a
-						>
-					{/if}
-				</nav>
-			</div>
-		</div>
-	</header>
-
 	<main class="max-w-6xl mx-auto px-6 py-12">
-		<!-- Hero -->
-		<div class="mb-8">
-			<div class="flex items-center justify-between mb-3">
-				<h1 class="text-3xl font-bold text-slate-900 tracking-tight">AI Models</h1>
+		<!-- Filter and sort controls -->
+		<div class="flex items-center justify-between gap-3 mb-6">
+			<div class="flex items-center gap-4">
+				<p class="text-slate-600">
+					{data.models.length} models surveyed
+				</p>
 				{#if data.isAdmin}
 					<button
 						onclick={() => (showAddModal = true)}
-						class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+						class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
 					>
 						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -199,13 +175,6 @@
 					</button>
 				{/if}
 			</div>
-		</div>
-
-		<!-- Filter and sort controls -->
-		<div class="flex items-center justify-between gap-3 mb-6">
-			<p class="text-slate-600">
-				{data.models.length} models surveyed
-			</p>
 			<div class="flex items-center gap-3">
 				<!-- Provider filter -->
 				<select
