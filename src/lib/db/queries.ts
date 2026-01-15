@@ -149,6 +149,23 @@ export async function getQuestionsByCategory(db: D1Database, category: string): 
 	return result.results;
 }
 
+export async function getUnpolledQuestionsForModel(db: D1Database, modelId: string): Promise<Question[]> {
+	const result = await db
+		.prepare(
+			`SELECT q.*
+			FROM questions q
+			WHERE q.status = 'published'
+				AND NOT EXISTS (
+					SELECT 1 FROM polls p
+					WHERE p.question_id = q.id AND p.model_id = ?
+				)
+			ORDER BY q.category, q.created_at`
+		)
+		.bind(modelId)
+		.all<Question>();
+	return result.results;
+}
+
 export async function createQuestion(
 	db: D1Database,
 	data: Pick<Question, 'text' | 'category' | 'response_type' | 'options'> &

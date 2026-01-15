@@ -258,6 +258,44 @@
 			</div>
 		{/if}
 
+		<!-- Unpolled Questions Section (Admin Only) -->
+		{#if data.isAdmin && data.unpolledQuestions.length > 0}
+			<section class="mb-8">
+				<div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+					<div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+						<div>
+							<h2 class="text-lg font-semibold text-slate-900">Unpolled Questions</h2>
+							<p class="text-sm text-slate-500">
+								{data.unpolledQuestions.length} published questions haven't been polled yet
+							</p>
+						</div>
+						<form method="POST" action="?/pollAll">
+							<button
+								type="submit"
+								class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
+							>
+								Poll All {data.unpolledQuestions.length} Questions
+							</button>
+						</form>
+					</div>
+					<div class="max-h-64 overflow-y-auto">
+						{#each data.unpolledQuestions as question (question.id)}
+							<div class="px-6 py-3 border-b border-slate-50 last:border-b-0 hover:bg-slate-50">
+								<div class="flex items-start justify-between gap-4">
+									<p class="text-sm text-slate-700 line-clamp-2">{question.text}</p>
+									{#if question.category}
+										<span class="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded shrink-0">
+											{question.category}
+										</span>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			</section>
+		{/if}
+
 		{#if data.questionCount === 0}
 			<div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
 				<p class="text-slate-500">No responses yet for this model.</p>

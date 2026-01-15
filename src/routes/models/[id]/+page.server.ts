@@ -4,7 +4,13 @@
 import type { PageServerLoad, Actions } from './$types';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { dev } from '$app/environment';
-import { updateModel, deleteModel, getLatestPollFilter } from '$lib/db/queries';
+import {
+	updateModel,
+	deleteModel,
+	getLatestPollFilter,
+	getUnpolledQuestionsForModel,
+	createPoll
+} from '$lib/db/queries';
 import { computeMedian, computeMode } from '$lib/db/types';
 import {
 	ordinalAgreementScore,
@@ -151,6 +157,10 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 	}
 
 	const questionIds = [...responsesByQuestion.keys()];
+
+	// Fetch unpolled questions for admins
+	const unpolledQuestions = isAdmin ? await getUnpolledQuestionsForModel(db, modelId) : [];
+
 	if (questionIds.length === 0) {
 		return {
 			model: { ...model, supports_reasoning: Boolean(model.supports_reasoning), active: Boolean(model.active) },
@@ -170,7 +180,8 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 				highConfidence: [],
 				lowConfidence: []
 			},
-			isAdmin
+			isAdmin,
+			unpolledQuestions
 		};
 	}
 
@@ -511,7 +522,8 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		mostSimilar,
 		mostDifferent,
 		notableQuestions,
-		isAdmin
+		isAdmin,
+		unpolledQuestions
 	};
 };
 
@@ -559,5 +571,53 @@ export const actions: Actions = {
 		await deleteModel(platform.env.DB, params.id);
 
 		redirect(303, '/models');
+	},
+
+	pollAll: async ({ params, platform, locals, url }) => {
+		const isPreview = url.host.includes('.pages.dev') && url.host !== 'qualia-garden.pages.dev';
+		const isAdmin = dev || isPreview || locals.user?.isAdmin;
+
+		if (!isAdmin) {
+			return fail(403, { error: 'Admin access required' });
+		}
+
+		if (!platform?.env?.DB) {
+			return fail(500, { error: 'Database not available' });
+		}
+
+		if (!platform?.env?.POLL_QUEUE) {
+			return fail(500, { error: 'Queue not available' });
+		}
+
+		const db = platform.env.DB;
+		const queue = platform.env.POLL_QUEUE;
+		const modelId = params.id;
+
+		const questions = await getUnpolledQuestionsForModel(db, modelId);
+
+		if (questions.length === 0) {
+			return fail(400, { error: 'No unpolled questions found' });
+		}
+
+		// Create polls and queue jobs
+		const jobs: Array<{ poll_id: string; question_id: string; model_id: string }> = [];
+
+		for (const question of questions) {
+			const poll = await createPoll(db, {
+				question_id: question.id,
+				model_id: modelId
+			});
+
+			jobs.push({
+				poll_id: poll.id,
+				question_id: question.id,
+				model_id: modelId
+			});
+		}
+
+		// Send all jobs to queue
+		await queue.sendBatch(jobs.map((job) => ({ body: job })));
+
+		redirect(303, '/admin/polls');
 	}
 };
