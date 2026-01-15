@@ -81,6 +81,11 @@
 					>
 					{#if data.isAdmin}
 						<a
+							href="/responses"
+							class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+							>Responses</a
+						>
+						<a
 							href="/questions/new"
 							class="ml-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
 						>

@@ -20,6 +20,7 @@
 	let showPollTrigger = $state(false);
 	let selectedModels = new SvelteSet<string>();
 	let modalResponse = $state<ResponseType | null>(null);
+	let viewMode = $state<'model' | 'response'>('model');
 
 	// Edit form state - derived initial values
 	const initialText = $derived(data.question.text);
@@ -238,6 +239,13 @@
 						class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
 						>Models</a
 					>
+					{#if data.isAdmin}
+						<a
+							href="/responses"
+							class="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+							>Responses</a
+						>
+					{/if}
 				</nav>
 			</div>
 		</div>
@@ -472,14 +480,14 @@
 					? selfConsistencyValues.reduce((a: number, b: number) => a + b, 0) / selfConsistencyValues.length
 					: null}
 			{@const humanResults = humanAggregateResults}
-			{@const maxPercentage = Math.max(
+			{@const _maxPercentage = Math.max(
 				...data.aggregateResults.map((r: { percentage: number }) => r.percentage),
 				...humanResults.map((r: { percentage: number }) => r.percentage),
 				1
 			)}
 			{@const aiMaxPct = Math.max(...data.aggregateResults.map((r: { percentage: number }) => r.percentage), 0)}
 			{@const humanMaxPct = Math.max(...humanResults.map((r: { percentage: number }) => r.percentage), 0)}
-			{@const aiTopAnswer = data.aggregateResults.find(
+			{@const _aiTopAnswer = data.aggregateResults.find(
 				(r: { percentage: number }) => r.percentage === aiMaxPct
 			)?.answer}
 			{@const humanTopAnswer = humanResults.find((r: { percentage: number }) => r.percentage === humanMaxPct)?.answer}
@@ -538,6 +546,18 @@
 
 				<!-- Butterfly chart (inside card) -->
 				{#if data.benchmarkSource && (humanResults.length > 0 || data.totalResponses > 0)}
+					{@const currentAiResults = viewMode === 'model' ? data.aggregateResults : data.individualResponseResults}
+					{@const aiCount = viewMode === 'model' ? data.totalResponses : data.totalIndividualResponses}
+					{@const aiCountLabel = viewMode === 'model' ? 'models' : 'responses'}
+					{@const currentMaxPercentage = Math.max(
+						...currentAiResults.map((r: { percentage: number }) => r.percentage),
+						...humanResults.map((r: { percentage: number }) => r.percentage),
+						1
+					)}
+					{@const currentAiMaxPct = Math.max(...currentAiResults.map((r: { percentage: number }) => r.percentage), 0)}
+					{@const currentAiTopAnswer = currentAiResults.find(
+						(r: { percentage: number }) => r.percentage === currentAiMaxPct
+					)?.answer}
 					<div class="px-8 pb-6">
 						{#if data.options && data.options.length > 0}
 							<!-- Column headers with side-aligned labels -->
@@ -546,7 +566,7 @@
 									<div class="flex items-center gap-1.5 text-xs text-blue-600 font-medium">
 										<div class="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
 										<span>AI</span>
-										<span class="text-gray-400 font-normal">({data.totalResponses})</span>
+										<span class="text-gray-400 font-normal">({aiCount} {aiCountLabel})</span>
 									</div>
 								</div>
 								<div class="w-32 sm:w-40 text-center px-2"></div>
@@ -566,13 +586,13 @@
 							<div class="space-y-2">
 								{#each data.options as option, i}
 									{@const optionKey = String(i + 1)}
-									{@const aiResult = data.aggregateResults.find((r: { answer: string }) => r.answer === optionKey)}
+									{@const aiResult = currentAiResults.find((r: { answer: string }) => r.answer === optionKey)}
 									{@const humanResult = humanResults.find(
 										(r: { answer: string; label: string }) => r.answer === optionKey || r.label === option
 									)}
 									{@const aiPct = aiResult?.percentage ?? 0}
 									{@const humanPct = humanResult?.percentage ?? 0}
-									{@const isAiTop = optionKey === aiTopAnswer}
+									{@const isAiTop = optionKey === currentAiTopAnswer}
 									{@const isHumanTop =
 										optionKey === humanTopAnswer ||
 										option === humanResults.find((r: { percentage: number }) => r.percentage === humanMaxPct)?.label}
@@ -590,7 +610,7 @@
 											<div class="w-32 sm:w-48 h-6 bg-gray-100 rounded-l overflow-hidden flex justify-end">
 												<div
 													class="h-full bg-blue-500 rounded-l transition-all"
-													style="width: {(aiPct / maxPercentage) * 100}%"
+													style="width: {(aiPct / currentMaxPercentage) * 100}%"
 												></div>
 											</div>
 										</div>
@@ -615,7 +635,7 @@
 											<div class="w-32 sm:w-48 h-6 bg-gray-100 rounded-r overflow-hidden">
 												<div
 													class="h-full bg-emerald-500 rounded-r transition-all"
-													style="width: {(humanPct / maxPercentage) * 100}%"
+													style="width: {(humanPct / currentMaxPercentage) * 100}%"
 												></div>
 											</div>
 											<span
@@ -628,6 +648,29 @@
 										</div>
 									</div>
 								{/each}
+							</div>
+
+							<!-- View mode toggle (centered below results) -->
+							<div class="flex justify-center mt-4">
+								<div class="flex items-center gap-1 text-xs">
+									<button
+										onclick={() => (viewMode = 'model')}
+										class="px-2 py-1 rounded transition-colors {viewMode === 'model'
+											? 'bg-blue-100 text-blue-700 font-medium'
+											: 'text-slate-400 hover:text-slate-600'}"
+									>
+										By Model
+									</button>
+									<span class="text-slate-300">|</span>
+									<button
+										onclick={() => (viewMode = 'response')}
+										class="px-2 py-1 rounded transition-colors {viewMode === 'response'
+											? 'bg-blue-100 text-blue-700 font-medium'
+											: 'text-slate-400 hover:text-slate-600'}"
+									>
+										By Response
+									</button>
+								</div>
 							</div>
 						{:else}
 							<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
