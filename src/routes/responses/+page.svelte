@@ -58,11 +58,6 @@
 		return url.pathname + url.search;
 	}
 
-	function getFirstFailedPollId(batch: (typeof data.batches)[number]): string | null {
-		const failed = batch.samples.find((s: (typeof batch.samples)[number]) => s.status === 'failed');
-		return failed?.poll_id || null;
-	}
-
 	const statusTabs = [
 		{ value: 'all', label: 'All' },
 		{ value: 'pending', label: 'Pending' },
@@ -184,20 +179,21 @@
 							</td>
 							<td class="px-6 py-4 text-right">
 								{#if batch.status === 'failed' || batch.status === 'partial'}
-									{@const failedPollId = getFirstFailedPollId(batch)}
-									{#if failedPollId}
-										<form method="POST" action="?/retry" class="inline">
-											<input type="hidden" name="poll_id" value={failedPollId} />
-											<button
-												type="submit"
-												onclick={(e) => e.stopPropagation()}
-												onkeydown={(e) => e.stopPropagation()}
-												class="px-3 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-											>
-												Retry
-											</button>
-										</form>
-									{/if}
+									<form method="POST" action="?/retry" class="inline">
+										<input type="hidden" name="question_id" value={batch.question_id} />
+										<input type="hidden" name="model_id" value={batch.model_id} />
+										<input type="hidden" name="sample_count" value={batch.samples.length} />
+										<input type="hidden" name="status_filter" value={data.statusFilter} />
+										<input type="hidden" name="current_page" value={data.pagination.page} />
+										<button
+											type="submit"
+											onclick={(e) => e.stopPropagation()}
+											onkeydown={(e) => e.stopPropagation()}
+											class="px-3 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+										>
+											Retry
+										</button>
+									</form>
 								{/if}
 							</td>
 						</tr>

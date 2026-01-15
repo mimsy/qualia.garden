@@ -1,5 +1,5 @@
-// ABOUTME: Admin responses page showing all poll batches with filtering and retry.
-// ABOUTME: Groups polls by batch_id, supports pagination and status filtering.
+// ABOUTME: Responses page showing latest poll batch per model-question pair.
+// ABOUTME: Shows only current data, not superseded batches from retries.
 
 import type { PageServerLoad, Actions } from './$types';
 import { error, fail, redirect } from '@sveltejs/kit';
@@ -68,30 +68,23 @@ export const load: PageServerLoad = async ({ url, platform, locals }) => {
 	const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
 	const statusFilter = url.searchParams.get('status') || 'all';
 
-	// Build status filter clause
-	const statusClause = statusFilter !== 'all' ? `WHERE p.status = ?` : '';
-	const statusParams = statusFilter !== 'all' ? [statusFilter] : [];
-
-	// Get total count for pagination
-	const countResult = await db
-		.prepare(
-			`SELECT COUNT(DISTINCT COALESCE(p.batch_id, p.id)) as count
-			FROM polls p
-			${statusClause}`
-		)
-		.bind(...statusParams)
-		.first<{ count: number }>();
-
-	const totalBatches = countResult?.count || 0;
-	const totalPages = Math.ceil(totalBatches / PAGE_SIZE);
-
-	// Fetch polls with related data
-	// We need to get all polls first, then group by batch in JS
-	// Using a window function approach for pagination on batches is complex,
-	// so we'll fetch more than needed and limit in JS
+	// Fetch only the latest batch for each (question_id, model_id) pair
+	// First find the most recent poll for each pair, then get all polls from that batch
 	const result = await db
 		.prepare(
-			`SELECT
+			`WITH latest_poll AS (
+				SELECT question_id, model_id, MAX(created_at) as max_created
+				FROM polls
+				GROUP BY question_id, model_id
+			),
+			latest_batch_info AS (
+				SELECT p.question_id, p.model_id, p.batch_id, p.id as poll_id
+				FROM polls p
+				JOIN latest_poll lp ON p.question_id = lp.question_id
+					AND p.model_id = lp.model_id
+					AND p.created_at = lp.max_created
+			)
+			SELECT
 				p.id as poll_id,
 				p.batch_id,
 				p.question_id,
@@ -110,10 +103,18 @@ export const load: PageServerLoad = async ({ url, platform, locals }) => {
 			JOIN questions q ON p.question_id = q.id
 			JOIN models m ON p.model_id = m.id
 			LEFT JOIN responses r ON p.id = r.poll_id
-			${statusClause}
+			WHERE m.active = 1
+				AND EXISTS (
+					SELECT 1 FROM latest_batch_info lb
+					WHERE lb.question_id = p.question_id
+						AND lb.model_id = p.model_id
+						AND (
+							(p.batch_id IS NOT NULL AND p.batch_id = lb.batch_id)
+							OR (p.batch_id IS NULL AND p.id = lb.poll_id)
+						)
+				)
 			ORDER BY p.created_at DESC`
 		)
-		.bind(...statusParams)
 		.all<PollRow>();
 
 	// Group by batch_id (or poll_id if no batch)
@@ -169,8 +170,22 @@ export const load: PageServerLoad = async ({ url, platform, locals }) => {
 		}
 	}
 
-	// Convert to array and paginate
-	const allBatches = Array.from(batchMap.values());
+	// Convert to array and apply status filter
+	let allBatches = Array.from(batchMap.values());
+
+	// Apply status filter in JS (since batch status is computed)
+	if (statusFilter !== 'all') {
+		allBatches = allBatches.filter((batch) => {
+			if (statusFilter === 'failed') {
+				return batch.status === 'failed' || batch.status === 'partial';
+			}
+			return batch.status === statusFilter;
+		});
+	}
+
+	// Pagination
+	const totalBatches = allBatches.length;
+	const totalPages = Math.ceil(totalBatches / PAGE_SIZE);
 	const offset = (page - 1) * PAGE_SIZE;
 	const batches = allBatches.slice(offset, offset + PAGE_SIZE);
 
