@@ -3,6 +3,7 @@
 	// ABOUTME: Displays expandable rows with sample details and retry functionality.
 
 	import type { PageData } from './$types';
+	import Footer from '$lib/components/Footer.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -336,10 +337,5 @@
 		{/if}
 	</main>
 
-	<footer class="border-t border-slate-200 py-8 px-6 mt-12">
-		<div class="max-w-6xl mx-auto flex items-center justify-between text-sm text-slate-500">
-			<span>Qualia Garden</span>
-			<span>Exploring AI values alignment</span>
-		</div>
-	</footer>
+	<Footer />
 </div>

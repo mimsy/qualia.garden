@@ -17,17 +17,17 @@
 	<title>Login - Qualia Garden</title>
 </svelte:head>
 
-<div class="min-h-screen flex items-center justify-center bg-stone-50">
-	<div class="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-sm border border-stone-200">
+<div class="min-h-screen flex items-center justify-center bg-slate-50">
+	<div class="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-sm border border-slate-200">
 		<div>
-			<h2 class="text-center text-2xl font-semibold text-stone-900">Sign in to Qualia Garden</h2>
-			<p class="mt-2 text-center text-sm text-stone-600">Admin access requires authentication</p>
+			<h2 class="text-center text-2xl font-semibold text-slate-900">Sign in to Qualia Garden</h2>
+			<p class="mt-2 text-center text-sm text-slate-600">Admin access requires authentication</p>
 		</div>
 
 		<div class="space-y-4">
 			<button
 				onclick={signInWithGoogle}
-				class="w-full flex items-center justify-center gap-3 px-4 py-3 border border-stone-300 rounded-md shadow-sm bg-white hover:bg-stone-50 transition-colors cursor-pointer"
+				class="w-full flex items-center justify-center gap-3 px-4 py-3 border border-slate-300 rounded-md shadow-sm bg-white hover:bg-slate-50 transition-colors cursor-pointer"
 			>
 				<svg class="w-5 h-5" viewBox="0 0 24 24">
 					<path
@@ -52,7 +52,7 @@
 
 			<button
 				onclick={signInWithGitHub}
-				class="w-full flex items-center justify-center gap-3 px-4 py-3 border border-stone-300 rounded-md shadow-sm bg-stone-900 text-white hover:bg-stone-800 transition-colors cursor-pointer"
+				class="w-full flex items-center justify-center gap-3 px-4 py-3 border border-slate-300 rounded-md shadow-sm bg-slate-900 text-white hover:bg-slate-800 transition-colors cursor-pointer"
 			>
 				<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
 					<path
@@ -66,7 +66,7 @@
 		</div>
 
 		<div class="text-center">
-			<a href="/" class="text-sm text-stone-500 hover:text-stone-700"> Back to home </a>
+			<a href="/" class="text-sm text-slate-500 hover:text-slate-700"> Back to home </a>
 		</div>
 	</div>
 </div>

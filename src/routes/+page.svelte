@@ -6,6 +6,7 @@
 	import { goto } from '$app/navigation';
 	import { getScoreColor } from '$lib/alignment';
 	import ScoreBadge from '$lib/components/ScoreBadge.svelte';
+	import Footer from '$lib/components/Footer.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -720,11 +721,5 @@
 		{/if}
 	</main>
 
-	<!-- Footer -->
-	<footer class="border-t border-slate-200 py-8 px-6">
-		<div class="max-w-6xl mx-auto flex items-center justify-between text-sm text-slate-500">
-			<span>Qualia Garden</span>
-			<span>Exploring AI values alignment</span>
-		</div>
-	</footer>
+	<Footer />
 </div>
