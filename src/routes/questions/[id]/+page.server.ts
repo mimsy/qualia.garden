@@ -3,8 +3,17 @@
 
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
-import { getModels, updateQuestion, createPollBatch, getLatestPollFilter } from '$lib/db/queries';
-import type { QuestionStatus, Model, AggregatedResponse } from '$lib/db/types';
+import {
+	getModels,
+	updateQuestion,
+	createPollBatch,
+	getLatestPollFilter,
+	getTags,
+	getTagsForQuestion,
+	updateQuestionTags,
+	createTag
+} from '$lib/db/queries';
+import type { QuestionStatus, Model, AggregatedResponse, Tag } from '$lib/db/types';
 import { computeMedian, computeMode } from '$lib/db/types';
 import {
 	ordinalAgreementScore,
@@ -403,10 +412,14 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		}
 	}
 
+	// Load question's tags (for display on published view)
+	const questionTags = await getTagsForQuestion(db, params.id);
+
 	// For admins: load all polls (for history) and active models (for poll trigger)
 	let allPolls: PollWithDetails[] = [];
 	let availableModels: Model[] = [];
 	let categories: string[] = [];
+	let allTags: Tag[] = [];
 
 	if (isAdmin) {
 		const allPollsResult = await db
@@ -443,6 +456,9 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 			.prepare('SELECT DISTINCT category FROM questions WHERE category IS NOT NULL ORDER BY category')
 			.all<{ category: string }>();
 		categories = categoriesResult.results.map((r) => r.category);
+
+		// Get all tags for tag editing
+		allTags = await getTags(db);
 	}
 
 	return {
@@ -462,7 +478,9 @@ export const load: PageServerLoad = async ({ params, platform, parent }) => {
 		modelAiConsensus,
 		allPolls,
 		availableModels,
-		categories
+		categories,
+		allTags,
+		questionTags
 	};
 };
 
@@ -606,5 +624,29 @@ export const actions: Actions = {
 		}
 
 		return { success: true, retried: sampleCount };
+	},
+
+	updateTags: async ({ params, request, platform }) => {
+		if (!platform?.env?.DB) {
+			return fail(500, { error: 'Database not available' });
+		}
+
+		const formData = await request.formData();
+		const tagIds = formData.getAll('tag_ids') as string[];
+		const newTagName = (formData.get('new_tag') as string)?.trim();
+
+		const db = platform.env.DB;
+		const finalTagIds = [...tagIds];
+
+		// Create new tag if provided
+		if (newTagName) {
+			const newTag = await createTag(db, newTagName);
+			finalTagIds.push(newTag.id);
+		}
+
+		// Update question's tags
+		await updateQuestionTags(db, params.id, finalTagIds);
+
+		return { success: true };
 	}
 };

@@ -1,0 +1,118 @@
+<script lang="ts">
+	// ABOUTME: Tag detail page showing questions with full aggregate results.
+	// ABOUTME: Displays aggregate statistics for all questions with this tag.
+
+	import type { PageData } from './$types';
+	import QuestionCard from '$lib/components/QuestionCard.svelte';
+	import ScoreBadge from '$lib/components/ScoreBadge.svelte';
+
+	let { data } = $props<{ data: PageData }>();
+
+	type SortKey = 'newest' | 'humanSimilarity' | 'aiConsensus' | 'aiConfidence';
+	let sortBy = $state<SortKey>('newest');
+	let sortAsc = $state(true);
+
+	const sortedQuestions = $derived.by(() => {
+		const qs = [...data.questions];
+		if (sortBy === 'newest') {
+			return qs.sort((a, b) => {
+				const cmp = b.createdAt.localeCompare(a.createdAt);
+				return sortAsc ? cmp : -cmp;
+			});
+		}
+		// For score sorts: nulls always go to bottom
+		return qs.sort((a, b) => {
+			const aVal = a[sortBy];
+			const bVal = b[sortBy];
+			if (aVal === null && bVal === null) return 0;
+			if (aVal === null) return 1;
+			if (bVal === null) return -1;
+			// sortAsc true = lowest first (ascending)
+			return sortAsc ? aVal - bVal : bVal - aVal;
+		});
+	});
+</script>
+
+<svelte:head>
+	<title>{data.tag.name} — Qualia Garden</title>
+	<meta name="description" content="AI responses to questions tagged with {data.tag.name}" />
+</svelte:head>
+
+<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+	<main class="max-w-6xl mx-auto px-6 py-8">
+		<!-- Tag Header Card -->
+		<div class="bg-white rounded-xl border border-slate-200 overflow-hidden mb-8">
+			<!-- Body -->
+			<div class="px-6 pt-5 pb-4">
+				<div class="flex items-center gap-3 flex-wrap mb-3">
+					<h1 class="text-2xl font-bold text-slate-900 tracking-tight">{data.tag.name}</h1>
+					<span class="px-2.5 py-1 bg-slate-100 text-slate-600 text-sm rounded-lg font-medium">Tag</span>
+				</div>
+				<p class="text-slate-500 flex items-center gap-2 flex-wrap">
+					<span>{data.questionCount} question{data.questionCount === 1 ? '' : 's'}</span>
+					{#if data.tag.description}
+						<span class="text-slate-300">·</span>
+						<span>{data.tag.description}</span>
+					{/if}
+				</p>
+			</div>
+
+			<!-- Score bars footer -->
+			{#if data.overallHumanSimilarity !== null || data.overallAiConsensus !== null || data.overallAiConfidence !== null}
+				<div class="flex border-t border-slate-100">
+					<ScoreBadge
+						score={data.overallHumanSimilarity}
+						label="Alignment"
+						type="humanSimilarity"
+						context="aggregate"
+					/>
+					<div class="w-px bg-slate-100"></div>
+					<ScoreBadge score={data.overallAiConsensus} label="Consensus" type="aiConsensus" context="aggregate" />
+					<div class="w-px bg-slate-100"></div>
+					<ScoreBadge score={data.overallAiConfidence} label="Confidence" type="aiConfidence" context="aggregate" />
+				</div>
+			{/if}
+		</div>
+
+		<!-- Controls -->
+		<div class="flex flex-wrap gap-4 items-center justify-end mb-6">
+			<div class="flex items-center gap-2">
+				<span class="text-sm text-slate-500">Sort by</span>
+				<select
+					bind:value={sortBy}
+					class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200"
+				>
+					<option value="newest">Date</option>
+					<option value="humanSimilarity">Alignment</option>
+					<option value="aiConsensus">AI Consensus</option>
+					<option value="aiConfidence">AI Confidence</option>
+				</select>
+				<button
+					onclick={() => (sortAsc = !sortAsc)}
+					class="p-1.5 border border-slate-200 rounded-lg bg-white text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200"
+					title={sortAsc ? 'Ascending' : 'Descending'}
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						{#if sortAsc}
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+						{:else}
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						{/if}
+					</svg>
+				</button>
+			</div>
+		</div>
+
+		<!-- Questions with Full Results -->
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+			{#each sortedQuestions as question (question.id)}
+				<QuestionCard {question} tags={data.tagMap.get(question.id) ?? []} showCategory showSource />
+			{/each}
+		</div>
+		{#if sortedQuestions.length === 0}
+			<div class="text-center py-16">
+				<p class="text-slate-500">No questions with this tag yet.</p>
+			</div>
+		{/if}
+	</main>
+</div>

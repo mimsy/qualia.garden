@@ -3,15 +3,18 @@
 	// ABOUTME: Shows source/category header, question text, butterfly chart, and score bars.
 
 	import type { QuestionWithStats } from '$lib/db/question-stats';
+	import type { Tag } from '$lib/db/types';
 	import ButterflyChart from './ButterflyChart.svelte';
 	import ScoreBadge from './ScoreBadge.svelte';
 
 	let {
 		question,
+		tags = [],
 		showCategory = false,
 		showSource = false
 	} = $props<{
 		question: QuestionWithStats;
+		tags?: Tag[];
 		showCategory?: boolean;
 		showSource?: boolean;
 	}>();
@@ -42,6 +45,20 @@
 					{question.category}
 				</a>
 			{/if}
+		</div>
+	{/if}
+
+	<!-- Tags -->
+	{#if tags.length > 0}
+		<div class="flex gap-1.5 flex-wrap px-4 py-2 border-b border-slate-100">
+			{#each tags as tag}
+				<a
+					href="/questions?tag={tag.id}"
+					class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+				>
+					{tag.name}
+				</a>
+			{/each}
 		</div>
 	{/if}
 

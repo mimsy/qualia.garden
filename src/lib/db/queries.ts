@@ -2,7 +2,7 @@
 // ABOUTME: Provides CRUD operations for models, questions, polls, and responses.
 
 import { nanoid } from 'nanoid';
-import type { Model, Question, Poll, Response, PollStatus, QuestionStatus, Category } from './types';
+import type { Model, Question, Poll, Response, PollStatus, QuestionStatus, Category, Tag, TagWithCount } from './types';
 
 // SQL filter for getting only the latest poll per model/question combination
 // Handles both batched polls (multiple samples) and legacy single polls
@@ -451,5 +451,205 @@ export async function getAdminUsers(db: D1Database): Promise<Array<{ id: string;
 	const result = await db
 		.prepare('SELECT id, email, name FROM user WHERE isAdmin = 1')
 		.all<{ id: string; email: string; name: string }>();
+	return result.results;
+}
+
+// Tags
+export async function getTags(db: D1Database): Promise<Tag[]> {
+	const result = await db.prepare('SELECT * FROM tags ORDER BY name').all<Tag>();
+	return result.results;
+}
+
+export async function getTag(db: D1Database, id: string): Promise<Tag | null> {
+	const result = await db.prepare('SELECT * FROM tags WHERE id = ?').bind(id).first<Tag>();
+	return result;
+}
+
+export async function getTagsWithCounts(db: D1Database): Promise<TagWithCount[]> {
+	const result = await db
+		.prepare(
+			`SELECT t.*, COUNT(qt.question_id) as question_count
+			FROM tags t
+			LEFT JOIN question_tags qt ON t.id = qt.tag_id
+			LEFT JOIN questions q ON qt.question_id = q.id AND q.status = 'published'
+			GROUP BY t.id
+			ORDER BY t.name`
+		)
+		.all<TagWithCount>();
+	return result.results;
+}
+
+export async function getTagsForQuestion(db: D1Database, questionId: string): Promise<Tag[]> {
+	const result = await db
+		.prepare(
+			`SELECT t.* FROM tags t
+			JOIN question_tags qt ON t.id = qt.tag_id
+			WHERE qt.question_id = ?
+			ORDER BY t.name`
+		)
+		.bind(questionId)
+		.all<Tag>();
+	return result.results;
+}
+
+export async function getTagsForQuestions(db: D1Database, questionIds: string[]): Promise<Map<string, Tag[]>> {
+	if (questionIds.length === 0) return new Map();
+
+	// Batch to avoid SQLite's 999 parameter limit
+	const BATCH_SIZE = 500;
+	const tagMap = new Map<string, Tag[]>();
+
+	for (let i = 0; i < questionIds.length; i += BATCH_SIZE) {
+		const batch = questionIds.slice(i, i + BATCH_SIZE);
+		const placeholders = batch.map(() => '?').join(', ');
+		const result = await db
+			.prepare(
+				`SELECT qt.question_id, t.* FROM tags t
+				JOIN question_tags qt ON t.id = qt.tag_id
+				WHERE qt.question_id IN (${placeholders})
+				ORDER BY t.name`
+			)
+			.bind(...batch)
+			.all<Tag & { question_id: string }>();
+
+		for (const row of result.results) {
+			const { question_id, ...tag } = row;
+			if (!tagMap.has(question_id)) {
+				tagMap.set(question_id, []);
+			}
+			tagMap.get(question_id)!.push(tag);
+		}
+	}
+
+	return tagMap;
+}
+
+// Load tags for questions using filter criteria (avoids parameter limit via subquery)
+export async function getTagsForQuestionsWithFilter(
+	db: D1Database,
+	filter: {
+		category?: string | null;
+		sourceId?: string | null;
+		status?: string;
+		tagId?: string;
+	}
+): Promise<Map<string, Tag[]>> {
+	// Build WHERE clause matching the filter
+	const conditions: string[] = [];
+	const params: (string | null)[] = [];
+
+	if (filter.status && filter.status !== 'all') {
+		conditions.push('q.status = ?');
+		params.push(filter.status);
+	}
+
+	if (filter.category) {
+		conditions.push('q.category = ?');
+		params.push(filter.category);
+	}
+
+	if (filter.sourceId === null) {
+		conditions.push('q.benchmark_source_id IS NULL');
+	} else if (filter.sourceId) {
+		conditions.push('q.benchmark_source_id = ?');
+		params.push(filter.sourceId);
+	}
+
+	if (filter.tagId) {
+		conditions.push('q.id IN (SELECT question_id FROM question_tags WHERE tag_id = ?)');
+		params.push(filter.tagId);
+	}
+
+	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+	const result = await db
+		.prepare(
+			`SELECT qt.question_id, t.* FROM tags t
+			JOIN question_tags qt ON t.id = qt.tag_id
+			WHERE qt.question_id IN (
+				SELECT q.id FROM questions q ${whereClause}
+			)
+			ORDER BY t.name`
+		)
+		.bind(...params)
+		.all<Tag & { question_id: string }>();
+
+	// Group tags by question_id
+	const tagMap = new Map<string, Tag[]>();
+	for (const row of result.results) {
+		const { question_id, ...tag } = row;
+		if (!tagMap.has(question_id)) {
+			tagMap.set(question_id, []);
+		}
+		tagMap.get(question_id)!.push(tag);
+	}
+
+	return tagMap;
+}
+
+export async function createTag(db: D1Database, name: string, description?: string): Promise<Tag> {
+	const id = nanoid(12);
+	await db
+		.prepare('INSERT INTO tags (id, name, description) VALUES (?, ?, ?)')
+		.bind(id, name, description ?? null)
+		.run();
+	return (await getTag(db, id))!;
+}
+
+export async function updateTag(
+	db: D1Database,
+	id: string,
+	data: Partial<Pick<Tag, 'name' | 'description'>>
+): Promise<Tag | null> {
+	const sets: string[] = [];
+	const values: unknown[] = [];
+
+	if (data.name !== undefined) {
+		sets.push('name = ?');
+		values.push(data.name);
+	}
+	if (data.description !== undefined) {
+		sets.push('description = ?');
+		values.push(data.description);
+	}
+
+	if (sets.length === 0) return getTag(db, id);
+
+	values.push(id);
+	await db
+		.prepare(`UPDATE tags SET ${sets.join(', ')} WHERE id = ?`)
+		.bind(...values)
+		.run();
+	return getTag(db, id);
+}
+
+export async function deleteTag(db: D1Database, id: string): Promise<boolean> {
+	const result = await db.prepare('DELETE FROM tags WHERE id = ?').bind(id).run();
+	return result.meta.changes > 0;
+}
+
+export async function updateQuestionTags(db: D1Database, questionId: string, tagIds: string[]): Promise<void> {
+	// Delete existing tags for this question
+	await db.prepare('DELETE FROM question_tags WHERE question_id = ?').bind(questionId).run();
+
+	// Insert new tags
+	if (tagIds.length > 0) {
+		const statements = tagIds.map((tagId) =>
+			db.prepare('INSERT INTO question_tags (question_id, tag_id) VALUES (?, ?)').bind(questionId, tagId)
+		);
+		await db.batch(statements);
+	}
+}
+
+export async function getQuestionsByTag(db: D1Database, tagId: string): Promise<Question[]> {
+	const result = await db
+		.prepare(
+			`SELECT q.* FROM questions q
+			JOIN question_tags qt ON q.id = qt.question_id
+			WHERE qt.tag_id = ? AND q.status = 'published'
+			ORDER BY q.category, q.created_at DESC`
+		)
+		.bind(tagId)
+		.all<Question>();
 	return result.results;
 }

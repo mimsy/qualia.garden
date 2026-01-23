@@ -8,11 +8,17 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	function buildUrl(params: { category?: string | null; status?: string; source?: string | null }) {
+	function buildUrl(params: {
+		category?: string | null;
+		status?: string;
+		source?: string | null;
+		tag?: string | null;
+	}) {
 		const url = new URL('/questions', 'http://localhost');
 		if (params.category) url.searchParams.set('category', params.category);
 		if (params.status && params.status !== 'published') url.searchParams.set('status', params.status);
 		if (params.source) url.searchParams.set('source', params.source);
+		if (params.tag) url.searchParams.set('tag', params.tag);
 		return url.pathname + url.search;
 	}
 
@@ -73,7 +79,12 @@
 					<nav class="space-y-1 mb-6">
 						{#each statusOptions as option (option.value)}
 							<a
-								href={buildUrl({ category: data.selectedCategory, status: option.value, source: data.selectedSource })}
+								href={buildUrl({
+									category: data.selectedCategory,
+									status: option.value,
+									source: data.selectedSource,
+									tag: data.selectedTag
+								})}
 								class="block px-3 py-2 rounded-lg text-sm {data.selectedStatus === option.value
 									? 'bg-blue-100 text-blue-700 font-medium'
 									: 'text-slate-600 hover:bg-slate-100'}"
@@ -87,7 +98,7 @@
 				<h2 class="font-medium text-slate-900 mb-3 text-sm">Survey Source</h2>
 				<nav class="space-y-1 mb-6">
 					<a
-						href={buildUrl({ category: data.selectedCategory, status: data.selectedStatus })}
+						href={buildUrl({ category: data.selectedCategory, status: data.selectedStatus, tag: data.selectedTag })}
 						class="block px-3 py-2 rounded-lg text-sm {data.selectedSource === null
 							? 'bg-blue-100 text-blue-700 font-medium'
 							: 'text-slate-600 hover:bg-slate-100'}"
@@ -96,7 +107,12 @@
 					</a>
 					{#each data.sources as source (source.id)}
 						<a
-							href={buildUrl({ category: data.selectedCategory, status: data.selectedStatus, source: source.id })}
+							href={buildUrl({
+								category: data.selectedCategory,
+								status: data.selectedStatus,
+								source: source.id,
+								tag: data.selectedTag
+							})}
 							class="block px-3 py-2 rounded-lg text-sm {data.selectedSource === source.id
 								? 'bg-blue-100 text-blue-700 font-medium'
 								: 'text-slate-600 hover:bg-slate-100'}"
@@ -105,7 +121,12 @@
 						</a>
 					{/each}
 					<a
-						href={buildUrl({ category: data.selectedCategory, status: data.selectedStatus, source: 'none' })}
+						href={buildUrl({
+							category: data.selectedCategory,
+							status: data.selectedStatus,
+							source: 'none',
+							tag: data.selectedTag
+						})}
 						class="block px-3 py-2 rounded-lg text-sm {data.selectedSource === 'none'
 							? 'bg-blue-100 text-blue-700 font-medium'
 							: 'text-slate-600 hover:bg-slate-100'}"
@@ -115,9 +136,9 @@
 				</nav>
 
 				<h2 class="font-medium text-slate-900 mb-3 text-sm">Categories</h2>
-				<nav class="space-y-1">
+				<nav class="space-y-1 mb-6">
 					<a
-						href={buildUrl({ status: data.selectedStatus, source: data.selectedSource })}
+						href={buildUrl({ status: data.selectedStatus, source: data.selectedSource, tag: data.selectedTag })}
 						class="block px-3 py-2 rounded-lg text-sm {data.selectedCategory === null
 							? 'bg-blue-100 text-blue-700 font-medium'
 							: 'text-slate-600 hover:bg-slate-100'}"
@@ -126,7 +147,12 @@
 					</a>
 					{#each data.categories as category (category)}
 						<a
-							href={buildUrl({ category, status: data.selectedStatus, source: data.selectedSource })}
+							href={buildUrl({
+								category,
+								status: data.selectedStatus,
+								source: data.selectedSource,
+								tag: data.selectedTag
+							})}
 							class="block px-3 py-2 rounded-lg text-sm {data.selectedCategory === category
 								? 'bg-blue-100 text-blue-700 font-medium'
 								: 'text-slate-600 hover:bg-slate-100'}"
@@ -135,6 +161,40 @@
 						</a>
 					{/each}
 				</nav>
+
+				{#if data.tags.length > 0}
+					<h2 class="font-medium text-slate-900 mb-3 text-sm">Tags</h2>
+					<nav class="space-y-1">
+						<a
+							href={buildUrl({
+								category: data.selectedCategory,
+								status: data.selectedStatus,
+								source: data.selectedSource
+							})}
+							class="block px-3 py-2 rounded-lg text-sm {data.selectedTag === null
+								? 'bg-blue-100 text-blue-700 font-medium'
+								: 'text-slate-600 hover:bg-slate-100'}"
+						>
+							All
+						</a>
+						{#each data.tags as tag (tag.id)}
+							<a
+								href={buildUrl({
+									category: data.selectedCategory,
+									status: data.selectedStatus,
+									source: data.selectedSource,
+									tag: tag.id
+								})}
+								class="block px-3 py-2 rounded-lg text-sm {data.selectedTag === tag.id
+									? 'bg-blue-100 text-blue-700 font-medium'
+									: 'text-slate-600 hover:bg-slate-100'}"
+							>
+								{tag.name}
+								<span class="text-slate-400 ml-1">({tag.question_count})</span>
+							</a>
+						{/each}
+					</nav>
+				{/if}
 			</aside>
 
 			<div class="flex-1">
@@ -188,7 +248,7 @@
 				<!-- Questions Grid -->
 				<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 					{#each paginatedQuestions as question (question.id)}
-						<QuestionCard {question} showCategory showSource />
+						<QuestionCard {question} tags={data.tagMap.get(question.id) ?? []} showCategory showSource />
 					{/each}
 				</div>
 

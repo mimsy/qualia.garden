@@ -37,6 +37,21 @@ export interface Category {
 	display_order: number;
 }
 
+export interface Tag {
+	id: string;
+	name: string;
+	description: string | null;
+	created_at: string;
+}
+
+export interface TagWithCount extends Tag {
+	question_count: number;
+}
+
+export interface QuestionWithTags extends Question {
+	tags: Tag[];
+}
+
 export interface BenchmarkSource {
 	id: string;
 	name: string;

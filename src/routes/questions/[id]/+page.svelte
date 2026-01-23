@@ -445,6 +445,50 @@
 					</div>
 				</div>
 			</form>
+
+			<!-- Tag Management (separate form) -->
+			{#if data.allTags.length > 0 || true}
+				<form method="POST" action="?/updateTags" use:enhance class="bg-white rounded-lg shadow p-8 mb-8">
+					<h3 class="text-lg font-semibold text-slate-900 mb-4">Tags</h3>
+					<div class="space-y-4">
+						<!-- Existing tags checkboxes -->
+						{#if data.allTags.length > 0}
+							<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+								{#each data.allTags as tag}
+									{@const isSelected = data.questionTags.some((t: { id: string }) => t.id === tag.id)}
+									<label class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer">
+										<input
+											type="checkbox"
+											name="tag_ids"
+											value={tag.id}
+											checked={isSelected}
+											class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+										/>
+										<span class="text-sm text-gray-700">{tag.name}</span>
+									</label>
+								{/each}
+							</div>
+						{:else}
+							<p class="text-sm text-gray-500">No tags exist yet. Create the first one below.</p>
+						{/if}
+
+						<!-- Add new tag -->
+						<div class="flex items-center gap-3 pt-3 border-t border-gray-200">
+							<label for="new_tag" class="text-sm text-gray-600 whitespace-nowrap">Add new tag:</label>
+							<input
+								type="text"
+								id="new_tag"
+								name="new_tag"
+								placeholder="Enter tag name"
+								class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+							/>
+							<button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+								Save Tags
+							</button>
+						</div>
+					</div>
+				</form>
+			{/if}
 		{:else}
 			<!-- Read-only view - unified question card -->
 			{@const selfConsistencyValues = Object.values(data.modelSelfConsistency).filter((v): v is number => v !== null)}
@@ -488,6 +532,20 @@
 								{data.question.category}
 							</a>
 						{/if}
+					</div>
+				{/if}
+
+				<!-- Tags -->
+				{#if data.questionTags.length > 0}
+					<div class="flex gap-1.5 flex-wrap px-5 py-2 border-b border-slate-100">
+						{#each data.questionTags as tag}
+							<a
+								href="/questions?tag={tag.id}"
+								class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+							>
+								{tag.name}
+							</a>
+						{/each}
 					</div>
 				{/if}
 
